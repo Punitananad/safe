@@ -1,0 +1,819 @@
+{% extends "base_new_journal.html" %}
+
+{% block title %}Multi-Broker Connect — Trading Journal{% endblock %}
+
+{% block extra_css %}
+<style>
+  .broker-card {
+    background: var(--card);
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+  }
+  .broker-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 8px 25px rgba(14, 165, 164, 0.15);
+  }
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+  .status-connected {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+  }
+  .status-disconnected {
+    background: rgba(148, 163, 184, 0.1);
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #0369a1);
+    border: none;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+  }
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #0d9488, #0284c7);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(14, 165, 164, 0.3);
+  }
+  .btn-success {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    border: none;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+  }
+  .btn-success:hover {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+  }
+  .btn-info {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    border: none;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+  }
+  .btn-info:hover {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+  .btn-warning {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border: none;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+  }
+  .btn-warning:hover {
+    background: linear-gradient(135deg, #d97706, #b45309);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  }
+  .btn-outline-secondary {
+    background: transparent;
+    border: 1px solid #64748b;
+    color: #94a3b8;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+  }
+  .btn-outline-secondary:hover {
+    background: rgba(100, 116, 139, 0.1);
+    border-color: #94a3b8;
+    color: #e2e8f0;
+  }
+  .form-control, .form-select {
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid #334155;
+    color: #e2e8f0;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+  .form-control:focus, .form-select:focus {
+    background: rgba(15, 23, 42, 0.8);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(14, 165, 164, 0.1);
+    outline: none;
+  }
+  .form-control::placeholder {
+    color: #64748b;
+  }
+  .form-label {
+    color: #cbd5e1;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+  }
+  .alert {
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    border: 1px solid;
+  }
+  .alert-success {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+    border-color: rgba(34, 197, 94, 0.3);
+  }
+  .alert-danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+  .alert-warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.3);
+  }
+  .alert-info {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    border-color: rgba(59, 130, 246, 0.3);
+  }
+  .code-output {
+    background: #0f172a;
+    color: #e6eef8;
+    padding: 1rem;
+    border-radius: 8px;
+    overflow: auto;
+    max-height: 400px;
+    white-space: pre-wrap;
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 0.875rem;
+    border: 1px solid #1e293b;
+  }
+  .section-title {
+    color: #f1f5f9;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .section-title svg {
+    color: var(--accent);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold text-white mb-2">Multi-Broker Connect</h1>
+    <p class="text-slate-400">Connect and manage your trading accounts across multiple brokers</p>
+  </div>
+
+  <!-- Broker Selection -->
+  <div class="broker-card">
+    <h3 class="section-title">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+      </svg>
+      Broker Selection
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+      <div>
+        <label for="broker" class="form-label">Select Broker</label>
+        <select id="broker" class="form-select w-full">
+          <option value="kite">Kite (Zerodha)</option>
+          <option value="dhan">Dhan</option>
+          <option value="angel">Angel One (SmartAPI)</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Remembered Accounts</label>
+        <select id="remembered_accounts" class="form-select w-full">
+          <option value="">— select saved account —</option>
+        </select>
+      </div>
+      <div>
+        <button class="btn btn-outline-secondary w-full" onclick="clearRemembered()">Clear All</button>
+      </div>
+      <div>
+        <div id="connection_status">
+          <span class="status-badge status-disconnected">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"/>
+            </svg>
+            Not Connected
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Credentials Registration -->
+  <div class="broker-card">
+    <h3 class="section-title">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+      </svg>
+      Register / Save Credentials
+    </h3>
+    <div id="kite_fields" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="form-label">API Key</label>
+        <input id="kite_api_key" class="form-control" placeholder="Enter Kite API Key" value="your_kite_api_key" />
+      </div>
+      <div>
+        <label class="form-label">API Secret</label>
+        <input id="kite_api_secret" class="form-control" placeholder="Enter Kite API Secret" value="your_kite_api_secret" />
+      </div>
+    </div>
+    <div id="dhan_fields" class="grid grid-cols-1 md:grid-cols-2 gap-4" style="display:none;">
+      <div>
+        <label class="form-label">Client ID</label>
+        <input id="dhan_client_id" class="form-control" placeholder="Enter Dhan Client ID" />
+      </div>
+      <div>
+        <label class="form-label">Access Token</label>
+        <input id="dhan_access_token" class="form-control" placeholder="Enter Dhan Access Token" />
+      </div>
+    </div>
+    <div id="angel_fields" class="grid grid-cols-1 md:grid-cols-2 gap-4" style="display:none;">
+      <div>
+        <label class="form-label">API Key</label>
+        <input id="angel_api_key" class="form-control" placeholder="Enter Angel API Key" />
+      </div>
+      <div>
+        <label class="form-label">API Secret</label>
+        <input id="angel_api_secret" class="form-control" placeholder="Enter Angel API Secret" />
+      </div>
+    </div>
+    <div class="mt-6 flex items-center gap-4">
+      <button class="btn btn-primary" onclick="register()">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6-4v16H3V4h18z"/>
+        </svg>
+        Register Credentials
+      </button>
+      <span id="register_msg" class="text-slate-400"></span>
+    </div>
+  </div>
+
+  <!-- Login/Connect -->
+  <div class="broker-card">
+    <h3 class="section-title">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+      </svg>
+      Login / Connect
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+      <div>
+        <label for="login_user_id" class="form-label">User ID</label>
+        <input id="login_user_id" class="form-control" placeholder="Enter User ID" value="NES881" />
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-success" onclick="login()">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+          </svg>
+          Connect
+        </button>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-info" onclick="checkStatus()">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          Check Status
+        </button>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-warning" onclick="disconnect()">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+          </svg>
+          Disconnect
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Controls (Hidden by default) -->
+  <div class="broker-card" id="data_controls" style="display:none">
+    <h3 class="section-title">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+      </svg>
+      Broker Data
+    </h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <button class="btn btn-primary" onclick="fetchBrokerData('orders')">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        Fetch Orders
+      </button>
+      <button class="btn btn-primary" onclick="fetchBrokerData('trades')">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+        </svg>
+        Fetch Trades
+      </button>
+      <button class="btn btn-primary" onclick="fetchBrokerData('positions')">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
+        </svg>
+        Fetch Positions
+      </button>
+      <button class="btn btn-outline-secondary" onclick="fetchPortfolio()">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0H8m8 0v2a2 2 0 01-2 2H10a2 2 0 01-2-2V6"/>
+        </svg>
+        Portfolio
+      </button>
+    </div>
+  </div>
+
+  <!-- Output -->
+  <div class="broker-card">
+    <h3 class="section-title">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+      Output
+    </h3>
+    <div id="message_area"></div>
+    <pre id="out" class="code-output mt-4">Ready. Select broker and enter credentials to begin.</pre>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // URL Configuration
+    const URLS = {
+      register_base: "{{ url_for('calculatentrade.register_app_broker', broker='__BR__') }}",
+      broker_status: "{{ url_for('calculatentrade.broker_status') }}",
+      disconnect: "{{ url_for('calculatentrade.disconnect_broker') }}",
+      portfolio: "{{ url_for('calculatentrade.get_portfolio') }}",
+      api_orders: "{{ url_for('calculatentrade.api_broker_orders') }}",
+      api_trades: "{{ url_for('calculatentrade.api_broker_trades') }}",
+      api_positions: "{{ url_for('calculatentrade.api_broker_positions') }}",
+      trades_page: "{{ url_for('calculatentrade.get_trades') }}"
+    };
+
+    // Global Variables
+    let broker = 'kite';
+    const out = document.getElementById('out');
+    const messageArea = document.getElementById('message_area');
+
+    // UI Helper Functions
+    function showMessage(msg, type = 'info') {
+      const alertClass = type === 'error' ? 'alert-danger' : 
+                        type === 'success' ? 'alert-success' : 
+                        type === 'warning' ? 'alert-warning' : 'alert-info';
+      
+      messageArea.innerHTML = `<div class="alert ${alertClass}">${msg}</div>`;
+      out.textContent = msg;
+    }
+
+    function markConnected(brokerName, userId) {
+      const statusEl = document.getElementById('connection_status');
+      statusEl.innerHTML = `<span class="status-badge status-connected">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6-4v16H3V4h18z"/>
+        </svg>
+        Connected: ${brokerName.toUpperCase()} (${userId})
+      </span>`;
+    }
+
+    function markDisconnected() {
+      const statusEl = document.getElementById('connection_status');
+      statusEl.innerHTML = `<span class="status-badge status-disconnected">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"/>
+        </svg>
+        Not Connected
+      </span>`;
+      hideDataControls();
+    }
+
+    function showDataControls() {
+      document.getElementById('data_controls').style.display = 'block';
+    }
+
+    function hideDataControls() {
+      document.getElementById('data_controls').style.display = 'none';
+    }
+
+    // Broker Management Functions
+    function onBrokerChange() {
+      broker = document.getElementById('broker').value;
+      
+      // Toggle credential fields
+      document.getElementById('kite_fields').style.display = broker === 'kite' ? 'block' : 'none';
+      document.getElementById('dhan_fields').style.display = broker === 'dhan' ? 'block' : 'none';
+      document.getElementById('angel_fields').style.display = broker === 'angel' ? 'block' : 'none';
+      
+      showMessage(`Selected ${broker.toUpperCase()} broker`, 'info');
+    }
+
+    // Load saved connections
+    async function loadSaved() {
+      try {
+        const res = await fetch('/calculatentrade_journal/api/broker/remembered_accounts', {
+          credentials: 'include'
+        });
+        const data = await res.json();
+        
+        if (data.ok && data.accounts) {
+          const select = document.getElementById('remembered_accounts');
+          select.innerHTML = '<option value="">— select saved account —</option>';
+          
+          data.accounts.forEach(acc => {
+            const option = document.createElement('option');
+            option.value = `${acc.broker}||${acc.user_id}`;
+            option.textContent = `${acc.broker.toUpperCase()} — ${acc.user_id}`;
+            select.appendChild(option);
+          });
+          
+          if (data.accounts.length > 0) {
+            showMessage(`Found ${data.accounts.length} saved account(s)`, 'success');
+          }
+        }
+        
+        // Check localStorage for current broker
+        const uid = document.getElementById('login_user_id').value || 'user1';
+        const storageKey = `broker_${broker}_${uid}`;
+        const stored = localStorage.getItem(storageKey);
+        
+        if (stored) {
+          try {
+            const data = JSON.parse(stored);
+            if (data.connected) {
+              await checkStatus();
+            }
+          } catch (e) {
+            localStorage.removeItem(storageKey);
+          }
+        }
+      } catch (e) {
+        console.error('Load saved error:', e);
+        showMessage('Could not load saved accounts', 'warning');
+      }
+    }
+
+    // Register credentials
+    async function register() {
+      const payload = { user_id: document.getElementById('login_user_id').value || 'NES881' };
+      
+      if (broker === 'kite') {
+        const apiKey = document.getElementById('kite_api_key').value.trim();
+        const apiSecret = document.getElementById('kite_api_secret').value.trim();
+        
+        if (!apiKey || !apiSecret || apiKey === 'your_kite_api_key' || apiSecret === 'your_kite_api_secret') {
+          showMessage('Please enter valid Kite API key and secret', 'error');
+          return false;
+        }
+        
+        payload.api_key = apiKey;
+        payload.api_secret = apiSecret;
+      } else if (broker === 'dhan') {
+        payload.client_id = document.getElementById('dhan_client_id').value.trim() || 'demo_client';
+        payload.access_token = document.getElementById('dhan_access_token').value.trim() || 'demo_token';
+      } else {
+        payload.api_key = document.getElementById('angel_api_key').value.trim() || 'demo_key';
+        payload.api_secret = document.getElementById('angel_api_secret').value.trim() || 'demo_secret';
+      }
+
+      try {
+        const url = URLS.register_base.replace('__BR__', broker);
+        const res = await fetch(url, { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload) 
+        });
+        
+        const result = await res.json();
+        
+        if (res.ok && result.ok) {
+          document.getElementById('register_msg').textContent = 'Registered successfully!';
+          showMessage('Credentials registered and saved successfully', 'success');
+          return true;
+        } else {
+          throw new Error(result.message || `Registration failed: ${res.status}`);
+        }
+      } catch (e) {
+        showMessage('Registration error: ' + e.message, 'error');
+        document.getElementById('register_msg').textContent = 'Registration failed!';
+        return false;
+      }
+    }
+
+    // Login/Connect
+    async function login() {
+      const uid = document.getElementById('login_user_id').value.trim() || 'NES881';
+      document.getElementById('login_user_id').value = uid;
+      
+      showMessage('Preparing to connect to broker...', 'info');
+      
+      try {
+        // Check if credentials are already registered
+        const statusRes = await fetch(`/calculatentrade_journal/api/broker/status?broker=${broker}&user_id=${uid}`, {
+          credentials: 'include'
+        });
+        const statusData = await statusRes.json();
+        
+        if (statusData.connected) {
+          showMessage(`${broker.toUpperCase()} is already connected for user ${uid}`, 'success');
+          markConnected(broker, uid);
+          showDataControls();
+          return;
+        }
+        
+        // Register credentials first
+        const registered = await register();
+        if (!registered) {
+          showMessage('Please register valid credentials first', 'error');
+          return;
+        }
+        
+        if (broker === 'kite') {
+          // For Kite, redirect to actual login URL
+          showMessage('Redirecting to Kite login... Please complete the authentication process.', 'info');
+          window.location.href = `/calculatentrade_journal/kite/login?user_id=${encodeURIComponent(uid)}`;
+          return;
+        }
+        
+        if (broker === 'dhan') {
+          // For Dhan, redirect to login URL
+          showMessage('Redirecting to Dhan login...', 'info');
+          window.location.href = `/calculatentrade_journal/dhan/login?user_id=${encodeURIComponent(uid)}`;
+          return;
+        }
+        
+        if (broker === 'angel') {
+          // For Angel, redirect to login URL
+          showMessage('Redirecting to Angel login...', 'info');
+          window.location.href = `/calculatentrade_journal/angel/login?user_id=${encodeURIComponent(uid)}`;
+          return;
+        }
+        
+      } catch (e) {
+        showMessage('Connection error: ' + e.message, 'error');
+      }
+    }
+
+    // Check connection status
+    async function checkStatus() {
+      const uid = document.getElementById('login_user_id').value.trim() || 'NES881';
+      
+      try {
+        const res = await fetch(`/calculatentrade_journal/api/broker/status?broker=${broker}&user_id=${uid}`, {
+          credentials: 'include'
+        });
+        const data = await res.json();
+        
+        if (data.connected) {
+          markConnected(broker, uid);
+          showDataControls();
+          
+          // Update localStorage
+          const storageKey = `broker_${broker}_${uid}`;
+          localStorage.setItem(storageKey, JSON.stringify({
+            connected: true,
+            broker: broker,
+            user_id: uid,
+            connected_at: new Date().toISOString()
+          }));
+          
+          const statusMsg = data.message || 'Connected';
+          showMessage(`${broker.toUpperCase()} is connected for user ${uid} (${statusMsg})`, 'success');
+        } else {
+          markDisconnected();
+          localStorage.removeItem(`broker_${broker}_${uid}`);
+          const statusMsg = data.message || 'Not connected';
+          showMessage(`${broker.toUpperCase()}: ${statusMsg}`, 'warning');
+          
+          // If expired, suggest reconnection
+          if (data.expired) {
+            showMessage(`${broker.toUpperCase()} connection expired. Please reconnect.`, 'warning');
+          }
+        }
+      } catch (e) {
+        showMessage('Status check error: ' + e.message, 'error');
+        markDisconnected();
+      }
+    }
+
+    // Disconnect
+    async function disconnect() {
+      if (!confirm('Are you sure you want to disconnect from the broker?')) return;
+      
+      const uid = document.getElementById('login_user_id').value.trim() || 'NES881';
+      
+      try {
+        const res = await fetch('/calculatentrade_journal/api/broker/disconnect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ broker, user_id: uid })
+        });
+        
+        const result = await res.json();
+        
+        if (result.ok) {
+          markDisconnected();
+          localStorage.removeItem(`broker_${broker}_${uid}`);
+          showMessage('Disconnected successfully (credentials preserved for reconnection)', 'success');
+          await loadSaved(); // Refresh remembered accounts
+        } else {
+          showMessage('Disconnect failed: ' + (result.message || 'Unknown error'), 'error');
+        }
+      } catch (e) {
+        showMessage('Disconnect error: ' + e.message, 'error');
+      }
+    }
+
+    // Data fetching functions
+    async function fetchBrokerData(kind) {
+      const uid = document.getElementById('login_user_id').value.trim() || 'NES881';
+      showMessage(`Fetching ${kind}...`, 'info');
+      
+      try {
+        const urlMap = {
+          'orders': URLS.api_orders,
+          'trades': URLS.api_trades,
+          'positions': URLS.api_positions
+        };
+        
+        const url = urlMap[kind] + `?broker=${broker}&user_id=${uid}`;
+        const res = await fetch(url, { credentials: 'include' });
+        const data = await res.json();
+        
+        if (data.ok && data.data) {
+          out.textContent = JSON.stringify(data.data, null, 2);
+          showMessage(`${kind} data loaded successfully (${data.data.length || 0} items)`, 'success');
+        } else {
+          out.textContent = JSON.stringify(data, null, 2);
+          
+          // Handle authentication errors
+          if (data.auth_error) {
+            markDisconnected();
+            showMessage(`Authentication failed. ${data.message}`, 'error');
+          } else {
+            showMessage(data.message || `${kind} response received`, 'info');
+          }
+        }
+      } catch (e) {
+        showMessage(`Error fetching ${kind}: ` + e.message, 'error');
+      }
+    }
+    
+    async function fetchPortfolio() {
+      const uid = document.getElementById('login_user_id').value.trim() || 'NES881';
+      showMessage('Fetching portfolio...', 'info');
+      
+      try {
+        const url = URLS.portfolio + `?broker=${broker}&user_id=${uid}`;
+        const res = await fetch(url, { credentials: 'include' });
+        const data = await res.json();
+        
+        if (data.ok && data.data) {
+          out.textContent = JSON.stringify(data.data, null, 2);
+          showMessage('Portfolio data loaded successfully', 'success');
+        } else {
+          out.textContent = JSON.stringify(data, null, 2);
+          
+          // Handle authentication errors
+          if (data.auth_error) {
+            markDisconnected();
+            showMessage(`Authentication failed. ${data.message}`, 'error');
+          } else {
+            showMessage(data.message || 'Portfolio response received', 'info');
+          }
+        }
+      } catch (e) {
+        showMessage('Portfolio error: ' + e.message, 'error');
+      }
+    }
+    
+    // Remembered accounts management
+    function onRememberedSelect() {
+      const select = document.getElementById('remembered_accounts');
+      if (!select.value) return;
+      
+      const [selectedBroker, selectedUserId] = select.value.split('||');
+      document.getElementById('broker').value = selectedBroker;
+      broker = selectedBroker;
+      onBrokerChange();
+      document.getElementById('login_user_id').value = selectedUserId;
+      
+      showMessage(`Selected saved account: ${selectedBroker.toUpperCase()} (${selectedUserId})`, 'info');
+      checkStatus();
+    }
+    
+    function clearRemembered() {
+      if (!confirm('Clear all remembered accounts? This cannot be undone.')) return;
+      
+      // Clear localStorage
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.startsWith('broker_')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      // Clear server-side
+      fetch('/calculatentrade_journal/api/broker/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ clear_all: true })
+      });
+      
+      document.getElementById('remembered_accounts').innerHTML = '<option value="">— select saved account —</option>';
+      showMessage('All remembered accounts cleared', 'success');
+    }
+
+    // Initialize broker system
+    async function initBrokerSystem() {
+      try {
+        const res = await fetch('/calculatentrade_journal/api/broker/init', {
+          method: 'POST',
+          credentials: 'include'
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+          console.log('Broker system initialized:', data);
+          showMessage(`Broker system ready. Loaded ${data.accounts_loaded} accounts, ${data.active_sessions} active sessions.`, 'success');
+        } else {
+          console.warn('Broker init failed:', data);
+          showMessage('Broker system initialization failed', 'warning');
+        }
+      } catch (e) {
+        console.error('Broker init error:', e);
+        showMessage('Could not initialize broker system', 'warning');
+      }
+    }
+
+    // Initialize page
+    async function init() {
+      // Set up event listeners
+      document.getElementById('broker').addEventListener('change', onBrokerChange);
+      document.getElementById('remembered_accounts').addEventListener('change', onRememberedSelect);
+      
+      // Initialize broker system first
+      await initBrokerSystem();
+      
+      // Handle URL parameters
+      const params = new URLSearchParams(location.search);
+      const brokerParam = params.get('broker');
+      const userIdParam = params.get('user_id');
+      
+      if (brokerParam) {
+        document.getElementById('broker').value = brokerParam;
+        broker = brokerParam;
+      }
+      
+      if (userIdParam) {
+        document.getElementById('login_user_id').value = userIdParam;
+      }
+      
+      // Initialize UI
+      onBrokerChange();
+      await loadSaved();
+      
+      // Auto-check status for current broker/user
+      const uid = document.getElementById('login_user_id').value.trim();
+      if (uid) {
+        await checkStatus();
+      }
+      
+      showMessage('Multi-Broker Connect ready. Select broker and enter credentials.', 'info');
+    }
+
+    // Start when DOM is ready
+    document.addEventListener('DOMContentLoaded', init);
+</script>
+{% endblock %}

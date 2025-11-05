@@ -1,0 +1,182 @@
+{% extends "mentor/mentor_base.html" %}
+
+{% block title %}Mentor Dashboard - Calculate N Trade{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="fas fa-chalkboard-teacher me-2"></i>Mentor Dashboard</h2>
+                <p class="text-muted">Welcome back, {{ session.mentor_name }}!</p>
+            </div>
+            <div class="dropdown">
+                <button class="btn btn-outline-primary dropdown-toggle" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-user me-2"></i>{{ session.mentor_name }}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+                    <li><a class="dropdown-item" href="{{ url_for('mentor.profile') }}"><i class="fas fa-user-circle me-2"></i>Profile</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('mentor.coupons') }}"><i class="fas fa-ticket-alt me-2"></i>My Coupons</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="{{ url_for('mentor.logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5>Total Coupons</h5>
+                        <h3>{{ total_coupons }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-ticket-alt fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5>Used Coupons</h5>
+                        <h3>{{ used_coupons }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5>Students</h5>
+                        <h3>{{ students.total }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-users fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Students Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-users me-2"></i>My Students</h5>
+                    <form method="GET" class="d-flex">
+                        <input type="text" class="form-control me-2" name="search" 
+                               placeholder="Search students..." value="{{ search }}">
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if students.items %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Student Name</th>
+                                    <th>Email</th>
+                                    <th>Coupon Used</th>
+                                    <th>Usage Date</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student in students.items %}
+                                <tr>
+                                    <td>{{ student[1] or 'N/A' }}</td>
+                                    <td>{{ student[0] }}</td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ student[2] }}</span>
+                                    </td>
+                                    <td>{{ student[3].strftime('%Y-%m-%d %H:%M') if student[3] else 'N/A' }}</td>
+                                    <td>
+                                        {% if student[3] %}
+                                            {{ student[3].strftime('%Y-%m-%d %H:%M') }}
+                                            <br><small class="text-success">Saved: ₹{{ "%.2f"|format((student[4] or 0) / 100) }}</small>
+                                        {% else %}
+                                            <span class="text-muted">Not used</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if students.pages > 1 %}
+                    <nav aria-label="Students pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if students.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('mentor.dashboard', page=students.prev_num, search=search) }}">Previous</a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for page_num in students.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != students.page %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('mentor.dashboard', page=page_num, search=search) }}">{{ page_num }}</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ page_num }}</span>
+                                        </li>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if students.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('mentor.dashboard', page=students.next_num, search=search) }}">Next</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5>No students found</h5>
+                        <p class="text-muted">
+                            {% if search %}
+                                No students match your search criteria.
+                            {% else %}
+                                No students have used your coupons yet.
+                            {% endif %}
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Mentor Coupon Buttons Demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Enhanced Mentor Dashboard - Coupon Actions</h2>
+        <p class="text-muted">Now with 3 sharing options for maximum flexibility</p>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5>Sample Coupon: SAV30 (30% OFF)</h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h6>Coupon Code: <span class="badge bg-primary">SAV30</span></h6>
+                        <p class="mb-0">30% discount • Active • 0/100 uses</p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-sm btn-outline-primary" 
+                                    onclick="copyCode()" 
+                                    title="Copy coupon code only">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <button class="btn btn-sm btn-info" 
+                                    onclick="copyLink()" 
+                                    title="Copy premium link (share anywhere)">
+                                <i class="fas fa-link"></i>
+                            </button>
+                            <button class="btn btn-sm btn-success" 
+                                    onclick="shareWhatsApp()" 
+                                    title="Share formatted message on WhatsApp">
+                                <i class="fab fa-whatsapp"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card border-info">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0"><i class="fas fa-share me-2"></i>Sharing Options</h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2">
+                                <i class="fas fa-copy text-primary me-2"></i>
+                                <strong>Copy Code:</strong> Copy coupon code only
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-link text-info me-2"></i>
+                                <strong>Copy Link:</strong> Copy direct premium link (works anywhere)
+                            </li>
+                            <li class="mb-2">
+                                <i class="fab fa-whatsapp text-success me-2"></i>
+                                <strong>WhatsApp:</strong> Share formatted message via WhatsApp
+                            </li>
+                            <li>
+                                <i class="fas fa-magic text-warning me-2"></i>
+                                All links auto-apply coupon when clicked
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-success">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Best Practices</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-success mb-3">
+                            <small><strong>Universal Sharing:</strong> Use "Copy Link" to share on any platform - Email, SMS, Telegram, etc!</small>
+                        </div>
+                        <ul class="list-unstyled mb-0 small">
+                            <li>✅ Links work on all devices</li>
+                            <li>✅ No manual coupon entry needed</li>
+                            <li>✅ Instant discount application</li>
+                            <li>✅ Professional presentation</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <h5>Sample Generated Link:</h5>
+            <div class="alert alert-light">
+                <code id="sampleLink">http://localhost:5000/subscription?coupon=SAV30&auto_apply=true</code>
+                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="copySampleLink()">
+                    <i class="fas fa-copy"></i> Copy
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <h5>Sample WhatsApp Message:</h5>
+            <div class="alert alert-light">
+                <pre id="sampleMessage">🎉 Exclusive 30% OFF on Calculate N Trade Premium!
+
+💰 Use coupon code: SAV30
+🔗 Click here to get discount: http://localhost:5000/subscription?coupon=SAV30&auto_apply=true
+
+✅ Advanced trading calculators
+✅ Real-time market data
+✅ Trade journal & analytics
+✅ Risk management tools
+
+Upgrade now and save 30%! 🚀</pre>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function copyCode() {
+            navigator.clipboard.writeText('SAV30').then(() => {
+                showToast('Coupon code "SAV30" copied to clipboard!', 'primary');
+            });
+        }
+
+        function copyLink() {
+            const link = 'http://localhost:5000/subscription?coupon=SAV30&auto_apply=true';
+            navigator.clipboard.writeText(link).then(() => {
+                showToast('Premium link copied! Share anywhere you want.', 'info');
+            });
+        }
+
+        function shareWhatsApp() {
+            const message = `🎉 Exclusive 30% OFF on Calculate N Trade Premium!
+
+💰 Use coupon code: SAV30
+🔗 Click here to get discount: http://localhost:5000/subscription?coupon=SAV30&auto_apply=true
+
+✅ Advanced trading calculators
+✅ Real-time market data
+✅ Trade journal & analytics
+✅ Risk management tools
+
+Upgrade now and save 30%! 🚀`;
+            
+            const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+            window.open(whatsappUrl, '_blank');
+            showToast('WhatsApp opened with coupon message!', 'success');
+        }
+
+        function copySampleLink() {
+            const link = document.getElementById('sampleLink').textContent;
+            navigator.clipboard.writeText(link).then(() => {
+                showToast('Sample link copied!', 'secondary');
+            });
+        }
+
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0 position-fixed top-0 end-0 m-3`;
+            toast.style.zIndex = '9999';
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            
+            toast.addEventListener('hidden.bs.toast', function() {
+                document.body.removeChild(toast);
+            });
+        }
+    </script>
+</body>
+</html>

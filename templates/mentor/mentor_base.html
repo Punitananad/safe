@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Mentor - Calculate N Trade{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            /* Dark Theme (Default) */
+            --primary-bg: #1a2332;
+            --secondary-bg: #243447;
+            --accent-teal: #4dd0e1;
+            --accent-blue: #42a5f5;
+            --text-primary: #ffffff;
+            --text-secondary: #b0bec5;
+            --card-bg: #2a3441;
+            --border-color: #37474f;
+            --success-color: #4caf50;
+            --warning-color: #ff9800;
+            --info-color: #2196f3;
+            --danger-color: #f44336;
+            --shadow-color: rgba(0, 0, 0, 0.2);
+        }
+
+        [data-theme="light"] {
+            /* Light Theme */
+            --primary-bg: #ffffff;
+            --secondary-bg: #ffffff;
+            --accent-teal: #007bff;
+            --accent-blue: #0056b3;
+            --text-primary: #000000;
+            --text-secondary: #333333;
+            --card-bg: #ffffff;
+            --border-color: #dee2e6;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+            --danger-color: #dc3545;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        body {
+            background: var(--primary-bg) !important;
+            color: var(--text-primary) !important;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: var(--secondary-bg) !important;
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 2px 10px var(--shadow-color);
+        }
+
+        .theme-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+            margin-left: 15px;
+        }
+
+        .theme-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .theme-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #374151;
+            transition: 0.3s;
+            border-radius: 30px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .theme-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            transition: 0.3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .theme-switch input:checked + .theme-slider {
+            background: var(--accent-teal);
+        }
+
+        .theme-switch input:checked + .theme-slider:before {
+            transform: translateX(26px);
+        }
+
+        .theme-icon {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .theme-icon.sun {
+            right: 5px;
+            opacity: 0;
+        }
+
+        .theme-icon.moon {
+            left: 5px;
+            opacity: 1;
+        }
+
+        .theme-switch input:checked ~ .theme-icon.sun {
+            opacity: 1;
+            color: white;
+        }
+
+        .theme-switch input:checked ~ .theme-icon.moon {
+            opacity: 0;
+        }
+
+        .theme-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-left: 6px;
+            font-weight: 500;
+        }
+
+        .card {
+            background: var(--card-bg) !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            transition: all 0.3s ease;
+            color: var(--text-primary) !important;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px var(--shadow-color);
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, var(--accent-teal), var(--accent-blue));
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            padding: 10px 20px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(77, 208, 225, 0.4);
+        }
+
+        .table {
+            color: var(--text-primary) !important;
+            background: var(--card-bg) !important;
+        }
+
+        .table th {
+            border-bottom: 2px solid var(--border-color);
+            color: var(--text-secondary) !important;
+            font-weight: 600;
+        }
+
+        .table td {
+            border-top: 1px solid var(--border-color);
+            padding: 12px 15px;
+            color: var(--text-primary) !important;
+        }
+
+        .form-control {
+            background: var(--card-bg) !important;
+            border: 1px solid var(--border-color) !important;
+            color: var(--text-primary) !important;
+        }
+
+        .form-control:focus {
+            background: var(--card-bg) !important;
+            border-color: var(--accent-teal) !important;
+            color: var(--text-primary) !important;
+            box-shadow: 0 0 0 0.2rem rgba(77, 208, 225, 0.25);
+        }
+
+        .dropdown-menu {
+            background: var(--card-bg) !important;
+            border: 1px solid var(--border-color) !important;
+            box-shadow: 0 4px 12px var(--shadow-color);
+        }
+
+        .dropdown-item {
+            color: var(--text-primary) !important;
+            padding: 8px 16px;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(77, 208, 225, 0.1) !important;
+            color: var(--text-primary) !important;
+        }
+
+        .btn-outline-info {
+            color: var(--accent-teal);
+            border-color: var(--accent-teal);
+        }
+
+        .btn-outline-info:hover {
+            background: var(--accent-teal);
+            border-color: var(--accent-teal);
+            color: white;
+        }
+
+        .btn-outline-success {
+            color: var(--success-color);
+            border-color: var(--success-color);
+        }
+
+        .btn-outline-success:hover {
+            background: var(--success-color);
+            border-color: var(--success-color);
+            color: white;
+        }
+
+        .text-success {
+            color: var(--success-color) !important;
+        }
+
+        .text-warning {
+            color: var(--warning-color) !important;
+        }
+
+        .text-info {
+            color: var(--info-color) !important;
+        }
+
+        .text-danger {
+            color: var(--danger-color) !important;
+        }
+
+        .text-secondary {
+            color: var(--text-secondary) !important;
+        }
+
+        .badge {
+            font-weight: 500;
+        }
+
+        .bg-success {
+            background: var(--success-color) !important;
+        }
+
+        .bg-warning {
+            background: var(--warning-color) !important;
+        }
+
+        .bg-info {
+            background: var(--info-color) !important;
+        }
+
+        .bg-danger {
+            background: var(--danger-color) !important;
+        }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            .navbar-center {
+                position: static;
+                transform: none;
+                text-align: left;
+                margin-left: 10px;
+            }
+            
+            .brand-main {
+                font-size: 16px;
+            }
+            
+            .brand-sub {
+                font-size: 10px;
+                letter-spacing: 0.8px;
+            }
+            
+            .theme-switch {
+                width: 45px;
+                height: 22px;
+                margin-left: 8px;
+            }
+            
+            .theme-slider:before {
+                height: 16px;
+                width: 16px;
+                left: 3px;
+                bottom: 3px;
+            }
+            
+            .theme-switch input:checked + .theme-slider:before {
+                transform: translateX(23px);
+            }
+            
+            .theme-label {
+                font-size: 10px;
+                margin-left: 4px;
+            }
+            
+            .navbar-nav {
+                flex-direction: row;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            .dropdown-toggle {
+                padding: 4px 8px !important;
+                font-size: 12px !important;
+            }
+            
+            .brand-logo {
+                width: 36px;
+                height: 36px;
+            }
+            
+            .brand-logo img {
+                width: 32px !important;
+                height: 32px !important;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .container-fluid {
+                padding-left: 12px !important;
+                padding-right: 12px !important;
+            }
+            
+            .navbar-center {
+                display: none;
+            }
+            
+            .theme-switch {
+                width: 40px;
+                height: 20px;
+            }
+            
+            .theme-slider:before {
+                height: 14px;
+                width: 14px;
+            }
+            
+            .theme-switch input:checked + .theme-slider:before {
+                transform: translateX(20px);
+            }
+            
+            .theme-label {
+                display: none;
+            }
+        }
+
+        .alert {
+            border: none;
+            border-radius: 8px;
+        }
+
+        .alert-success {
+            background: rgba(76, 175, 80, 0.1);
+            color: var(--success-color);
+            border-left: 4px solid var(--success-color);
+        }
+
+        .alert-danger {
+            background: rgba(244, 67, 54, 0.1);
+            color: var(--danger-color);
+            border-left: 4px solid var(--danger-color);
+        }
+
+        .alert-warning {
+            background: rgba(255, 152, 0, 0.1);
+            color: var(--warning-color);
+            border-left: 4px solid var(--warning-color);
+        }
+
+        .alert-info {
+            background: rgba(33, 150, 243, 0.1);
+            color: var(--info-color);
+            border-left: 4px solid var(--info-color);
+        }
+
+        h1, h2, h3, h4, h5, h6, p, span, div, a, li, td, th, label {
+            color: inherit !important;
+        }
+
+        .navbar-brand {
+            color: var(--text-primary) !important;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .navbar {
+            position: relative;
+        }
+
+        .navbar-center {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .brand-logo {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .brand-text {
+            line-height: 1.2;
+            text-align: center;
+        }
+
+        .brand-main {
+            font-size: 20px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-teal), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.8px;
+            line-height: 1.1;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        .brand-sub {
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-top: 2px;
+            opacity: 0.8;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        [data-theme="light"] .brand-main {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .navbar-brand:hover .brand-logo img {
+            transform: scale(1.1);
+        }
+
+        .brand-logo img {
+            transition: transform 0.3s ease;
+        }
+
+        .navbar-brand:hover .brand-main {
+            transform: translateY(-1px);
+        }
+
+        .navbar-brand:hover .brand-sub {
+            opacity: 1;
+            color: var(--accent-teal);
+        }
+
+        .brand-text {
+            transition: all 0.3s ease;
+        }
+
+        .nav-link {
+            color: var(--text-secondary) !important;
+        }
+
+        .nav-link:hover {
+            color: var(--accent-teal) !important;
+        }
+
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid px-4 px-md-4 px-sm-3">
+            <!-- Left: Logo -->
+            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('mentor.dashboard') }}">
+                <div class="brand-logo me-3">
+                    <img src="{{ url_for('static', filename='favicons/favicon-32x32.png') }}" alt="CNT Logo" style="width: 32px; height: 32px;">
+                </div>
+            </a>
+            
+            <!-- Center: Brand Text -->
+            <div class="navbar-center">
+                <div class="brand-text">
+                    <div class="brand-main">Calculate N Trade</div>
+                    <div class="brand-sub">Mentor Panel</div>
+                </div>
+            </div>
+            
+            <div class="navbar-nav ms-auto d-flex align-items-center">
+                <!-- Theme Toggle Switch -->
+                <div class="d-flex align-items-center me-3">
+                    <label class="theme-switch">
+                        <input type="checkbox" id="themeToggle" onchange="toggleTheme()">
+                        <span class="theme-slider"></span>
+                        <i class="fas fa-moon theme-icon moon"></i>
+                        <i class="fas fa-sun theme-icon sun"></i>
+                    </label>
+                    <span class="theme-label" id="themeLabel"></span>
+                </div>
+                
+                <!-- User Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" style="padding: 6px 12px; font-size: 13px;">
+                        <i class="fas fa-user me-1"></i>{{ session.mentor_name or 'Mentor' }}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{{ url_for('mentor.dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                        </a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('mentor.coupons') }}">
+                            <i class="fas fa-ticket-alt me-2"></i>My Coupons
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="{{ url_for('mentor.logout') }}">
+                            <i class="fas fa-sign-out-alt me-2"></i>Logout
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container-fluid px-4 pt-3">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Theme toggle functionality
+        function toggleTheme() {
+            const body = document.body;
+            const themeToggle = document.getElementById('themeToggle');
+            const themeLabel = document.getElementById('themeLabel');
+            
+            if (themeToggle.checked) {
+                body.setAttribute('data-theme', 'light');
+                themeLabel.textContent = 'Light';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                themeLabel.textContent = '';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Load saved theme
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            const body = document.body;
+            const themeToggle = document.getElementById('themeToggle');
+            const themeLabel = document.getElementById('themeLabel');
+            
+            body.setAttribute('data-theme', savedTheme);
+            
+            if (savedTheme === 'light') {
+                themeToggle.checked = true;
+                themeLabel.textContent = 'Light';
+            } else {
+                themeToggle.checked = false;
+                themeLabel.textContent = '';
+            }
+        }
+
+        // Initialize theme on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTheme();
+        });
+
+        // Smooth toggle animation
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeSwitch = document.querySelector('.theme-switch');
+            themeSwitch.addEventListener('click', function() {
+                this.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    this.style.transform = 'scale(1)';
+                }, 100);
+            });
+        });
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

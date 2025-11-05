@@ -1,0 +1,702 @@
+{% extends "base_new_journal.html" %}
+
+{% block title %}Trading Challenges | Calculate N Trade{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <!-- Header -->
+  <div class="flex justify-between items-center mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Trading Challenges</h1>
+      <p class="text-gray-500 dark:text-gray-400">Set goals, track progress, and stay motivated</p>
+    </div>
+    <button id="createChallengeBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+      <i class="fas fa-plus mr-2"></i>New Challenge
+    </button>
+  </div>
+
+  <!-- Challenges Grid -->
+  <div id="challengesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for challenge in challenges %}
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 challenge-card" data-id="{{ challenge.id }}">
+      <div class="flex justify-between items-start mb-4">
+        <h3 class="text-lg font-bold text-gray-800 dark:text-white">{{ challenge.title }}</h3>
+        <span class="px-2 py-1 text-xs rounded-full 
+          {% if challenge.status == 'ongoing' %}bg-green-100 text-green-800{% endif %}
+          {% if challenge.status == 'completed' %}bg-blue-100 text-blue-800{% endif %}
+          {% if challenge.status == 'failed' %}bg-red-100 text-red-800{% endif %}
+          {% if challenge.status == 'paused' %}bg-yellow-100 text-yellow-800{% endif %}">
+          {{ challenge.status|title }}
+        </span>
+      </div>
+      
+      <p class="text-gray-600 dark:text-gray-300 text-sm mb-4">{{ challenge.description }}</p>
+      
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <span class="text-gray-500">Type:</span>
+          <span class="font-medium">{{ challenge.challenge_type|title }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-gray-500">Duration:</span>
+          <span class="font-medium">{{ challenge.start_date }} - {{ challenge.end_date }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-gray-500">Target:</span>
+          <span class="font-medium">
+            {% if challenge.target_is_percent %}{{ challenge.target_value }}%{% else %}₹{{ challenge.target_value }}{% endif %}
+          </span>
+        </div>
+      </div>
+      
+      <div class="mt-4 pt-4 border-t flex gap-2">
+        <button class="view-challenge flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition text-sm" data-id="{{ challenge.id }}">
+          View Dashboard
+        </button>
+        <button class="edit-challenge px-3 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition text-sm" data-id="{{ challenge.id }}">
+          <i class="fas fa-edit"></i>
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Challenge Creation Wizard Modal -->
+<div id="challengeWizard" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-auto">
+    <div class="flex justify-between items-center mb-6">
+      <h3 id="wizardTitle" class="text-xl font-bold">Create New Challenge</h3>
+      <button id="closeWizard" class="text-gray-500 hover:text-gray-700">&times;</button>
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="flex justify-between mb-8">
+      <div class="step-indicator active" data-step="1">
+        <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm">1</div>
+        <span class="text-xs mt-1">Basic Info</span>
+      </div>
+      <div class="step-indicator" data-step="2">
+        <div class="w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-sm">2</div>
+        <span class="text-xs mt-1">Goals</span>
+      </div>
+      <div class="step-indicator" data-step="3">
+        <div class="w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-sm">3</div>
+        <span class="text-xs mt-1">Rules</span>
+      </div>
+      <div class="step-indicator" data-step="4">
+        <div class="w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-sm">4</div>
+        <span class="text-xs mt-1">Motivation</span>
+      </div>
+      <div class="step-indicator" data-step="5">
+        <div class="w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-sm">5</div>
+        <span class="text-xs mt-1">Review</span>
+      </div>
+    </div>
+
+    <form id="challengeForm">
+      <!-- Step 1: Basic Info -->
+      <div class="wizard-step active" data-step="1">
+        <h4 class="text-lg font-semibold mb-4">Basic Information</h4>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Challenge Title</label>
+            <input type="text" id="title" name="title" required class="w-full px-3 py-2 border rounded-lg">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Description</label>
+            <textarea id="description" name="description" rows="3" class="w-full px-3 py-2 border rounded-lg"></textarea>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-1">Start Date</label>
+              <input type="date" id="start_date" name="start_date" required class="w-full px-3 py-2 border rounded-lg">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">End Date</label>
+              <input type="date" id="end_date" name="end_date" required class="w-full px-3 py-2 border rounded-lg">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Goals -->
+      <div class="wizard-step" data-step="2">
+        <h4 class="text-lg font-semibold mb-4">Challenge Goals</h4>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Challenge Type</label>
+            <select id="challenge_type" name="challenge_type" class="w-full px-3 py-2 border rounded-lg">
+              <option value="profit">Profit Target</option>
+              <option value="consistency">Consistency Challenge</option>
+              <option value="risk_control">Risk Control</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Initial Capital (₹)</label>
+            <input type="number" id="initial_capital" name="initial_capital" value="10000" min="1000" step="1000" class="w-full px-3 py-2 border rounded-lg">
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-1">Target Value</label>
+              <input type="number" id="target_value" name="target_value" step="0.01" class="w-full px-3 py-2 border rounded-lg">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Target Type</label>
+              <select id="target_is_percent" name="target_is_percent" class="w-full px-3 py-2 border rounded-lg">
+                <option value="true">Percentage (%)</option>
+                <option value="false">Absolute Amount (₹)</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Milestones -->
+          <div>
+            <label class="block text-sm font-medium mb-2">Milestones</label>
+            <div id="milestones-container" class="space-y-2">
+              <!-- Milestones will be added here -->
+            </div>
+            <button type="button" id="add-milestone" class="mt-2 px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200">
+              <i class="fas fa-plus mr-1"></i>Add Milestone
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Rules -->
+      <div class="wizard-step" data-step="3">
+        <h4 class="text-lg font-semibold mb-4">Trading Rules</h4>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Risk Per Trade (%)</label>
+            <input type="number" id="risk_per_trade_pct" name="risk_per_trade_pct" value="2" min="0.1" max="10" step="0.1" class="w-full px-3 py-2 border rounded-lg">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Max Drawdown (%)</label>
+            <input type="number" id="max_drawdown_pct" name="max_drawdown_pct" value="10" min="1" max="50" step="1" class="w-full px-3 py-2 border rounded-lg">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Daily Trade Limit</label>
+            <input type="number" id="daily_trade_limit" name="daily_trade_limit" value="5" min="1" max="20" class="w-full px-3 py-2 border rounded-lg">
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4: Motivation -->
+      <div class="wizard-step" data-step="4">
+        <h4 class="text-lg font-semibold mb-4">Motivation</h4>
+        <div>
+          <label class="block text-sm font-medium mb-1">Motivational Quote</label>
+          <textarea id="motivation_quote" name="motivation_quote" rows="3" placeholder="Enter a quote that will keep you motivated..." class="w-full px-3 py-2 border rounded-lg"></textarea>
+        </div>
+      </div>
+
+      <!-- Step 5: Review -->
+      <div class="wizard-step" data-step="5">
+        <h4 class="text-lg font-semibold mb-4">Review & Create</h4>
+        <div id="review-content" class="space-y-3 text-sm">
+          <!-- Review content will be populated here -->
+        </div>
+      </div>
+    </form>
+
+    <!-- Navigation Buttons -->
+    <div class="flex justify-between mt-6">
+      <button type="button" id="prevStep" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition hidden">
+        Previous
+      </button>
+      <div class="flex-1"></div>
+      <button type="button" id="nextStep" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+        Next
+      </button>
+      <button type="button" id="createChallenge" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition hidden">
+        Create Challenge
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Challenge Dashboard Modal -->
+<div id="challengeDashboard" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-6xl p-6 max-h-[90vh] overflow-auto">
+    <div class="flex justify-between items-center mb-6">
+      <h3 id="dashboardTitle" class="text-xl font-bold">Challenge Dashboard</h3>
+      <button id="closeDashboard" class="text-gray-500 hover:text-gray-700">&times;</button>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Progress Section -->
+      <div class="lg:col-span-2 space-y-6">
+        <!-- Progress Bar -->
+        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-sm font-medium">Progress to Target</span>
+            <span id="progress-percent" class="text-sm font-bold">0%</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-3">
+            <div id="progress-bar" class="bg-blue-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-white dark:bg-gray-800 rounded-lg p-4 text-center border">
+            <div id="current-value" class="text-2xl font-bold text-green-600">₹0</div>
+            <div class="text-xs text-gray-500">Current Value</div>
+          </div>
+          <div class="bg-white dark:bg-gray-800 rounded-lg p-4 text-center border">
+            <div id="current-pnl" class="text-2xl font-bold">₹0</div>
+            <div class="text-xs text-gray-500">Total P&L</div>
+          </div>
+          <div class="bg-white dark:bg-gray-800 rounded-lg p-4 text-center border">
+            <div id="winning-streak" class="text-2xl font-bold text-blue-600">0</div>
+            <div class="text-xs text-gray-500">Win Streak</div>
+          </div>
+          <div class="bg-white dark:bg-gray-800 rounded-lg p-4 text-center border">
+            <div id="days-left" class="text-2xl font-bold text-orange-600">0</div>
+            <div class="text-xs text-gray-500">Days Left</div>
+          </div>
+        </div>
+
+        <!-- Milestones -->
+        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+          <h4 class="font-semibold mb-3">Milestones</h4>
+          <div id="milestones-list" class="space-y-2">
+            <!-- Milestones will be populated here -->
+          </div>
+        </div>
+
+        <!-- Calendar -->
+        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+          <h4 class="font-semibold mb-3">Trading Calendar</h4>
+          <div id="trading-calendar" class="grid grid-cols-7 gap-1 text-xs">
+            <!-- Calendar will be populated here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions Section -->
+      <div class="space-y-4">
+        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+          <h4 class="font-semibold mb-3">Quick Actions</h4>
+          <div class="space-y-2">
+            <button id="log-trade-btn" class="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">
+              <i class="fas fa-plus mr-2"></i>Log Trade
+            </button>
+            <button id="add-mood-btn" class="w-full px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm">
+              <i class="fas fa-smile mr-2"></i>Add Mood
+            </button>
+          </div>
+        </div>
+
+        <div id="motivation-section" class="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-700 dark:to-gray-600 rounded-lg p-4">
+          <h4 class="font-semibold mb-2">Daily Motivation</h4>
+          <p id="motivation-quote" class="text-sm italic text-gray-700 dark:text-gray-300"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Log Trade Modal -->
+<div id="logTradeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6">
+    <h3 class="text-lg font-bold mb-4">Log Trade</h3>
+    <form id="tradeForm">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Trade Date</label>
+          <input type="date" id="trade_date" name="trade_date" required class="w-full px-3 py-2 border rounded-lg">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">P&L (₹)</label>
+          <input type="number" id="trade_pnl" name="pnl" step="0.01" required class="w-full px-3 py-2 border rounded-lg">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Notes</label>
+          <textarea id="trade_notes" name="notes" rows="3" class="w-full px-3 py-2 border rounded-lg"></textarea>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-6">
+        <button type="button" id="cancelTrade" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">Cancel</button>
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Log Trade</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add Mood Modal -->
+<div id="addMoodModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6">
+    <h3 class="text-lg font-bold mb-4">Add Mood</h3>
+    <form id="moodForm">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Date</label>
+          <input type="date" id="mood_date" name="date" required class="w-full px-3 py-2 border rounded-lg">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Mood</label>
+          <div class="grid grid-cols-5 gap-2">
+            <button type="button" class="mood-btn p-3 border rounded-lg text-center hover:bg-gray-50" data-mood="happy">
+              <div class="text-2xl">😊</div>
+              <div class="text-xs">Happy</div>
+            </button>
+            <button type="button" class="mood-btn p-3 border rounded-lg text-center hover:bg-gray-50" data-mood="confident">
+              <div class="text-2xl">😎</div>
+              <div class="text-xs">Confident</div>
+            </button>
+            <button type="button" class="mood-btn p-3 border rounded-lg text-center hover:bg-gray-50" data-mood="neutral">
+              <div class="text-2xl">😐</div>
+              <div class="text-xs">Neutral</div>
+            </button>
+            <button type="button" class="mood-btn p-3 border rounded-lg text-center hover:bg-gray-50" data-mood="sad">
+              <div class="text-2xl">😢</div>
+              <div class="text-xs">Sad</div>
+            </button>
+            <button type="button" class="mood-btn p-3 border rounded-lg text-center hover:bg-gray-50" data-mood="angry">
+              <div class="text-2xl">😠</div>
+              <div class="text-xs">Angry</div>
+            </button>
+          </div>
+          <input type="hidden" id="selected_mood" name="mood" required>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Note</label>
+          <textarea id="mood_note" name="note" rows="3" class="w-full px-3 py-2 border rounded-lg"></textarea>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-6">
+        <button type="button" id="cancelMood" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">Cancel</button>
+        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg">Add Mood</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  let currentStep = 1;
+  let currentChallengeId = null;
+  let milestones = [];
+
+  // Set default dates
+  const today = new Date().toISOString().split('T')[0];
+  const nextMonth = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  document.getElementById('start_date').value = today;
+  document.getElementById('end_date').value = nextMonth;
+  document.getElementById('trade_date').value = today;
+  document.getElementById('mood_date').value = today;
+
+  // Wizard functionality
+  function showStep(step) {
+    document.querySelectorAll('.wizard-step').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.step-indicator').forEach(s => s.classList.remove('active'));
+    
+    document.querySelector(`[data-step="${step}"]`).classList.add('active');
+    document.querySelector(`.step-indicator[data-step="${step}"]`).classList.add('active');
+    
+    // Update step indicator colors
+    document.querySelectorAll('.step-indicator').forEach((indicator, index) => {
+      const stepNum = index + 1;
+      const circle = indicator.querySelector('div');
+      if (stepNum < step) {
+        circle.className = 'w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center text-sm';
+        circle.innerHTML = '✓';
+      } else if (stepNum === step) {
+        circle.className = 'w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm';
+        circle.innerHTML = stepNum;
+      } else {
+        circle.className = 'w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-sm';
+        circle.innerHTML = stepNum;
+      }
+    });
+
+    // Show/hide navigation buttons
+    document.getElementById('prevStep').classList.toggle('hidden', step === 1);
+    document.getElementById('nextStep').classList.toggle('hidden', step === 5);
+    document.getElementById('createChallenge').classList.toggle('hidden', step !== 5);
+
+    if (step === 5) {
+      populateReview();
+    }
+  }
+
+  function populateReview() {
+    const formData = new FormData(document.getElementById('challengeForm'));
+    const reviewContent = document.getElementById('review-content');
+    
+    reviewContent.innerHTML = `
+      <div class="grid grid-cols-2 gap-4">
+        <div><strong>Title:</strong> ${formData.get('title')}</div>
+        <div><strong>Type:</strong> ${formData.get('challenge_type')}</div>
+        <div><strong>Duration:</strong> ${formData.get('start_date')} to ${formData.get('end_date')}</div>
+        <div><strong>Initial Capital:</strong> ₹${formData.get('initial_capital')}</div>
+        <div><strong>Target:</strong> ${formData.get('target_value')}${formData.get('target_is_percent') === 'true' ? '%' : '₹'}</div>
+        <div><strong>Risk per Trade:</strong> ${formData.get('risk_per_trade_pct')}%</div>
+        <div><strong>Max Drawdown:</strong> ${formData.get('max_drawdown_pct')}%</div>
+        <div><strong>Daily Trade Limit:</strong> ${formData.get('daily_trade_limit')}</div>
+      </div>
+      <div class="mt-4">
+        <strong>Description:</strong> ${formData.get('description') || 'None'}
+      </div>
+      <div class="mt-4">
+        <strong>Milestones:</strong> ${milestones.length} milestone(s)
+      </div>
+    `;
+  }
+
+  // Milestone management
+  function addMilestone() {
+    const container = document.getElementById('milestones-container');
+    const index = milestones.length;
+    
+    const milestoneDiv = document.createElement('div');
+    milestoneDiv.className = 'flex gap-2 items-center';
+    milestoneDiv.innerHTML = `
+      <input type="number" placeholder="Value" class="flex-1 px-2 py-1 border rounded text-sm milestone-value">
+      <input type="text" placeholder="Label" class="flex-1 px-2 py-1 border rounded text-sm milestone-label">
+      <button type="button" class="px-2 py-1 bg-red-100 text-red-600 rounded text-sm remove-milestone">×</button>
+    `;
+    
+    container.appendChild(milestoneDiv);
+    
+    milestoneDiv.querySelector('.remove-milestone').addEventListener('click', () => {
+      container.removeChild(milestoneDiv);
+      updateMilestones();
+    });
+    
+    milestoneDiv.querySelector('.milestone-value').addEventListener('change', updateMilestones);
+    milestoneDiv.querySelector('.milestone-label').addEventListener('change', updateMilestones);
+  }
+
+  function updateMilestones() {
+    milestones = [];
+    document.querySelectorAll('#milestones-container > div').forEach(div => {
+      const value = div.querySelector('.milestone-value').value;
+      const label = div.querySelector('.milestone-label').value;
+      if (value && label) {
+        milestones.push({ value: parseFloat(value), label: label });
+      }
+    });
+  }
+
+  // Event listeners
+  document.getElementById('createChallengeBtn').addEventListener('click', () => {
+    document.getElementById('challengeWizard').classList.remove('hidden');
+    currentStep = 1;
+    showStep(1);
+  });
+
+  document.getElementById('closeWizard').addEventListener('click', () => {
+    document.getElementById('challengeWizard').classList.add('hidden');
+  });
+
+  document.getElementById('nextStep').addEventListener('click', () => {
+    if (currentStep < 5) {
+      currentStep++;
+      showStep(currentStep);
+    }
+  });
+
+  document.getElementById('prevStep').addEventListener('click', () => {
+    if (currentStep > 1) {
+      currentStep--;
+      showStep(currentStep);
+    }
+  });
+
+  document.getElementById('add-milestone').addEventListener('click', addMilestone);
+
+  document.getElementById('createChallenge').addEventListener('click', async () => {
+    const formData = new FormData(document.getElementById('challengeForm'));
+    const data = Object.fromEntries(formData.entries());
+    data.milestones = milestones;
+    
+    try {
+      const response = await fetch('/calculatentrade_journal/api/challenges', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      
+      if (response.ok) {
+        document.getElementById('challengeWizard').classList.add('hidden');
+        location.reload();
+      } else {
+        alert('Failed to create challenge');
+      }
+    } catch (error) {
+      alert('Error creating challenge');
+    }
+  });
+
+  // Challenge dashboard
+  document.querySelectorAll('.view-challenge').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const challengeId = btn.dataset.id;
+      currentChallengeId = challengeId;
+      await loadChallengeDashboard(challengeId);
+    });
+  });
+
+  async function loadChallengeDashboard(challengeId) {
+    try {
+      const [challengeRes, progressRes, calendarRes] = await Promise.all([
+        fetch(`/calculatentrade_journal/api/challenges/${challengeId}`),
+        fetch(`/calculatentrade_journal/api/challenges/${challengeId}/progress`),
+        fetch(`/calculatentrade_journal/api/challenges/${challengeId}/calendar`)
+      ]);
+
+      const challenge = await challengeRes.json();
+      const progress = await progressRes.json();
+      const calendar = await calendarRes.json();
+
+      // Update dashboard
+      document.getElementById('dashboardTitle').textContent = challenge.challenge.title;
+      document.getElementById('current-value').textContent = `₹${progress.current_value.toLocaleString()}`;
+      document.getElementById('current-pnl').textContent = `₹${progress.current_pnl.toLocaleString()}`;
+      document.getElementById('current-pnl').className = `text-2xl font-bold ${progress.current_pnl >= 0 ? 'text-green-600' : 'text-red-600'}`;
+      document.getElementById('winning-streak').textContent = progress.winning_streak;
+      document.getElementById('days-left').textContent = progress.days_left;
+      document.getElementById('progress-percent').textContent = `${Math.round(progress.percent_to_target)}%`;
+      document.getElementById('progress-bar').style.width = `${Math.min(progress.percent_to_target, 100)}%`;
+      document.getElementById('motivation-quote').textContent = challenge.challenge.motivation_quote || 'Stay focused and disciplined!';
+
+      // Update milestones
+      const milestonesList = document.getElementById('milestones-list');
+      milestonesList.innerHTML = '';
+      (challenge.challenge.milestones || []).forEach(milestone => {
+        const achieved = progress.achieved_milestones.some(m => m.value === milestone.value);
+        const div = document.createElement('div');
+        div.className = `flex items-center gap-2 text-sm ${achieved ? 'text-green-600' : 'text-gray-500'}`;
+        div.innerHTML = `
+          <i class="fas ${achieved ? 'fa-check-circle' : 'fa-circle'} text-sm"></i>
+          <span>${milestone.label} (₹${milestone.value.toLocaleString()})</span>
+        `;
+        milestonesList.appendChild(div);
+      });
+
+      // Update calendar
+      const calendarGrid = document.getElementById('trading-calendar');
+      calendarGrid.innerHTML = '';
+      
+      // Add day headers
+      ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(day => {
+        const dayHeader = document.createElement('div');
+        dayHeader.className = 'text-center font-medium text-gray-500 p-1';
+        dayHeader.textContent = day;
+        calendarGrid.appendChild(dayHeader);
+      });
+
+      // Add calendar days
+      calendar.calendar.forEach(day => {
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'aspect-square p-1 text-center text-xs border rounded';
+        
+        if (day.has_trade) {
+          dayDiv.className += day.pnl > 0 ? ' bg-green-100 text-green-800' : ' bg-red-100 text-red-800';
+        } else {
+          dayDiv.className += ' bg-gray-50 text-gray-400';
+        }
+        
+        const date = new Date(day.date);
+        dayDiv.textContent = date.getDate();
+        
+        if (day.mood) {
+          const moodEmoji = { happy: '😊', confident: '😎', neutral: '😐', sad: '😢', angry: '😠' }[day.mood] || '😐';
+          dayDiv.title = `Mood: ${moodEmoji}`;
+        }
+        
+        calendarGrid.appendChild(dayDiv);
+      });
+
+      document.getElementById('challengeDashboard').classList.remove('hidden');
+    } catch (error) {
+      alert('Failed to load challenge dashboard');
+    }
+  }
+
+  document.getElementById('closeDashboard').addEventListener('click', () => {
+    document.getElementById('challengeDashboard').classList.add('hidden');
+  });
+
+  // Trade logging
+  document.getElementById('log-trade-btn').addEventListener('click', () => {
+    document.getElementById('logTradeModal').classList.remove('hidden');
+  });
+
+  document.getElementById('cancelTrade').addEventListener('click', () => {
+    document.getElementById('logTradeModal').classList.add('hidden');
+  });
+
+  document.getElementById('tradeForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+    
+    try {
+      const response = await fetch(`/calculatentrade_journal/api/challenges/${currentChallengeId}/trade`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      
+      if (response.ok) {
+        document.getElementById('logTradeModal').classList.add('hidden');
+        await loadChallengeDashboard(currentChallengeId);
+        e.target.reset();
+      } else {
+        alert('Failed to log trade');
+      }
+    } catch (error) {
+      alert('Error logging trade');
+    }
+  });
+
+  // Mood logging
+  document.getElementById('add-mood-btn').addEventListener('click', () => {
+    document.getElementById('addMoodModal').classList.remove('hidden');
+  });
+
+  document.getElementById('cancelMood').addEventListener('click', () => {
+    document.getElementById('addMoodModal').classList.add('hidden');
+  });
+
+  document.querySelectorAll('.mood-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('bg-blue-100', 'border-blue-500'));
+      btn.classList.add('bg-blue-100', 'border-blue-500');
+      document.getElementById('selected_mood').value = btn.dataset.mood;
+    });
+  });
+
+  document.getElementById('moodForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+    
+    try {
+      const response = await fetch(`/calculatentrade_journal/api/challenges/${currentChallengeId}/mood`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      
+      if (response.ok) {
+        document.getElementById('addMoodModal').classList.add('hidden');
+        await loadChallengeDashboard(currentChallengeId);
+        e.target.reset();
+        document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('bg-blue-100', 'border-blue-500'));
+      } else {
+        alert('Failed to add mood');
+      }
+    } catch (error) {
+      alert('Error adding mood');
+    }
+  });
+});
+</script>
+{% endblock %}

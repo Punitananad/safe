@@ -1,0 +1,126 @@
+{% extends "employee_dashboard/employee_base.html" %}
+
+{% block title %}Manage Users | CalculatenTrade{% endblock %}
+
+{% block content %}
+<div class="">
+    <div class="page-title">
+        <div class="title_left">
+            <h3>Manage Users</h3>
+        </div>
+    </div>
+
+    <div class="clearfix"></div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="x_panel">
+                <div class="x_title">
+                    <h2>Search Users</h2>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="x_content">
+                    <form method="GET" class="form-horizontal form-label-left">
+                        <div class="form-group row">
+                            <div class="col-md-9 col-sm-9">
+                                <div class="input-group">
+                                    <input type="text" name="q" value="{{ search }}" class="form-control" placeholder="Search users by email...">
+                                    <span class="input-group-btn">
+                                        <button type="submit" class="btn btn-primary">Search</button>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="x_panel">
+                <div class="x_title">
+                    <h2>Users <small>({{ users|length if users else 0 }})</small></h2>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="x_content">
+                    {% if users %}
+                    <div class="table-responsive">
+                        <table class="table table-striped jambo_table bulk_action">
+                            <thead>
+                                <tr class="headings">
+                                    <th class="column-title">Email</th>
+                                    <th class="column-title">Status</th>
+                                    <th class="column-title">Registered On</th>
+                                    <th class="column-title">Subscription</th>
+                                    <th class="column-title no-link last"><span class="nobr">Actions</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr class="even pointer" id="user-{{ user.id }}">
+                                    <td>{{ user.email }}</td>
+                                    <td>
+                                        <span class="badge {% if user.verified %}badge-success{% else %}badge-danger{% endif %}">
+                                            {{ 'Active' if user.verified else 'Inactive' }}
+                                        </span>
+                                    </td>
+                                    <td>{{ user.registered_on[:10] if user.registered_on else 'N/A' }}</td>
+                                    <td>
+                                        <span class="badge {% if user.subscription_active %}badge-success{% else %}badge-secondary{% endif %}">
+                                            {{ 'Active' if user.subscription_active else 'Inactive' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('employee_dashboard.user_detail', user_id=user.id) }}" 
+                                           class="btn btn-success btn-xs">Manage</a>
+                                        <button onclick="toggleUser({{ user.id }}, {{ user.verified|lower }})" 
+                                                class="btn {% if user.verified %}btn-danger{% else %}btn-success{% endif %} btn-xs"
+                                                id="toggle-btn-{{ user.id }}">
+                                            {{ 'Deactivate' if user.verified else 'Activate' }}
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center">
+                        <p>No users found.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleUser(userId, isVerified) {
+    const action = isVerified ? 'deactivate' : 'activate';
+    
+    if (confirm(`Are you sure you want to ${action} this user?`)) {
+        fetch(`/employee/api/user/${userId}/toggle`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'An error occurred'));
+            }
+        })
+        .catch(error => {
+            alert('Error: An unexpected error occurred');
+        });
+    }
+}
+</script>
+{% endblock %}

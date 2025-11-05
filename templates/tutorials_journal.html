@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutorials - Trading Journal</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            background-color: #f5f7fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: none;
+            margin-bottom: 20px;
+        }
+        
+        .tutorial-card {
+            transition: transform 0.2s;
+        }
+        
+        .tutorial-card:hover {
+            transform: translateY(-5px);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('calculatentrade.dashboard') }}">
+                <i class="fas fa-chart-line me-2"></i>Trading Journal
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('calculatentrade.get_trades') }}">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Trades
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="mb-4">
+                    <i class="fas fa-graduation-cap me-2"></i>Tutorials
+                </h1>
+                <p class="lead text-muted mb-4">Learn how to make the most of your trading journal with these helpful tutorials.</p>
+            </div>
+        </div>
+
+        <div class="row">
+            {% for tutorial in tutorials %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card tutorial-card">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-play-circle me-2 text-primary"></i>
+                            {{ tutorial.title }}
+                        </h5>
+                        <p class="card-text">{{ tutorial.description }}</p>
+                        <button class="btn btn-primary" onclick="openTutorial('{{ tutorial.embed_url }}', '{{ tutorial.title }}')">
+                            <i class="fas fa-play me-1"></i>Watch Tutorial
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Tutorial Modal -->
+    <div class="modal fade" id="tutorialModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tutorialTitle">Tutorial</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="ratio ratio-16x9">
+                        <iframe id="tutorialFrame" src="" frameborder="0" allowfullscreen></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function openTutorial(embedUrl, title) {
+            document.getElementById('tutorialTitle').textContent = title;
+            document.getElementById('tutorialFrame').src = embedUrl;
+            new bootstrap.Modal(document.getElementById('tutorialModal')).show();
+        }
+        
+        // Clear iframe when modal is closed to stop video
+        document.getElementById('tutorialModal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('tutorialFrame').src = '';
+        });
+    </script>
+</body>
+</html>

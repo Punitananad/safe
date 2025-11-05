@@ -1,0 +1,1399 @@
+{% extends "base_new_journal.html" %}
+
+{% block title %}Trading Rules - Trading Journal{% endblock %}
+
+{% block extra_css %}
+<style>
+  .rule-card {
+    background: #071022;
+    border: none;
+    border-radius: 1.25rem;
+    padding: 2rem;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    backdrop-filter: none;
+    overflow: hidden;
+  }
+  
+  .rule-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    border-radius: 1rem 0 0 1rem;
+    transition: width 0.3s ease;
+  }
+  
+  .rule-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 70% 30%, rgba(14, 165, 164, 0.05) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+  }
+  
+  .priority-high::before { 
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+  }
+  .priority-medium::before { 
+    background: linear-gradient(135deg, var(--accent), #0891b2);
+    box-shadow: 0 0 20px rgba(14, 165, 164, 0.3);
+  }
+  .priority-low::before { 
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+  }
+  
+  .rule-card:hover {
+    transform: translateY(-8px) rotateX(2deg);
+    box-shadow: 
+      0 25px 50px rgba(14, 165, 164, 0.15),
+      0 15px 35px rgba(0, 0, 0, 0.2),
+      0 0 0 1px rgba(14, 165, 164, 0.2);
+    border-color: var(--accent);
+  }
+  
+  .rule-card:hover::before {
+    width: 8px;
+  }
+  
+  .rule-card:hover::after {
+    opacity: 1;
+  }
+  
+  .toggle-switch {
+    position: relative;
+    width: 52px;
+    height: 28px;
+    background: linear-gradient(135deg, #374151, #1f2937);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    border: 1px solid #4b5563;
+  }
+  
+  .toggle-switch.active {
+    background: linear-gradient(135deg, var(--accent), #0891b2);
+    box-shadow: 
+      inset 0 2px 4px rgba(0, 0, 0, 0.2),
+      0 0 20px rgba(14, 165, 164, 0.4);
+    border-color: var(--accent);
+  }
+  
+  .toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(135deg, #ffffff, #f8fafc);
+    border-radius: 50%;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  .toggle-switch.active::after {
+    transform: translateX(24px);
+    box-shadow: 0 2px 12px rgba(14, 165, 164, 0.4);
+  }
+  
+  .toggle-switch:hover {
+    transform: scale(1.05);
+  }
+  
+  .filter-card {
+    background: transparent;
+    border: none;
+    border-radius: 1rem;
+    padding: 2rem;
+    backdrop-filter: none;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 2rem;
+  }
+  
+  .filter-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 20% 80%, rgba(14, 165, 164, 0.05) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  
+  .filter-card:hover {
+    border-color: rgba(14, 165, 164, 0.3);
+    box-shadow: 0 10px 40px rgba(14, 165, 164, 0.1);
+  }
+  
+  .form-input, .form-select {
+    background: linear-gradient(135deg, #1e293b, rgba(30, 41, 59, 0.8)) !important;
+    border: 1px solid #334155 !important;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    color: #e6eef6 !important;
+    width: 100%;
+    font-weight: 500;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+  }
+  
+  .form-input:focus, .form-select:focus {
+    outline: none;
+    border-color: var(--accent) !important;
+    box-shadow: 
+      0 0 0 0.2rem rgba(14, 165, 164, 0.25),
+      0 10px 25px rgba(14, 165, 164, 0.1) !important;
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #1e293b, rgba(30, 41, 59, 0.95)) !important;
+  }
+  
+  .form-select option {
+    background: #1e293b !important;
+    color: #e6eef6 !important;
+    padding: 0.5rem;
+  }
+  
+  .form-input::placeholder {
+    color: rgba(148, 163, 184, 0.7);
+    font-style: italic;
+  }
+  
+  .tag {
+    background: linear-gradient(135deg, rgba(14, 165, 164, 0.2), rgba(14, 165, 164, 0.1));
+    color: var(--accent);
+    padding: 0.375rem 0.875rem;
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid rgba(14, 165, 164, 0.4);
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 10px rgba(14, 165, 164, 0.1);
+  }
+  
+  .tag:hover {
+    transform: translateY(-1px) scale(1.05);
+    box-shadow: 0 5px 15px rgba(14, 165, 164, 0.2);
+    border-color: var(--accent);
+  }
+  
+  .priority-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+  }
+  
+  .priority-high { 
+    background: linear-gradient(135deg, #0c5460, #071022); 
+    color: white;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+  }
+  .priority-medium { 
+    background: linear-gradient(135deg, var(--accent),  #0c5460, #071022); 
+    color: white;
+    box-shadow: 0 4px 15px rgba(14, 165, 164, 0.3);
+  }
+  .priority-low { 
+    background: linear-gradient(135deg,  #0c5460, #071022); 
+    color: white;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+  }
+  
+  .priority-badge:hover {
+    transform: translateY(-1px) scale(1.05);
+  }
+  
+  .compliance-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .compliance-badge::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  .compliance-badge:hover::before {
+    left: 100%;
+  }
+  
+  .compliance-high { 
+    background: linear-gradient(135deg, #10b981, #059669); 
+    color: white;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+  }
+  .compliance-medium { 
+    background: linear-gradient(135deg, var(--accent), #0891b2); 
+    color: white;
+    box-shadow: 0 4px 15px rgba(14, 165, 164, 0.3);
+  }
+  .compliance-low { 
+    background: linear-gradient(135deg, #ef4444, #dc2626); 
+    color: white;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+  }
+  
+  .violation-alert {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    color: #ef4444;
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+    animation: pulseGlow 2s infinite;
+  }
+  
+  .violation-alert::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(239, 68, 68, 0.1) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  
+  @keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
+    50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.5); }
+  }
+  
+  /* Additional animations and effects */
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .rule-item {
+    animation: slideInUp 0.6s ease forwards;
+  }
+  
+  .rule-item:nth-child(1) { animation-delay: 0.1s; }
+  .rule-item:nth-child(2) { animation-delay: 0.2s; }
+  .rule-item:nth-child(3) { animation-delay: 0.3s; }
+  .rule-item:nth-child(4) { animation-delay: 0.4s; }
+  .rule-item:nth-child(5) { animation-delay: 0.5s; }
+  .rule-item:nth-child(6) { animation-delay: 0.6s; }
+  
+  /* Enhanced button styles */
+  .rule-card button {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 0.5rem;
+    font-weight: 600;
+  }
+  
+  .rule-card button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  .rule-card button:hover::before {
+    left: 100%;
+  }
+  
+  .rule-card button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Advanced Modal Styles */
+  .step-indicator {
+    transition: all 0.3s ease;
+  }
+  
+  .step-indicator.active {
+    background: linear-gradient(135deg, #0d9488, #06b6d4) !important;
+    color: white !important;
+    box-shadow: 0 0 20px rgba(13, 148, 136, 0.4);
+  }
+  
+  .step-indicator.completed {
+    background: linear-gradient(135deg, #10b981, #059669) !important;
+    color: white !important;
+  }
+  
+  .step-connector.active {
+    background: linear-gradient(90deg, #0d9488, #06b6d4) !important;
+  }
+  
+  .rule-type-card input:checked + div {
+    border-color: #0d9488 !important;
+    background: rgba(13, 148, 136, 0.1) !important;
+    box-shadow: 0 0 20px rgba(13, 148, 136, 0.2);
+  }
+  
+  .priority-option input:checked + div {
+    border-color: #0d9488 !important;
+    background: rgba(13, 148, 136, 0.1) !important;
+    box-shadow: 0 0 20px rgba(13, 148, 136, 0.2);
+  }
+  
+  .condition-item {
+    transition: all 0.3s ease;
+  }
+  
+  .condition-item:hover {
+    border-color: rgba(13, 148, 136, 0.3);
+    box-shadow: 0 4px 20px rgba(13, 148, 136, 0.1);
+  }
+  
+  .form-input:focus, .form-select:focus {
+    border-color: #0d9488 !important;
+    box-shadow: 0 0 0 0.2rem rgba(13, 148, 136, 0.25) !important;
+    background: rgba(30, 41, 59, 0.8) !important;
+  }
+  
+  .tag-suggestion {
+    background: rgba(13, 148, 136, 0.2);
+    color: #0d9488;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(13, 148, 136, 0.3);
+  }
+  
+  .tag-suggestion:hover {
+    background: rgba(13, 148, 136, 0.3);
+    transform: translateY(-1px);
+  }
+  
+  /* Character counters */
+  .char-counter {
+    font-size: 0.75rem;
+    color: #94a3b8;
+  }
+  
+  .char-counter.warning {
+    color: #f59e0b;
+  }
+  
+  .char-counter.danger {
+    color: #ef4444;
+  }
+  
+  @media (max-width: 768px) {
+    .rule-card {
+      padding: 1.5rem;
+    }
+    
+    .filter-card {
+      padding: 1.5rem;
+    }
+    
+    #ruleModal .max-w-4xl {
+      max-width: 95vw;
+    }
+    
+    .grid.grid-cols-1.lg\:grid-cols-3 {
+      grid-template-columns: 1fr;
+    }
+    
+    .grid.grid-cols-1.md\:grid-cols-3 {
+      grid-template-columns: 1fr;
+    }
+    
+    .grid.grid-cols-1.md\:grid-cols-2 {
+      grid-template-columns: 1fr;
+    }
+    
+    .grid.grid-cols-1.md\:grid-cols-4 {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-3xl font-bold bg-gradient-to-r from-white via-teal-200 to-teal-400 bg-clip-text text-transparent mb-2">Trading Rules</h1>
+      <p class="text-slate-400 text-lg">Define and track your trading discipline with precision</p>
+    </div>
+    <button id="addRuleBtn" class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white rounded-xl hover:from-teal-700 hover:via-cyan-700 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-2xl">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M12 4v16m8-8H4"/>
+      </svg>
+      Add Rule
+    </button>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-card">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div>
+        <select class="form-select" id="categoryFilter">
+          <option value="">All Categories</option>
+          {% for category in categories %}
+          <option value="{{ category }}">{{ category }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <select class="form-select" id="priorityFilter">
+          <option value="">All Priorities</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+      <div>
+        <select class="form-select" id="activeFilter">
+          <option value="">All Rules</option>
+          <option value="true">Active Only</option>
+          <option value="false">Inactive Only</option>
+        </select>
+      </div>
+      <div>
+        <input type="text" class="form-input" id="tagFilter" placeholder="Filter by tag...">
+      </div>
+      <div>
+        <button class="w-full px-3 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors" onclick="clearFilters()">
+          <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+          Clear
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rules Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="rulesContainer">
+    {% for rule in rules %}
+    <div class="rule-item" 
+         data-category="{{ rule.category }}" 
+         data-priority="{{ rule.priority }}" 
+         data-active="{{ rule.active|lower }}"
+         data-tags="{{ rule.tags|join(',') if rule.tags else '' }}">
+      <div class="rule-card priority-{{ rule.priority }} h-full flex flex-col">
+        <div class="flex justify-between items-start mb-4">
+          <div class="flex-1">
+            <h3 class="font-semibold text-lg mb-2">{{ rule.title }}</h3>
+            <div class="flex flex-wrap gap-2 mb-2">
+              <span class="px-2 py-1 bg-slate-600 text-white rounded text-xs">{{ rule.category }}</span>
+              <span class="priority-badge priority-{{ rule.priority }}">
+                {{ rule.priority.title() }}
+              </span>
+              <span class="compliance-badge compliance-{{ 'high' if rule.compliance_percentage >= 90 else 'medium' if rule.compliance_percentage >= 70 else 'low' }}">
+                {{ rule.compliance_percentage }}%
+              </span>
+            </div>
+          </div>
+          <div class="toggle-switch {{ 'active' if rule.active else '' }}" onclick="toggleRule({{ rule.id }})">
+            <input type="checkbox" class="hidden" id="rule{{ rule.id }}" {{ 'checked' if rule.active else '' }}>
+          </div>
+        </div>
+        
+        <div class="flex-1 mb-4">
+          <p class="text-sm muted mb-3">{{ rule.description }}</p>
+          
+          {% if rule.tags %}
+          <div class="mb-3">
+            {% for tag in rule.tags %}
+            <span class="tag inline-block mr-1 mb-1">{{ tag.strip() }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+          
+          {% if rule.linked_strategy %}
+          <div class="mb-3">
+            <span class="text-sm muted flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+              </svg>
+              {{ rule.linked_strategy }}
+            </span>
+          </div>
+          {% endif %}
+          
+          {% if rule.violations_count > 0 %}
+          <div class="violation-alert">
+            <span class="text-sm flex items-center gap-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+              </svg>
+              {{ rule.violations_count }} violations
+            </span>
+          </div>
+          {% endif %}
+        </div>
+        
+        <div class="flex justify-between items-center pt-3 border-t border-slate-600">
+          <span class="text-xs muted">{{ rule.created_at }}</span>
+          <div class="flex gap-2">
+            <button class="px-2 py-1 text-xs bg-sky-600 text-white rounded hover:bg-sky-700 transition-colors" onclick="editRule({{ rule.id }})">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            <button class="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors" onclick="deleteRule({{ rule.id }})">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Empty State -->
+  {% if not rules %}
+  <div class="text-center py-16">
+    <div class="w-20 h-20 mx-auto mb-6 text-teal-400 opacity-80 animate-bounce">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path d="M9 12l2 2 4-4m6-4v16H3V4h18z"/>
+      </svg>
+    </div>
+    <h3 class="text-2xl font-bold mb-3 bg-gradient-to-r from-white to-teal-300 bg-clip-text text-transparent">No Rules Found</h3>
+    <p class="text-slate-400 text-lg mb-6 max-w-md mx-auto">Create your first trading rule to maintain discipline and improve your trading performance</p>
+    <button onclick="openModal()" class="px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl hover:from-teal-700 hover:to-cyan-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
+      <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M12 4v16m8-8H4"/>
+      </svg>
+      Create First Rule
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Advanced Rule Modal -->
+<div id="ruleModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 backdrop-blur-sm">
+  <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-600 rounded-2xl max-w-4xl w-full mx-4 max-h-[95vh] overflow-hidden shadow-2xl">
+    <!-- Modal Header -->
+    <div class="flex items-center justify-between p-6 border-b border-slate-600 bg-gradient-to-r from-slate-800 to-slate-700">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M9 12l2 2 4-4m6-4v16H3V4h18z"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-xl font-bold text-white" id="ruleModalTitle">Create Trading Rule</h3>
+          <p class="text-sm text-slate-400">Define your trading discipline with precision</p>
+        </div>
+      </div>
+      <button class="text-slate-400 hover:text-white transition-colors p-2 hover:bg-slate-700 rounded-lg" onclick="closeModal()">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="px-6 py-4 bg-slate-800/50">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+          <div class="flex items-center" id="step1">
+            <div class="w-8 h-8 bg-teal-500 text-white rounded-full flex items-center justify-center text-sm font-bold step-indicator active">
+              1
+            </div>
+            <span class="ml-2 text-sm font-medium text-white">Basic Info</span>
+          </div>
+          <div class="w-12 h-0.5 bg-slate-600 step-connector"></div>
+          <div class="flex items-center" id="step2">
+            <div class="w-8 h-8 bg-slate-600 text-slate-400 rounded-full flex items-center justify-center text-sm font-bold step-indicator">
+              2
+            </div>
+            <span class="ml-2 text-sm font-medium text-slate-400">Configuration</span>
+          </div>
+        </div>
+        <div class="text-sm text-slate-400">
+          Step <span id="currentStep">1</span> of 2
+        </div>
+      </div>
+    </div>
+    
+    <form id="ruleForm" class="overflow-y-auto max-h-[60vh]">
+      <input type="hidden" id="ruleId" name="rule_id">
+      
+      <!-- Step 1: Basic Information -->
+      <div id="formStep1" class="p-6 space-y-6">
+        <div>
+          <label class="block text-sm font-semibold mb-3 text-white flex items-center gap-2">
+            <svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+            </svg>
+            Rule Title <span class="text-red-400">*</span>
+          </label>
+          <input type="text" class="form-input bg-slate-800 border-slate-600 text-white placeholder-slate-400 rounded-xl p-4 text-lg" id="ruleTitle" name="title" required maxlength="100" placeholder="e.g., Always Use Stop Loss">
+          <div class="text-red-400 text-sm mt-2 hidden" id="titleFeedback"></div>
+          <div class="text-slate-400 text-xs mt-1" id="titleCounter">0/100 characters</div>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-semibold mb-3 text-white flex items-center gap-2">
+            <svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            Description
+          </label>
+          <textarea class="form-input bg-slate-800 border-slate-600 text-white placeholder-slate-400 rounded-xl p-4 h-32 resize-none" id="ruleDescription" name="description" rows="4" placeholder="Describe your trading rule in detail..."></textarea>
+          <div class="text-slate-400 text-xs mt-1" id="descCounter">0/500 characters</div>
+        </div>
+
+        <!-- Category Selection -->
+        <div>
+          <label class="block text-sm font-semibold mb-3 text-white">Category</label>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <label class="rule-type-card cursor-pointer">
+              <input type="radio" name="category" value="Entry" class="hidden" checked>
+              <div class="p-4 border-2 border-slate-600 rounded-xl hover:border-teal-500 transition-all bg-slate-800/50">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path d="M12 4v16m8-8H4"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 class="font-semibold text-white">Entry</h4>
+                    <p class="text-xs text-slate-400">Before entering trades</p>
+                  </div>
+                </div>
+              </div>
+            </label>
+            <label class="rule-type-card cursor-pointer">
+              <input type="radio" name="category" value="Exit" class="hidden">
+              <div class="p-4 border-2 border-slate-600 rounded-xl hover:border-teal-500 transition-all bg-slate-800/50">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 class="font-semibold text-white">Exit</h4>
+                    <p class="text-xs text-slate-400">When closing positions</p>
+                  </div>
+                </div>
+              </div>
+            </label>
+            <label class="rule-type-card cursor-pointer">
+              <input type="radio" name="category" value="Management" class="hidden">
+              <div class="p-4 border-2 border-slate-600 rounded-xl hover:border-teal-500 transition-all bg-slate-800/50">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                      <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 class="font-semibold text-white">Management</h4>
+                    <p class="text-xs text-slate-400">Position management</p>
+                  </div>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Step 2: Configuration -->
+      <div id="formStep2" class="p-6 space-y-6 hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm font-semibold mb-3 text-white flex items-center gap-2">
+              <svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+              </svg>
+              Tags
+            </label>
+            <div class="relative">
+              <input type="text" class="form-input bg-slate-800 border-slate-600 text-white placeholder-slate-400 rounded-xl p-4 pr-12" id="ruleTags" name="tags" placeholder="risk, stop-loss, discipline">
+              <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                </svg>
+              </div>
+            </div>
+            <div id="tagSuggestions" class="mt-2 flex flex-wrap gap-2">
+              <!-- Tag suggestions will be populated here -->
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold mb-3 text-white flex items-center gap-2">
+              <svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              Priority Level
+            </label>
+            <div class="space-y-3">
+              <label class="priority-option cursor-pointer">
+                <input type="radio" name="priority" value="high" class="hidden">
+                <div class="p-4 border-2 border-slate-600 rounded-xl hover:border-red-500 transition-all bg-slate-800/50">
+                  <div class="flex items-center gap-3">
+                    <div class="w-4 h-4 bg-red-500 rounded-full"></div>
+                    <div>
+                      <h4 class="font-semibold text-white">High Priority</h4>
+                      <p class="text-xs text-slate-400">Critical rules that must be followed</p>
+                    </div>
+                  </div>
+                </div>
+              </label>
+              <label class="priority-option cursor-pointer">
+                <input type="radio" name="priority" value="medium" class="hidden" checked>
+                <div class="p-4 border-2 border-teal-500 rounded-xl bg-slate-800/50">
+                  <div class="flex items-center gap-3">
+                    <div class="w-4 h-4 bg-teal-500 rounded-full"></div>
+                    <div>
+                      <h4 class="font-semibold text-white">Medium Priority</h4>
+                      <p class="text-xs text-slate-400">Important guidelines to follow</p>
+                    </div>
+                  </div>
+                </div>
+              </label>
+              <label class="priority-option cursor-pointer">
+                <input type="radio" name="priority" value="low" class="hidden">
+                <div class="p-4 border-2 border-slate-600 rounded-xl hover:border-green-500 transition-all bg-slate-800/50">
+                  <div class="flex items-center gap-3">
+                    <div class="w-4 h-4 bg-green-500 rounded-full"></div>
+                    <div>
+                      <h4 class="font-semibold text-white">Low Priority</h4>
+                      <p class="text-xs text-slate-400">Optional best practices</p>
+                    </div>
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Template Options -->
+        <div class="p-4 bg-slate-800/50 rounded-xl border border-slate-600">
+          <h4 class="font-semibold text-white mb-4">Template Options</h4>
+          <div class="space-y-3">
+            <label class="flex items-center gap-3">
+              <input type="checkbox" class="w-5 h-5 text-teal-500 bg-slate-700 border-slate-600 rounded focus:ring-teal-500" id="saveTemplate" name="save_template">
+              <span class="text-white">Save as template for future use</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      
+
+    </form>
+    
+    <!-- Modal Footer -->
+    <div class="flex justify-between items-center p-6 border-t border-slate-600 bg-slate-800/50">
+      <button type="button" id="prevBtn" class="px-6 py-3 bg-slate-600 text-white rounded-xl hover:bg-slate-700 transition-colors flex items-center gap-2 hidden">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M15 19l-7-7 7-7"/>
+        </svg>
+        Previous
+      </button>
+      <div class="flex gap-3">
+        <button type="button" class="px-6 py-3 bg-slate-600 text-white rounded-xl hover:bg-slate-700 transition-colors" onclick="closeModal()">Cancel</button>
+        <button type="button" id="nextBtn" class="px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl hover:from-teal-700 hover:to-cyan-700 transition-all flex items-center gap-2">
+          Next
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M9 5l7 7-7 7"/>
+          </svg>
+        </button>
+        <button type="button" id="submitBtn" class="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 transition-all hidden flex items-center gap-2" onclick="document.getElementById('ruleForm').dispatchEvent(new Event('submit'))">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M5 13l4 4L19 7"/>
+          </svg>
+          Create Rule
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentRuleId = null;
+let currentFormStep = 1;
+const totalSteps = 2;
+
+document.addEventListener('DOMContentLoaded', function() {
+  loadTemplates();
+  setupFilters();
+  setupFormValidation();
+  setupModal();
+  setupMultiStepForm();
+  setupCharacterCounters();
+  setupTagSuggestions();
+  setupRuleTypeSelection();
+  setupPrioritySelection();
+});
+
+// Modal functions
+function openModal() {
+  document.getElementById('ruleModal').classList.remove('hidden');
+  document.getElementById('ruleModal').classList.add('flex');
+}
+
+function closeModal() {
+  document.getElementById('ruleModal').classList.add('hidden');
+  document.getElementById('ruleModal').classList.remove('flex');
+  currentRuleId = null;
+  currentFormStep = 1;
+  
+  // Reset form
+  document.getElementById('ruleForm').reset();
+  
+  // Reset steps
+  for (let i = 1; i <= totalSteps; i++) {
+    if (i === 1) {
+      showStep(i);
+    } else {
+      hideStep(i);
+    }
+  }
+  
+  // Reset step indicators
+  updateStepIndicators();
+  updateButtons();
+  
+  // Reset title
+  document.getElementById('ruleModalTitle').textContent = 'Create Trading Rule';
+  
+  // Reset counters
+  document.getElementById('titleCounter').textContent = '0/100 characters';
+  document.getElementById('descCounter').textContent = '0/500 characters';
+  
+  // Clear errors
+  document.querySelectorAll('[id$="Error"]').forEach(error => error.remove());
+  document.querySelectorAll('.border-red-500').forEach(field => field.classList.remove('border-red-500'));
+}
+
+function toggleAdvanced() {
+  const section = document.getElementById('advancedSection');
+  const icon = document.getElementById('advancedIcon');
+  
+  if (section.classList.contains('hidden')) {
+    section.classList.remove('hidden');
+    icon.style.transform = 'rotate(180deg)';
+  } else {
+    section.classList.add('hidden');
+    icon.style.transform = 'rotate(0deg)';
+  }
+}
+
+function setupModal() {
+  document.getElementById('addRuleBtn').addEventListener('click', openModal);
+}
+
+// Multi-step form functionality
+function setupMultiStepForm() {
+  document.getElementById('nextBtn').addEventListener('click', nextStep);
+  document.getElementById('prevBtn').addEventListener('click', prevStep);
+}
+
+function nextStep() {
+  if (currentFormStep < totalSteps) {
+    if (validateCurrentStep()) {
+      hideStep(currentFormStep);
+      currentFormStep++;
+      showStep(currentFormStep);
+      updateStepIndicators();
+      updateButtons();
+    }
+  }
+}
+
+function prevStep() {
+  if (currentFormStep > 1) {
+    hideStep(currentFormStep);
+    currentFormStep--;
+    showStep(currentFormStep);
+    updateStepIndicators();
+    updateButtons();
+  }
+}
+
+function showStep(step) {
+  document.getElementById(`formStep${step}`).classList.remove('hidden');
+}
+
+function hideStep(step) {
+  document.getElementById(`formStep${step}`).classList.add('hidden');
+}
+
+function updateStepIndicators() {
+  for (let i = 1; i <= totalSteps; i++) {
+    const indicator = document.querySelector(`#step${i} .step-indicator`);
+    const text = document.querySelector(`#step${i} span`);
+    
+    if (i < currentFormStep) {
+      indicator.classList.add('completed');
+      indicator.classList.remove('active');
+      indicator.innerHTML = '✓';
+      text.classList.remove('text-slate-400');
+      text.classList.add('text-white');
+    } else if (i === currentFormStep) {
+      indicator.classList.add('active');
+      indicator.classList.remove('completed');
+      indicator.innerHTML = i;
+      text.classList.remove('text-slate-400');
+      text.classList.add('text-white');
+    } else {
+      indicator.classList.remove('active', 'completed');
+      indicator.innerHTML = i;
+      text.classList.add('text-slate-400');
+      text.classList.remove('text-white');
+    }
+  }
+  
+  // Update step connectors
+  document.querySelectorAll('.step-connector').forEach((connector, index) => {
+    if (index < currentFormStep - 1) {
+      connector.classList.add('active');
+    } else {
+      connector.classList.remove('active');
+    }
+  });
+  
+  document.getElementById('currentStep').textContent = currentFormStep;
+}
+
+function updateButtons() {
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const submitBtn = document.getElementById('submitBtn');
+  
+  if (currentFormStep === 1) {
+    prevBtn.classList.add('hidden');
+  } else {
+    prevBtn.classList.remove('hidden');
+  }
+  
+  if (currentFormStep === totalSteps) {
+    nextBtn.classList.add('hidden');
+    submitBtn.classList.remove('hidden');
+  } else {
+    nextBtn.classList.remove('hidden');
+    submitBtn.classList.add('hidden');
+  }
+}
+
+function validateCurrentStep() {
+  switch (currentFormStep) {
+    case 1:
+      return validateStep1();
+    case 2:
+      return validateStep2();
+    default:
+      return true;
+  }
+}
+
+function validateStep1() {
+  const title = document.getElementById('ruleTitle').value.trim();
+  if (!title) {
+    showError('ruleTitle', 'Rule title is required');
+    return false;
+  }
+  if (title.length > 100) {
+    showError('ruleTitle', 'Title must be under 100 characters');
+    return false;
+  }
+  clearError('ruleTitle');
+  return true;
+}
+
+function validateStep2() {
+  // Add validation for step 2 if needed
+  return true;
+}
+
+
+
+function showError(fieldId, message) {
+  const field = document.getElementById(fieldId);
+  field.classList.add('border-red-500');
+  
+  let errorDiv = document.getElementById(fieldId + 'Error');
+  if (!errorDiv) {
+    errorDiv = document.createElement('div');
+    errorDiv.id = fieldId + 'Error';
+    errorDiv.className = 'text-red-400 text-sm mt-1';
+    field.parentNode.appendChild(errorDiv);
+  }
+  errorDiv.textContent = message;
+}
+
+function clearError(fieldId) {
+  const field = document.getElementById(fieldId);
+  field.classList.remove('border-red-500');
+  
+  const errorDiv = document.getElementById(fieldId + 'Error');
+  if (errorDiv) {
+    errorDiv.remove();
+  }
+}
+
+// Character counters
+function setupCharacterCounters() {
+  const titleInput = document.getElementById('ruleTitle');
+  const descInput = document.getElementById('ruleDescription');
+  
+  titleInput.addEventListener('input', () => updateCounter('ruleTitle', 'titleCounter', 100));
+  descInput.addEventListener('input', () => updateCounter('ruleDescription', 'descCounter', 500));
+}
+
+function updateCounter(inputId, counterId, maxLength) {
+  const input = document.getElementById(inputId);
+  const counter = document.getElementById(counterId);
+  const length = input.value.length;
+  
+  counter.textContent = `${length}/${maxLength} characters`;
+  
+  if (length > maxLength * 0.9) {
+    counter.className = 'char-counter danger';
+  } else if (length > maxLength * 0.7) {
+    counter.className = 'char-counter warning';
+  } else {
+    counter.className = 'char-counter';
+  }
+}
+
+// Tag suggestions
+function setupTagSuggestions() {
+  const commonTags = ['risk-management', 'stop-loss', 'take-profit', 'position-sizing', 'entry', 'exit', 'discipline', 'psychology', 'market-analysis', 'timing'];
+  const container = document.getElementById('tagSuggestions');
+  
+  commonTags.forEach(tag => {
+    const span = document.createElement('span');
+    span.className = 'tag-suggestion';
+    span.textContent = tag;
+    span.onclick = () => addTagToInput(tag);
+    container.appendChild(span);
+  });
+}
+
+function addTagToInput(tag) {
+  const input = document.getElementById('ruleTags');
+  const currentTags = input.value.split(',').map(t => t.trim()).filter(t => t);
+  
+  if (!currentTags.includes(tag)) {
+    currentTags.push(tag);
+    input.value = currentTags.join(', ');
+  }
+}
+
+// Category selection
+function setupRuleTypeSelection() {
+  document.querySelectorAll('input[name="category"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+      document.querySelectorAll('.rule-type-card div').forEach(card => {
+        card.classList.remove('border-teal-500', 'bg-teal-500/10');
+        card.classList.add('border-slate-600');
+      });
+      
+      if (this.checked) {
+        const card = this.nextElementSibling;
+        card.classList.remove('border-slate-600');
+        card.classList.add('border-teal-500', 'bg-teal-500/10');
+      }
+    });
+  });
+}
+
+// Priority selection
+function setupPrioritySelection() {
+  document.querySelectorAll('input[name="priority"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+      document.querySelectorAll('.priority-option div').forEach(card => {
+        card.classList.remove('border-teal-500', 'bg-teal-500/10');
+        card.classList.add('border-slate-600');
+      });
+      
+      if (this.checked) {
+        const card = this.nextElementSibling;
+        card.classList.remove('border-slate-600');
+        card.classList.add('border-teal-500', 'bg-teal-500/10');
+      }
+    });
+  });
+}
+
+
+
+// Load rule templates
+async function loadTemplates() {
+  try {
+    const response = await fetch('/calculatentrade_journal/api/rules/templates');
+    const data = await response.json();
+    const container = document.getElementById('templateButtons');
+    
+    data.templates.forEach(template => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'px-3 py-1 text-xs bg-slate-600 text-white rounded hover:bg-slate-700 transition-colors';
+      btn.textContent = template.title;
+      btn.onclick = () => fillTemplate(template);
+      container.appendChild(btn);
+    });
+  } catch (error) {
+    console.error('Error loading templates:', error);
+  }
+}
+
+// Fill form with template data
+function fillTemplate(template) {
+  document.getElementById('ruleTitle').value = template.title;
+  document.getElementById('ruleDescription').value = template.description;
+  document.getElementById('ruleCategory').value = template.category;
+  document.getElementById('ruleTags').value = template.tags;
+  document.getElementById('rulePriority').value = template.priority;
+}
+
+// Setup filters
+function setupFilters() {
+  ['categoryFilter', 'priorityFilter', 'activeFilter', 'tagFilter'].forEach(id => {
+    document.getElementById(id).addEventListener('change', filterRules);
+  });
+  document.getElementById('tagFilter').addEventListener('input', filterRules);
+}
+
+// Filter rules
+function filterRules() {
+  const category = document.getElementById('categoryFilter').value;
+  const priority = document.getElementById('priorityFilter').value;
+  const active = document.getElementById('activeFilter').value;
+  const tag = document.getElementById('tagFilter').value.toLowerCase();
+  
+  document.querySelectorAll('.rule-item').forEach(item => {
+    let show = true;
+    
+    if (category && item.dataset.category !== category) show = false;
+    if (priority && item.dataset.priority !== priority) show = false;
+    if (active && item.dataset.active !== active) show = false;
+    if (tag && !item.dataset.tags.toLowerCase().includes(tag)) show = false;
+    
+    item.style.display = show ? 'block' : 'none';
+  });
+}
+
+// Clear filters
+function clearFilters() {
+  document.getElementById('categoryFilter').value = '';
+  document.getElementById('priorityFilter').value = '';
+  document.getElementById('activeFilter').value = '';
+  document.getElementById('tagFilter').value = '';
+  filterRules();
+}
+
+// Setup form validation
+function setupFormValidation() {
+  const titleInput = document.getElementById('ruleTitle');
+  titleInput.addEventListener('blur', validateTitle);
+  
+  document.getElementById('ruleForm').addEventListener('submit', handleSubmit);
+}
+
+// Validate title
+async function validateTitle() {
+  const title = document.getElementById('ruleTitle').value.trim();
+  const titleInput = document.getElementById('ruleTitle');
+  const feedback = document.getElementById('titleFeedback');
+  
+  if (!title) {
+    updateValidation(titleInput, false, 'Title is required');
+    return false;
+  }
+  
+  if (title.length > 100) {
+    updateValidation(titleInput, false, 'Title must be under 100 characters');
+    return false;
+  }
+  
+  updateValidation(titleInput, true);
+  return true;
+}
+
+// Handle form submission
+async function handleSubmit(e) {
+  e.preventDefault();
+  
+  if (!(await validateTitle())) return;
+  
+  // Collect form data manually to ensure radio buttons are captured
+  const data = {
+    title: document.getElementById('ruleTitle').value,
+    description: document.getElementById('ruleDescription').value,
+    category: document.querySelector('input[name="category"]:checked')?.value || 'Entry',
+    tags: document.getElementById('ruleTags').value,
+    priority: document.querySelector('input[name="priority"]:checked')?.value || 'medium',
+    active: true, // Always active for new rules
+    save_template: document.getElementById('saveTemplate').checked
+  };
+  
+  console.log('Submitting rule data:', data); // Debug log
+  
+  try {
+    const url = currentRuleId 
+      ? `/calculatentrade_journal/api/rules/${currentRuleId}`
+      : '/calculatentrade_journal/api/rules';
+    const method = currentRuleId ? 'PUT' : 'POST';
+    
+    const response = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    
+    const result = await response.json();
+    console.log('Server response:', result); // Debug log
+    
+    if (result.success) {
+      closeModal();
+      location.reload();
+    } else {
+      alert('Error: ' + (result.message || 'Unknown error'));
+    }
+  } catch (error) {
+    console.error('Error saving rule:', error);
+    alert('Error saving rule: ' + error.message);
+  }
+}
+
+// Edit rule
+async function editRule(ruleId) {
+  try {
+    const response = await fetch(`/calculatentrade_journal/api/rules/${ruleId}`);
+    const rule = await response.json();
+    
+    currentRuleId = ruleId;
+    document.getElementById('ruleModalTitle').textContent = 'Edit Rule';
+    document.getElementById('ruleId').value = ruleId;
+    document.getElementById('ruleTitle').value = rule.title;
+    document.getElementById('ruleDescription').value = rule.description || '';
+    // Set category radio button
+    const categoryRadio = document.querySelector(`input[name="category"][value="${rule.category}"]`);
+    if (categoryRadio) {
+      categoryRadio.checked = true;
+      categoryRadio.dispatchEvent(new Event('change'));
+    }
+    document.getElementById('ruleTags').value = rule.tags || '';
+    document.getElementById('rulePriority').value = rule.priority;
+    document.getElementById('ruleActive').checked = rule.active;
+
+    document.getElementById('saveTemplate').checked = rule.save_template;
+    
+    openModal();
+  } catch (error) {
+    alert('Error loading rule: ' + error.message);
+  }
+}
+
+// Delete rule
+async function deleteRule(ruleId) {
+  if (!confirm('Are you sure you want to delete this rule?')) return;
+  
+  try {
+    const response = await fetch(`/calculatentrade_journal/api/rules/${ruleId}`, {
+      method: 'DELETE'
+    });
+    
+    if (response.ok) {
+      location.reload();
+    } else {
+      alert('Error deleting rule');
+    }
+  } catch (error) {
+    alert('Error: ' + error.message);
+  }
+}
+
+// Toggle rule active status
+async function toggleRule(ruleId) {
+  const toggle = event.currentTarget;
+  const checkbox = document.getElementById(`rule${ruleId}`);
+  
+  try {
+    const response = await fetch(`/calculatentrade_journal/api/rules/${ruleId}/toggle`, {
+      method: 'POST'
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      toggle.classList.toggle('active');
+      checkbox.checked = !checkbox.checked;
+    } else {
+      alert('Error toggling rule status');
+    }
+  } catch (error) {
+    alert('Error: ' + error.message);
+  }
+}
+
+// Update validation styling
+function updateValidation(element, isValid, message = '') {
+  const feedback = document.getElementById('titleFeedback');
+  
+  if (isValid) {
+    element.classList.remove('border-red-500');
+    element.classList.add('border-teal-500');
+    feedback.classList.add('hidden');
+  } else {
+    element.classList.remove('border-teal-500');
+    element.classList.add('border-red-500');
+    feedback.textContent = message;
+    feedback.classList.remove('hidden');
+  }
+}
+</script>
+{% endblock %}

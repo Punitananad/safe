@@ -1,0 +1,92 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Manage Users - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-users me-2"></i>Manage Users</h2>
+            <div>
+                <span class="badge bg-primary me-2">Total: {{ users|length }}</span>
+                <span class="badge bg-success me-2">Verified: {{ users|selectattr('verified', 'equalto', true)|list|length }}</span>
+                <span class="badge bg-warning">Unverified: {{ users|rejectattr('verified', 'equalto', true)|list|length }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                {% if users %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Email</th>
+                                    <th>Name</th>
+                                    <th>Status</th>
+                                    <th>Subscription</th>
+                                    <th>Registered</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr>
+                                    <td>{{ user.id }}</td>
+                                    <td>{{ user.email }}</td>
+                                    <td>{{ user.name or 'N/A' }}</td>
+                                    <td>
+                                        {% if user.verified %}
+                                            <span class="badge bg-success">Verified</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Unverified</span>
+                                        {% endif %}
+                                        {% if user.google_id %}
+                                            <span class="badge bg-info">Google</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.subscription_active %}
+                                            <span class="badge bg-success">{{ (user.subscription_type or 'premium')|title }}</span>
+                                            {% if user.subscription_expires %}
+                                                <small class="text-muted d-block">Expires: {{ user.subscription_expires[:10] if user.subscription_expires else 'N/A' }}</small>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-secondary">Free</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ user.registered_on[:16] if user.registered_on else 'N/A' }}</td>
+                                    <td>
+                                        <form method="POST" class="d-inline" action="{{ url_for('admin.toggle_user', user_id=user.id) }}">
+                                            <button type="submit" class="btn btn-sm {{ 'btn-warning' if user.verified else 'btn-success' }}"
+                                                    onclick="return confirm('{{ 'Deactivate' if user.verified else 'Activate' }} user {{ user.email }}?')">
+                                                {% if user.verified %}
+                                                    <i class="fas fa-ban"></i> Deactivate
+                                                {% else %}
+                                                    <i class="fas fa-check"></i> Activate
+                                                {% endif %}
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5>No users found</h5>
+                        <p class="text-muted">No users have registered yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

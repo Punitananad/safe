@@ -1,0 +1,52 @@
+{% extends "mentor/mentor_login_base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h4><i class="fas fa-chalkboard-teacher me-2"></i>Mentor Login</h4>
+    </div>
+    <div class="card-body">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="mb-3">
+                <label for="mentor_id" class="form-label">
+                    <i class="fas fa-id-badge me-2"></i>Mentor ID
+                </label>
+                <input type="text" class="form-control" id="mentor_id" name="mentor_id" 
+                       placeholder="Enter your mentor ID" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label">
+                    <i class="fas fa-lock me-2"></i>Password
+                </label>
+                <input type="password" class="form-control" id="password" name="password" 
+                       placeholder="Enter your password" required>
+            </div>
+
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt me-2"></i>Login to Dashboard
+                </button>
+            </div>
+        </form>
+
+        <div class="text-center mt-4">
+            <small class="text-muted">
+                Don't have mentor credentials? <br>
+                Contact your administrator for access.
+            </small>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Assign Coupon to Mentor - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-link me-2"></i>Assign Coupon to Mentor</h2>
+            <a href="{{ url_for('admin.coupons') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Coupons
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                {% if coupons and mentors %}
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="coupon_id" class="form-label">
+                                <i class="fas fa-ticket-alt me-2"></i>Select Coupon
+                            </label>
+                            <select class="form-select" id="coupon_id" name="coupon_id" required>
+                                <option value="">Choose a coupon...</option>
+                                {% for coupon in coupons %}
+                                    <option value="{{ coupon.id }}">
+                                        {{ coupon.code }} ({{ coupon.discount_percent }}% off)
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="mentor_id" class="form-label">
+                                <i class="fas fa-chalkboard-teacher me-2"></i>Select Mentor
+                            </label>
+                            <select class="form-select" id="mentor_id" name="mentor_id" required>
+                                <option value="">Choose a mentor...</option>
+                                {% for mentor in mentors %}
+                                    <option value="{{ mentor.id }}">
+                                        {{ mentor.name }} ({{ mentor.mentor_id }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-link me-2"></i>Assign Coupon
+                            </button>
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                        <h5>Cannot Assign Coupons</h5>
+                        {% if not coupons %}
+                            <p class="text-muted">No unassigned coupons available.</p>
+                            <a href="{{ url_for('admin.create_coupon') }}" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Create Coupon
+                            </a>
+                        {% endif %}
+                        {% if not mentors %}
+                            <p class="text-muted">No active mentors available.</p>
+                            <a href="{{ url_for('admin.create_mentor') }}" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Create Mentor
+                            </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

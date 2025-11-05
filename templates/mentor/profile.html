@@ -1,0 +1,155 @@
+{% extends "mentor/mentor_base.html" %}
+
+{% block title %}Mentor Profile - Calculate N Trade{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="fas fa-user-circle me-2"></i>Mentor Profile</h2>
+                <p class="text-muted">Your profile and partnership details</p>
+            </div>
+            <a href="{{ url_for('mentor.dashboard') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Profile Information -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-id-card me-2"></i>Personal Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-sm-4"><strong>Mentor ID:</strong></div>
+                    <div class="col-sm-8">{{ mentor.mentor_id }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4"><strong>Name:</strong></div>
+                    <div class="col-sm-8">{{ mentor.name }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4"><strong>Email:</strong></div>
+                    <div class="col-sm-8">{{ mentor.email }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4"><strong>Status:</strong></div>
+                    <div class="col-sm-8">
+                        <span class="badge bg-{{ 'success' if mentor.active else 'danger' }}">
+                            {{ 'Active' if mentor.active else 'Inactive' }}
+                        </span>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4"><strong>Joined:</strong></div>
+                    <div class="col-sm-8">{{ mentor.created_at.strftime('%B %d, %Y') }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-handshake me-2"></i>Partnership Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-sm-6"><strong>Company:</strong></div>
+                    <div class="col-sm-6">Calculate N Trade</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-6"><strong>Partnership Type:</strong></div>
+                    <div class="col-sm-6">Coupon Affiliate</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-6"><strong>Commission Rate:</strong></div>
+                    <div class="col-sm-6">10% per successful referral</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-6"><strong>Payment Terms:</strong></div>
+                    <div class="col-sm-6">Monthly settlement</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-6"><strong>Admin Contact:</strong></div>
+                    <div class="col-sm-6">punitanand571@gmail.com</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Statistics -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Performance Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <h4 class="text-primary">{{ stats[0] or 0 }}</h4>
+                            <p class="mb-0">Total Coupon Uses</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <h4 class="text-success">₹{{ "%.2f"|format((stats[1] or 0) / 100) }}</h4>
+                            <p class="mb-0">Total Commission</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <h4 class="text-info">₹{{ "%.2f"|format((stats[2] or 0) / 100) }}</h4>
+                            <p class="mb-0">Total Discounts Given</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <h4 class="text-warning">{{ stats[3] or 0 }}</h4>
+                            <p class="mb-0">Unique Students</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <a href="{{ url_for('mentor.coupons') }}" class="btn btn-primary w-100">
+                            <i class="fas fa-ticket-alt me-2"></i>View My Coupons
+                        </a>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <a href="{{ url_for('mentor.dashboard') }}" class="btn btn-info w-100">
+                            <i class="fas fa-users me-2"></i>View Students
+                        </a>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <a href="mailto:punitanand571@gmail.com" class="btn btn-outline-secondary w-100">
+                            <i class="fas fa-envelope me-2"></i>Contact Admin
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

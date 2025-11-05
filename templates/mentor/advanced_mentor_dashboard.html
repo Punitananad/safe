@@ -1,0 +1,496 @@
+{% extends "mentor/mentor_base.html" %}
+
+{% block title %}Advanced Mentor Dashboard - Calculate N Trade{% endblock %}
+
+{% block extra_css %}
+<style>
+.metric-card { transition: transform 0.2s; }
+.metric-card:hover { transform: translateY(-2px); }
+.progress-ring { transform: rotate(-90deg); }
+.chart-container { height: 300px; }
+.activity-item { border-left: 3px solid #007bff; }
+.performance-badge { font-size: 0.75rem; }
+.gradient-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.gradient-success { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+.gradient-info { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.gradient-warning { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-1"><i class="fas fa-chart-line me-2 text-primary"></i>Advanced Mentor Dashboard</h1>
+                <p class="text-muted mb-0">Welcome back, {{ session.mentor_name }}! <span class="badge bg-success ms-2">Online</span></p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary btn-sm" onclick="refreshDashboard()">
+                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                </button>
+                <div class="dropdown">
+                    <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user me-2"></i>{{ session.mentor_name }}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{{ url_for('mentor.profile') }}"><i class="fas fa-user me-2"></i>Profile</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('mentor.coupons') }}"><i class="fas fa-ticket-alt me-2"></i>My Coupons</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url_for('mentor.logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Advanced Metrics Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card metric-card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small">Total Coupons</div>
+                        <div class="h2 mb-0 text-primary">{{ total_coupons }}</div>
+                        <div class="small text-success"><i class="fas fa-arrow-up"></i> +12% this month</div>
+                    </div>
+                    <div class="text-primary">
+                        <i class="fas fa-ticket-alt fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card metric-card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small">Used Coupons</div>
+                        <div class="h2 mb-0 text-success">{{ used_coupons }}</div>
+                        <div class="small text-success"><i class="fas fa-arrow-up"></i> +8% this week</div>
+                    </div>
+                    <div class="text-success">
+                        <i class="fas fa-check-circle fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card metric-card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small">Total Students</div>
+                        <div class="h2 mb-0 text-info">{{ students.total }}</div>
+                        <div class="small text-success"><i class="fas fa-arrow-up"></i> +5 new today</div>
+                    </div>
+                    <div class="text-info">
+                        <i class="fas fa-users fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card metric-card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small">Commission Earned</div>
+                        <div class="h2 mb-0 text-warning">₹2,450</div>
+                        <div class="small text-success"><i class="fas fa-arrow-up"></i> +₹340 this week</div>
+                    </div>
+                    <div class="text-warning">
+                        <i class="fas fa-rupee-sign fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Overview -->
+<div class="row mb-4">
+    <div class="col-xl-8 mb-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-chart-area me-2"></i>Performance Analytics</h5>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <input type="radio" class="btn-check" name="timeRange" id="week" checked>
+                        <label class="btn btn-outline-primary" for="week">7D</label>
+                        <input type="radio" class="btn-check" name="timeRange" id="month">
+                        <label class="btn btn-outline-primary" for="month">30D</label>
+                        <input type="radio" class="btn-check" name="timeRange" id="quarter">
+                        <label class="btn btn-outline-primary" for="quarter">90D</label>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 mb-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0"><i class="fas fa-bullseye me-2"></i>Conversion Rate</h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="position-relative d-inline-block mb-3">
+                    <svg width="120" height="120">
+                        <circle cx="60" cy="60" r="50" fill="none" stroke="#e9ecef" stroke-width="8"></circle>
+                        <circle cx="60" cy="60" r="50" fill="none" stroke="#28a745" stroke-width="8" 
+                                stroke-dasharray="314" stroke-dashoffset="94" class="progress-ring"></circle>
+                    </svg>
+                    <div class="position-absolute top-50 start-50 translate-middle">
+                        <div class="h3 mb-0 text-success">72%</div>
+                        <small class="text-muted">Conversion</small>
+                    </div>
+                </div>
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="text-muted small">Clicks</div>
+                        <div class="fw-bold">1,234</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted small">Conversions</div>
+                        <div class="fw-bold">889</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions & Recent Activity -->
+<div class="row mb-4">
+    <div class="col-xl-4 mb-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('mentor.coupons') }}" class="btn btn-primary">
+                        <i class="fas fa-share me-2"></i>Share Coupons
+                    </a>
+                    <button class="btn btn-outline-success" onclick="generateReport()">
+                        <i class="fas fa-download me-2"></i>Download Report
+                    </button>
+                    <button class="btn btn-outline-info" onclick="viewAnalytics()">
+                        <i class="fas fa-chart-bar me-2"></i>View Analytics
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="contactSupport()">
+                        <i class="fas fa-headset me-2"></i>Contact Support
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-8 mb-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Recent Activity</h5>
+            </div>
+            <div class="card-body">
+                <div class="activity-timeline">
+                    <div class="activity-item ps-3 pb-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="fw-bold">New student registered</div>
+                                <div class="text-muted small">John Doe used coupon SAV30</div>
+                            </div>
+                            <span class="badge bg-success performance-badge">2 min ago</span>
+                        </div>
+                    </div>
+                    <div class="activity-item ps-3 pb-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="fw-bold">Commission earned</div>
+                                <div class="text-muted small">₹245 from MENTOR20 usage</div>
+                            </div>
+                            <span class="badge bg-warning performance-badge">1 hour ago</span>
+                        </div>
+                    </div>
+                    <div class="activity-item ps-3 pb-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="fw-bold">Coupon shared</div>
+                                <div class="text-muted small">SAV30 shared via WhatsApp</div>
+                            </div>
+                            <span class="badge bg-info performance-badge">3 hours ago</span>
+                        </div>
+                    </div>
+                    <div class="activity-item ps-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="fw-bold">Monthly target achieved</div>
+                                <div class="text-muted small">Congratulations! 🎉</div>
+                            </div>
+                            <span class="badge bg-primary performance-badge">1 day ago</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Advanced Students Management -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0"><i class="fas fa-users me-2"></i>Student Management</h5>
+                        <small class="text-muted">Track and manage your student referrals</small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <form method="GET" class="d-flex">
+                            <div class="input-group input-group-sm">
+                                <input type="text" name="search" class="form-control" 
+                                       placeholder="Search students..." value="{{ search }}">
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </form>
+                        <button class="btn btn-sm btn-outline-success" onclick="exportStudents()">
+                            <i class="fas fa-download me-1"></i>Export
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if students.items %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="border-0">Student</th>
+                                    <th class="border-0">Contact</th>
+                                    <th class="border-0">Coupon Used</th>
+                                    <th class="border-0">Discount</th>
+                                    <th class="border-0">Commission</th>
+                                    <th class="border-0">Date</th>
+                                    <th class="border-0">Status</th>
+                                    <th class="border-0">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student in students.items %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-gradient-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                                {{ student[1][0] if student[1] else student[0][0] }}
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold">{{ student[1] or 'N/A' }}</div>
+                                                <small class="text-muted">ID: #{{ loop.index + (students.page - 1) * 10 }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div>{{ student[0] }}</div>
+                                        <small class="text-muted"><i class="fas fa-envelope me-1"></i>Verified</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle">{{ student[2] }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-success fw-bold">₹{{ "%.2f"|format((student[4] or 0) / 100) }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-warning fw-bold">₹{{ "%.2f"|format(((student[4] or 0) * 0.1) / 100) }}</span>
+                                    </td>
+                                    <td>
+                                        <div>{{ student[3].strftime('%d %b %Y') if student[3] else 'N/A' }}</div>
+                                        <small class="text-muted">{{ student[3].strftime('%I:%M %p') if student[3] else '' }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">Active</span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button class="btn btn-outline-primary" title="View Details" onclick="viewStudent('{{ student[0] }}')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-outline-success" title="Send Message" onclick="messageStudent('{{ student[0] }}')">
+                                                <i class="fas fa-message"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Enhanced Pagination -->
+                    {% if students.pages > 1 %}
+                    <div class="card-footer bg-white border-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                Showing {{ (students.page - 1) * 10 + 1 }} to {{ students.page * 10 if students.page * 10 < students.total else students.total }} of {{ students.total }} students
+                            </small>
+                            <nav aria-label="Students pagination">
+                                <ul class="pagination pagination-sm mb-0">
+                                    {% if students.has_prev %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('mentor.dashboard', page=students.prev_num, search=search) }}">
+                                                <i class="fas fa-chevron-left"></i>
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for page_num in students.iter_pages() %}
+                                        {% if page_num %}
+                                            {% if page_num != students.page %}
+                                                <li class="page-item">
+                                                    <a class="page-link" href="{{ url_for('mentor.dashboard', page=page_num, search=search) }}">{{ page_num }}</a>
+                                                </li>
+                                            {% else %}
+                                                <li class="page-item active">
+                                                    <span class="page-link">{{ page_num }}</span>
+                                                </li>
+                                            {% endif %}
+                                        {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link">…</span>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if students.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('mentor.dashboard', page=students.next_num, search=search) }}">
+                                                <i class="fas fa-chevron-right"></i>
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <div class="mb-4">
+                            <i class="fas fa-users fa-4x text-muted opacity-50"></i>
+                        </div>
+                        <h5 class="text-muted">No students found</h5>
+                        <p class="text-muted mb-4">Start sharing your coupons to attract students and earn commissions!</p>
+                        <div class="d-flex gap-2 justify-content-center">
+                            <a href="{{ url_for('mentor.coupons') }}" class="btn btn-primary">
+                                <i class="fas fa-share me-2"></i>Share Coupons
+                            </a>
+                            <button class="btn btn-outline-info" onclick="viewTutorial()">
+                                <i class="fas fa-play me-2"></i>Watch Tutorial
+                            </button>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Performance Chart
+const ctx = document.getElementById('performanceChart').getContext('2d');
+const performanceChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        datasets: [{
+            label: 'Coupon Usage',
+            data: [12, 19, 8, 15, 22, 18, 25],
+            borderColor: '#007bff',
+            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+            tension: 0.4,
+            fill: true
+        }, {
+            label: 'Commission',
+            data: [8, 12, 5, 10, 15, 12, 18],
+            borderColor: '#28a745',
+            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top',
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: {
+                    color: 'rgba(0,0,0,0.1)'
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                }
+            }
+        }
+    }
+});
+
+// Dashboard Functions
+function refreshDashboard() {
+    location.reload();
+}
+
+function generateReport() {
+    alert('Generating comprehensive report... This feature will download your performance data.');
+}
+
+function viewAnalytics() {
+    alert('Advanced analytics view coming soon! Track detailed performance metrics.');
+}
+
+function contactSupport() {
+    window.open('mailto:support@calculatentrade.com?subject=Mentor Support Request', '_blank');
+}
+
+function exportStudents() {
+    alert('Exporting student data to CSV... This will download your student list.');
+}
+
+function viewStudent(email) {
+    alert(`Viewing detailed profile for: ${email}`);
+}
+
+function messageStudent(email) {
+    window.open(`mailto:${email}?subject=Message from your mentor`, '_blank');
+}
+
+function viewTutorial() {
+    alert('Opening mentor tutorial... Learn how to maximize your earnings!');
+}
+
+// Auto-refresh every 5 minutes
+setInterval(function() {
+    console.log('Auto-refreshing metrics...');
+}, 300000);
+</script>
+{% endblock %}

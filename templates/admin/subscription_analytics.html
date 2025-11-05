@@ -1,0 +1,231 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Subscription Analytics{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Subscription Analytics</h2>
+            
+            <!-- Key Metrics -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <h3>{{ stats.total_active }}</h3>
+                            <p>Active Subscriptions</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <h3>₹{{ "%.2f"|format(stats.total_revenue / 100) }}</h3>
+                            <p>Total Revenue</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body text-center">
+                            <h3>{{ stats.expiring_soon }}</h3>
+                            <p>Expiring Soon</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center">
+                            <h3>{{ stats.total_cancelled + stats.total_expired }}</h3>
+                            <p>Churned Users</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Plan Distribution -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Active Plan Distribution</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="planChart" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Subscription Status</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-6">
+                                    <h4 class="text-success">{{ stats.total_active }}</h4>
+                                    <p>Active</p>
+                                </div>
+                                <div class="col-6">
+                                    <h4 class="text-danger">{{ stats.total_expired }}</h4>
+                                    <p>Expired</p>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <h4 class="text-warning">{{ stats.total_cancelled }}</h4>
+                                    <p>Cancelled</p>
+                                </div>
+                                <div class="col-6">
+                                    <h4 class="text-info">{{ stats.expiring_soon }}</h4>
+                                    <p>Expiring Soon</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monthly Revenue Chart -->
+            {% if monthly_revenue %}
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Monthly Revenue Trend</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="revenueChart" width="400" height="100"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Detailed Stats Table -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Detailed Statistics</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Total Active Subscriptions</strong></td>
+                                            <td>{{ stats.total_active }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Monthly Plan Active</strong></td>
+                                            <td>{{ stats.monthly_active }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Yearly Plan Active</strong></td>
+                                            <td>{{ stats.yearly_active }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Total Expired</strong></td>
+                                            <td>{{ stats.total_expired }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Total Cancelled</strong></td>
+                                            <td>{{ stats.total_cancelled }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Expiring in 7 days</strong></td>
+                                            <td>{{ stats.expiring_soon }}</td>
+                                        </tr>
+                                        <tr class="table-success">
+                                            <td><strong>Total Revenue</strong></td>
+                                            <td><strong>₹{{ "%.2f"|format(stats.total_revenue / 100) }}</strong></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Plan Distribution Chart
+const planCtx = document.getElementById('planChart').getContext('2d');
+const planChart = new Chart(planCtx, {
+    type: 'doughnut',
+    data: {
+        labels: [
+            {% for plan_name, count in plan_distribution %}
+            '{{ plan_name }}',
+            {% endfor %}
+        ],
+        datasets: [{
+            data: [
+                {% for plan_name, count in plan_distribution %}
+                {{ count }},
+                {% endfor %}
+            ],
+            backgroundColor: [
+                '#007bff',
+                '#28a745',
+                '#ffc107',
+                '#dc3545'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+{% if monthly_revenue %}
+// Revenue Chart
+const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+const revenueChart = new Chart(revenueCtx, {
+    type: 'line',
+    data: {
+        labels: [
+            {% for month, revenue, count in monthly_revenue %}
+            '{{ month.strftime("%Y-%m") }}',
+            {% endfor %}
+        ],
+        datasets: [{
+            label: 'Revenue (₹)',
+            data: [
+                {% for month, revenue, count in monthly_revenue %}
+                {{ revenue / 100 if revenue else 0 }},
+                {% endfor %}
+            ],
+            borderColor: '#007bff',
+            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '₹' + value;
+                    }
+                }
+            }
+        }
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

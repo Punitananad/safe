@@ -1,0 +1,368 @@
+{% extends "mentor/mentor_base.html" %}
+
+{% block title %}My Coupons - Calculate N Trade{% endblock %}
+
+{% block extra_css %}
+<style>
+.coupon-card {
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--secondary-bg) 100%);
+    border: 1px solid var(--accent-teal);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.coupon-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-teal), var(--accent-blue));
+}
+
+.coupon-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(77, 208, 225, 0.15);
+}
+
+.coupon-code {
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: linear-gradient(45deg, var(--accent-teal), var(--accent-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.usage-progress {
+    background: rgba(77, 208, 225, 0.1);
+    border-radius: 10px;
+    height: 8px;
+}
+
+.usage-progress .progress-bar {
+    background: linear-gradient(90deg, var(--accent-teal), var(--accent-blue));
+    border-radius: 10px;
+}
+
+.action-btn {
+    background: rgba(77, 208, 225, 0.1);
+    border: 1px solid var(--accent-teal);
+    color: var(--accent-teal);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    padding: 8px 12px;
+}
+
+.action-btn:hover {
+    background: var(--accent-teal);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.info-card {
+    background: linear-gradient(135deg, rgba(77, 208, 225, 0.1), rgba(66, 165, 245, 0.1));
+    border: 1px solid var(--accent-teal);
+    border-radius: 12px;
+}
+
+.stats-badge {
+    background: linear-gradient(45deg, var(--accent-teal), var(--accent-blue));
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.page-header {
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--secondary-bg) 100%);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.coupon-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--accent-teal), var(--accent-blue));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 12px;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.page-title {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(45deg, var(--accent-teal), var(--accent-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title mb-2">
+                    <i class="fas fa-ticket-alt me-3" style="color: var(--accent-teal);"></i>
+                    My Coupons
+                </h1>
+                <p class="text-secondary mb-0">
+                    <i class="fas fa-user me-2"></i>Assigned to {{ mentor.name }}
+                    <span class="stats-badge ms-3">{{ coupons|length }} Total</span>
+                </p>
+            </div>
+            <a href="{{ url_for('mentor.dashboard') }}" class="btn btn-outline-info">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Coupons Grid -->
+    <div class="row">
+        <div class="col-12">
+            <div class="coupon-card">
+                <div class="card-header border-0" style="background: transparent; padding-bottom: 24px;">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2" style="color: var(--accent-teal);"></i>
+                        Your Active Coupons
+                    </h5>
+                </div>
+                <div class="card-body" style="padding-top: 0;">
+                    {% if coupons %}
+                        <div class="row g-4">
+                            {% for coupon in coupons %}
+                            <div class="col-lg-6 col-xl-4">
+                                <div class="card h-100" style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px;">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="coupon-icon">CNT</div>
+                                            <div class="flex-grow-1">
+                                                <div class="coupon-code">{{ coupon.code }}</div>
+                                                <span class="badge" style="background: var(--success-color); font-size: 0.75rem;">{{ coupon.discount_percent }}% OFF</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <small class="text-secondary">Usage Progress</small>
+                                                <small class="text-secondary">{{ coupon.uses }}/{{ coupon.max_uses }}</small>
+                                            </div>
+                                            {% set usage_percent = (coupon.uses / coupon.max_uses * 100) if coupon.max_uses > 0 else 0 %}
+                                            <div class="usage-progress">
+                                                <div class="progress-bar" style="width: {{ usage_percent }}%;"></div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <span class="badge" style="background: {{ 'var(--success-color)' if coupon.active else 'var(--danger-color)' }}; font-size: 0.75rem;">
+                                                {{ 'Active' if coupon.active else 'Inactive' }}
+                                            </span>
+                                            <small class="text-secondary">
+                                                {% if coupon.created_at %}
+                                                    {{ coupon.created_at[:10] if coupon.created_at is string else coupon.created_at.strftime('%Y-%m-%d') }}
+                                                {% else %}
+                                                    N/A
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="d-grid gap-2">
+                                            <button class="action-btn" onclick="copyToClipboard('{{ coupon.code }}')" title="Copy coupon code" style="padding: 10px;">
+                                                <i class="fas fa-copy me-2"></i>Copy Code
+                                            </button>
+                                            <div class="row g-2">
+                                                <div class="col-6">
+                                                    <button class="action-btn w-100" onclick="copyPremiumLink('{{ coupon.code }}')" title="Copy premium link" style="padding: 8px;">
+                                                        <i class="fas fa-link me-1"></i>Link
+                                                    </button>
+                                                </div>
+                                                <div class="col-6">
+                                                    <button class="action-btn w-100" onclick="shareOnWhatsApp('{{ coupon.code }}', {{ coupon.discount_percent }})" title="Share on WhatsApp" style="padding: 8px;">
+                                                        <i class="fab fa-whatsapp me-1"></i>Share
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-ticket-alt fa-4x text-secondary opacity-50 mb-4"></i>
+                            <h4 class="text-secondary mb-3">No Coupons Assigned</h4>
+                            <p class="text-secondary mb-4">You don't have any coupons assigned yet. Contact admin to get coupons assigned to you.</p>
+                            <a href="mailto:punitanand571@gmail.com" class="btn btn-primary">
+                                <i class="fas fa-envelope me-2"></i>Contact Admin
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Coupon Usage Instructions -->
+    {% if coupons %}
+    <div class="row" style="margin-top: 20px;">
+        <div class="col-12">
+            <div class="info-card">
+                <div class="card-header border-0" style="background: linear-gradient(135deg, var(--accent-teal), var(--accent-blue)); color: white;">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>How to Share Your Coupons</h5>
+                </div>
+                <div class="card-body" style="padding: 20px;">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-share me-2"></i>Sharing Options:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-copy text-primary me-2"></i><strong>Copy Code:</strong> Copy coupon code only</li>
+                                <li><i class="fas fa-link text-info me-2"></i><strong>Copy Link:</strong> Copy direct premium link (works anywhere)</li>
+                                <li><i class="fab fa-whatsapp text-success me-2"></i><strong>WhatsApp:</strong> Share formatted message via WhatsApp</li>
+                                <li><i class="fas fa-magic text-warning me-2"></i>All links auto-apply coupon when clicked</li>
+                            </ul>
+                            <div class="alert alert-success mt-3">
+                                <small><i class="fas fa-lightbulb me-1"></i><strong>Best Practice:</strong> Use "Copy Link" to share on any platform - Email, SMS, Telegram, etc!</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-money-bill-wave me-2"></i>Commission Details:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-percentage text-primary me-2"></i>40% commission on student payment</li>
+                                <li><i class="fas fa-calendar text-primary me-2"></i>Monthly commission settlement</li>
+                                <li><i class="fas fa-chart-line text-primary me-2"></i>Real-time tracking available</li>
+                                <li><i class="fas fa-envelope text-primary me-2"></i>Monthly reports via email</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        showToast(`Coupon code "${text}" copied to clipboard!`, 'success');
+    }).catch(function(err) {
+        console.error('Could not copy text: ', err);
+        alert('Coupon code: ' + text);
+    });
+}
+
+async function shareOnWhatsApp(couponCode, discountPercent) {
+    try {
+        // Get proper URL from server
+        const response = await fetch(`/api/generate-coupon-url?coupon=${couponCode}`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            showToast('Error generating link', 'error');
+            return;
+        }
+        
+        const subscriptionUrl = data.url;
+        
+        // Create WhatsApp message with clickable link
+        const message = `🎉 Exclusive ${discountPercent}% OFF on Calculate N Trade Premium!
+
+💰 Use coupon code: ${couponCode}
+🔗 Click here to get discount: ${subscriptionUrl}
+
+✅ Advanced trading calculators
+✅ Real-time market data
+✅ Trade journal & analytics
+✅ Risk management tools
+
+Upgrade now and save ${discountPercent}%! 🚀`;
+        
+        // Generate WhatsApp URL
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+        
+        // Open WhatsApp
+        window.open(whatsappUrl, '_blank');
+        
+        showToast('WhatsApp opened with coupon message!', 'success');
+    } catch (error) {
+        console.error('Error sharing on WhatsApp:', error);
+        showToast('Error sharing on WhatsApp', 'error');
+    }
+}
+
+async function copyPremiumLink(couponCode) {
+    try {
+        // Get proper URL from server
+        const response = await fetch(`/api/generate-coupon-url?coupon=${couponCode}`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            showToast('Error generating link', 'error');
+            return;
+        }
+        
+        const subscriptionUrl = data.url;
+        
+        // Copy to clipboard
+        await navigator.clipboard.writeText(subscriptionUrl);
+        showToast('Premium link copied! Share anywhere you want.', 'success');
+    } catch (error) {
+        console.error('Error copying link:', error);
+        // Fallback method
+        const baseUrl = window.location.hostname === 'localhost' 
+            ? `http://${window.location.host}` 
+            : 'https://calculatentrade.com';
+        const subscriptionUrl = `${baseUrl}/subscription?coupon=${couponCode}&auto_apply=true`;
+        
+        const textArea = document.createElement('textarea');
+        textArea.value = subscriptionUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showToast('Premium link copied! Share anywhere you want.', 'success');
+    }
+}
+
+function showToast(message, type = 'success') {
+    const bgClass = type === 'success' ? 'bg-success' : type === 'info' ? 'bg-info' : 'bg-primary';
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white ${bgClass} border-0 position-fixed top-0 end-0 m-3`;
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    // Remove toast after it's hidden
+    toast.addEventListener('hidden.bs.toast', function() {
+        document.body.removeChild(toast);
+    });
+}
+</script>
+{% endblock %}

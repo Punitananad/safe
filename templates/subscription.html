@@ -1,0 +1,362 @@
+{% extends "simple_base.html" %}
+
+{% block title %}Subscription - CalculatenTrade{% endblock %}
+
+{% block content %}
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="text-center mb-16">
+        <h1 class="text-4xl sm:text-5xl font-bold text-white mb-4">Choose Your Plan</h1>
+        {% if user and user.has_active_subscription() %}
+        <div class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-green-900/30 border border-green-500/30 text-green-300 mb-6">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            <span class="font-semibold">Premium Active - {{ user.subscription_type }} plan until {{ user.subscription_expires.strftime('%B %d, %Y') if user.subscription_expires else 'Lifetime' }}</span>
+        </div>
+        {% else %}
+        <p class="text-slate-300 text-lg mb-8 max-w-2xl mx-auto">Select the plan that best fits your trading needs.</p>
+        {% endif %}
+    </div>
+
+    {% if not user or not user.has_active_subscription() %}
+    <!-- Pricing Plans -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
+        <!-- Monthly Plan -->
+        <div class="relative overflow-hidden rounded-2xl bg-slate-900 border border-slate-700 p-8 hover:border-blue-500 transition-all" data-plan="monthly">
+            <div class="text-center">
+                <h3 class="text-2xl font-bold text-white mb-2">Monthly Plan</h3>
+                <div class="text-4xl font-bold text-blue-400 mb-6">₹300<span class="text-lg text-slate-400">/month</span></div>
+                
+                <ul class="text-left space-y-3 mb-8">
+                    <li class="flex items-center gap-3 text-slate-300">
+                        <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        All Trading Calculators
+                    </li>
+                    <li class="flex items-center gap-3 text-slate-300">
+                        <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        Position Management & Risk Analysis
+                    </li>
+                    <li class="flex items-center gap-3 text-slate-300">
+                        <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        Trade Journal & Analytics
+                    </li>
+                    <li class="flex items-center gap-3 text-slate-300">
+                        <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        Real-time Market Data
+                    </li>
+                    <li class="flex items-center gap-3 text-slate-300">
+                        <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        Email Support
+                    </li>
+                </ul>
+                
+                <div class="mb-6">
+                    <input type="text" id="monthly-coupon" class="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none" placeholder="Enter coupon code (optional)">
+                    <button type="button" class="mt-3 px-4 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors" onclick="applyCoupon('monthly')">
+                        Apply Coupon
+                    </button>
+                    <div id="monthly-coupon-result" class="mt-3"></div>
+                </div>
+                
+                <button onclick="initiatePayment('monthly')" class="w-full px-8 py-4 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 text-white font-semibold hover:from-blue-700 hover:to-blue-600 transition-all transform hover:scale-105">
+                    Subscribe Monthly
+                </button>
+            </div>
+        </div>
+
+        <!-- Yearly Plan -->
+        <div class="relative overflow-hidden rounded-2xl bg-slate-900 border-2 border-green-500 p-8 hover:border-green-400 transition-all" data-plan="yearly">
+            <div class="absolute top-4 right-4 px-3 py-1 rounded-full bg-green-500 text-white text-sm font-semibold">
+                BEST VALUE
+            </div>
+            <div class="text-center">
+                <h3 class="text-2xl font-bold text-white mb-2">3-Month Combined Plan</h3>
+                <div class="text-4xl font-bold text-green-400 mb-2">₹799<span class="text-lg text-slate-400">/3 months</span></div>
+                <p class="text-green-400 font-semibold mb-6"> 🎉 Save ₹100!  </p>
+                
+                <ul class="text-left space-y-3 mb-8">
+                    <li class="flex items-center gap-3 text-slate-300">
+                        <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        All Trading Calculators
+                    </li>
+                    <li class="flex items-center gap-3 text-slate-300">
+                        <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        Position Management & Risk Analysis
+                    </li>
+                    <li class="flex items-center gap-3 text-slate-300">
+                        <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        Trade Journal & Analytics
+                    </li>
+                    <li class="flex items-center gap-3 text-slate-300">
+                        <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        Real-time Market Data
+                    </li>
+                    <li class="flex items-center gap-3 text-slate-300">
+                        <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        Priority Support
+                    </li>
+                    <li class="flex items-center gap-3 text-slate-300">
+                        <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        Advanced Analytics & AI Assistant
+                    </li>
+                    <li class="flex items-center gap-3 text-slate-300">
+                        <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        Custom Strategies & Broker Connection
+                    </li>
+                </ul>
+                
+                <div class="mb-6">
+                    <input type="text" id="yearly-coupon" class="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-400 focus:border-green-500 focus:outline-none" placeholder="Enter coupon code (optional)">
+                    <button type="button" class="mt-3 px-4 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors" onclick="applyCoupon('yearly')">
+                        Apply Coupon
+                    </button>
+                    <div id="yearly-coupon-result" class="mt-3"></div>
+                </div>
+                
+                <button onclick="initiatePayment('yearly')" class="w-full px-8 py-4 rounded-xl bg-gradient-to-r from-green-600 to-green-500 text-white font-semibold hover:from-green-700 hover:to-green-600 transition-all transform hover:scale-105">
+                    Subscribe 3-Month Plan
+                </button>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="max-w-2xl mx-auto text-center">
+        <div class="bg-slate-900 rounded-2xl p-8 border border-slate-700">
+            <h3 class="text-2xl font-bold text-white mb-4">Manage Subscription</h3>
+            <p class="text-slate-300 mb-6">Your subscription will automatically renew on {{ user.subscription_expires.strftime('%B %d, %Y') if user.subscription_expires else 'N/A' }}</p>
+            <a href="{{ url_for('home') }}" class="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 text-white font-semibold hover:from-blue-700 hover:to-blue-600 transition-all">
+                Continue Using Premium
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="text-center mt-16">
+        <p class="text-slate-400">
+            <small>
+                By subscribing, you agree to our 
+                <a href="{{ url_for('terms') }}" target="_blank" class="text-blue-400 hover:text-blue-300">Terms and Conditions</a>
+            </small>
+        </p>
+    </div>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+let appliedCoupons = {};
+
+function applyCoupon(planType) {
+    const couponInput = document.getElementById(`${planType}-coupon`);
+    const resultDiv = document.getElementById(`${planType}-coupon-result`);
+    const couponCode = couponInput.value.trim();
+    
+    if (!couponCode) {
+        resultDiv.innerHTML = '<div class="text-red-400 text-sm">Please enter a coupon code</div>';
+        return;
+    }
+    
+    resultDiv.innerHTML = '<div class="text-blue-400 text-sm">Validating coupon...</div>';
+    
+    fetch('/api/apply-coupon', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+            coupon_code: couponCode,
+            plan_type: planType
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            appliedCoupons[planType] = data;
+            const savings = (data.discount_amount / 100).toFixed(2);
+            const finalAmount = (data.final_amount / 100).toFixed(2);
+            resultDiv.innerHTML = `
+                <div class="text-green-400 text-sm">
+                    <strong>Coupon Applied!</strong><br>
+                    Discount: ${data.discount_percent}% (₹${savings} off)<br>
+                    Final Amount: ₹${finalAmount}
+                </div>
+            `;
+            
+            updatePriceDisplay(planType, data.final_amount, data.discount_amount);
+        } else {
+            resultDiv.innerHTML = `<div class="text-red-400 text-sm">${data.error}</div>`;
+            delete appliedCoupons[planType];
+            resetPriceDisplay(planType);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        resultDiv.innerHTML = '<div class="text-red-400 text-sm">Failed to validate coupon</div>';
+        delete appliedCoupons[planType];
+        resetPriceDisplay(planType);
+    });
+}
+
+function updatePriceDisplay(planType, finalAmount, discountAmount) {
+    const priceElement = document.querySelector(`[data-plan="${planType}"] .text-4xl`);
+    if (priceElement) {
+        const finalPrice = (finalAmount / 100).toFixed(0);
+        const originalPrice = planType === 'monthly' ? '300' : '799';
+        const period = planType === 'monthly' ? 'month' : '3 months';
+        priceElement.innerHTML = `
+            <span style="text-decoration: line-through; color: #64748b; font-size: 0.7em;">₹${originalPrice}</span><br>
+            ₹${finalPrice}<span class="text-lg text-slate-400">/${period}</span>
+        `;
+    }
+}
+
+function resetPriceDisplay(planType) {
+    const priceElement = document.querySelector(`[data-plan="${planType}"] .text-4xl`);
+    if (priceElement) {
+        const price = planType === 'monthly' ? '300' : '799';
+        const period = planType === 'monthly' ? 'month' : '3 months';
+        const colorClass = planType === 'monthly' ? 'text-blue-400' : 'text-green-400';
+        priceElement.className = `text-4xl font-bold ${colorClass} mb-6`;
+        priceElement.innerHTML = `₹${price}<span class="text-lg text-slate-400">/${period}</span>`;
+    }
+}
+
+function initiatePayment(planType) {
+    const couponCode = appliedCoupons[planType] ? appliedCoupons[planType].coupon_code : null;
+    
+    const requestData = { plan_type: planType };
+    if (couponCode) {
+        requestData.coupon_code = couponCode;
+    }
+    
+    fetch('/create_order', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Error: ' + data.error);
+            return;
+        }
+        
+        const options = {
+            key: data.key,
+            amount: data.amount,
+            currency: data.currency,
+            name: 'CalculatenTrade',
+            description: `${planType.charAt(0).toUpperCase() + planType.slice(1)} Subscription`,
+            order_id: data.order_id,
+            handler: function(response) {
+                verifyPayment(response);
+            },
+            prefill: {
+                name: '{{ current_user.name or "" }}',
+                email: '{{ current_user.email }}'
+            },
+            theme: {
+                color: '#007bff'
+            }
+        };
+        
+        const rzp = new Razorpay(options);
+        rzp.open();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Payment initialization failed');
+    });
+}
+
+function verifyPayment(response) {
+    fetch('/verify_payment', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_signature: response.razorpay_signature
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert(data.message);
+            window.location.reload();
+        } else {
+            alert('Payment verification failed: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Payment verification failed');
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const couponCode = urlParams.get('coupon');
+    const autoApply = urlParams.get('auto_apply');
+    
+    if (couponCode && autoApply === 'true') {
+        showCouponWelcomeMessage(couponCode);
+        
+        document.getElementById('monthly-coupon').value = couponCode;
+        document.getElementById('yearly-coupon').value = couponCode;
+        
+        setTimeout(() => {
+            applyCoupon('monthly');
+            applyCoupon('yearly');
+        }, 500);
+    }
+});
+
+function showCouponWelcomeMessage(couponCode) {
+    const welcomeDiv = document.createElement('div');
+    welcomeDiv.className = 'bg-green-900/30 border border-green-500/30 text-green-300 p-4 rounded-xl mb-8';
+    welcomeDiv.innerHTML = `
+        <div class="flex items-center gap-2 mb-2">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4zM18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z"/>
+            </svg>
+            <h5 class="font-semibold">Welcome! Coupon Applied</h5>
+        </div>
+        <p class="text-sm">Your coupon code <strong>${couponCode}</strong> has been automatically applied to both plans. Choose your preferred subscription below!</p>
+    `;
+    
+    const container = document.querySelector('main');
+    const firstChild = container.children[1];
+    container.insertBefore(welcomeDiv, firstChild);
+}
+</script>
+{% endblock %}

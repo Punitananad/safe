@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Coupon</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .form-container { max-width: 500px; background: white; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 3px; box-sizing: border-box; }
+        button { padding: 12px 20px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #218838; }
+        .flash { background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin-bottom: 15px; }
+        .nav { margin-bottom: 20px; }
+        .nav a { margin-right: 15px; text-decoration: none; color: #007bff; }
+        .checkbox-group { display: flex; align-items: center; }
+        .checkbox-group input { margin-right: 8px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Create Coupon</h1>
+        <div>
+            Owner Panel | 
+            <a href="{{ url_for('admin.logout') }}">Logout</a>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="nav">
+        <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('admin.coupons') }}">View Coupons</a>
+        <a href="{{ url_for('admin.create_user') }}">Create Admin User</a>
+    </div>
+
+    <div class="form-container">
+        <h2>New Coupon</h2>
+        
+        <form method="POST">
+            <div class="form-group">
+                <label for="code">Coupon Code:</label>
+                <input type="text" id="code" name="code" required placeholder="e.g., SAVE20" maxlength="50">
+            </div>
+            
+            <div class="form-group">
+                <label for="discount_percent">Discount Percentage:</label>
+                <input type="number" id="discount_percent" name="discount_percent" value="10" required min="1" max="100" placeholder="e.g., 20">
+            </div>
+            
+            <div class="form-group">
+                <label for="mentor_id">Assign to Mentor (optional):</label>
+                <select id="mentor_id" name="mentor_id" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 3px;" onchange="updateCommission()">
+                    <option value="" data-commission="40.0">No mentor (Platform-level)</option>
+                    {% for mentor in mentors %}
+                        <option value="{{ mentor.id }}" data-commission="{{ mentor.get('commission_pct', 40.0) }}">{{ mentor.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="max_uses">Maximum Uses:</label>
+                <input type="number" id="max_uses" name="max_uses" value="100" min="1" placeholder="e.g., 100">
+            </div>
+            
+            <div class="form-group">
+                <label for="commission_pct">Mentor Commission %:</label>
+                <input type="number" id="commission_pct" name="commission_pct" value="40.0" min="0" max="100" step="0.1" placeholder="e.g., 40.0">
+            </div>
+            
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="active" name="active" checked>
+                    <label for="active">Active</label>
+                </div>
+            </div>
+            
+            <button type="submit">Create Coupon</button>
+        </form>
+    </div>
+
+    <script>
+        function updateCommission() {
+            const mentorSelect = document.getElementById('mentor_id');
+            const commissionInput = document.getElementById('commission_pct');
+            const selectedOption = mentorSelect.options[mentorSelect.selectedIndex];
+            const commission = selectedOption.getAttribute('data-commission') || '40.0';
+            commissionInput.value = commission;
+        }
+    </script>
+</body>
+</html>

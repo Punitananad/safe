@@ -1,0 +1,686 @@
+{% extends "base.html" %}
+
+{% block title %}Advanced MTF Trade Calculator — Journal{% endblock %}
+
+{% block extra_css %}
+<style>
+  :root { --muted: #94a3b8; --card: #0b1220; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+  .muted { color: var(--muted); }
+  .card-bg { background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005)); border:1px solid rgba(255,255,255,0.03); border-radius:1rem; }
+  .form-input { 
+    background: rgba(255,255,255,0.02); 
+    color: #e6eef6; 
+    border: 2px solid rgba(255,255,255,0.08); 
+    padding: 0.75rem 1rem; 
+    border-radius: 0.75rem; 
+    width: 100%; 
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+  }
+  
+  .form-input option {
+    background: #1f2937;
+    color: #e6eef6;
+    padding: 0.5rem;
+  }
+  
+  select.form-input {
+    cursor: pointer;
+    appearance: none;
+    background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 5"><path fill="%23e6eef6" d="M2 0L0 2h4zm0 5L0 3h4z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 12px;
+    padding-right: 3rem;
+  }
+  .form-input::placeholder { color: var(--muted); }
+  .form-input:focus { 
+    box-shadow: 0 0 0 3px rgba(14,165,164,0.15); 
+    border-color: rgba(14,165,164,0.4); 
+    outline: none;
+    background: rgba(255,255,255,0.04);
+  }
+  
+  .form-input:focus option {
+    background: #1f2937;
+    color: #e6eef6;
+  }
+  .form-input:hover {
+    border-color: rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.03);
+  }
+  
+  select.form-input {
+    background: #111827 !important;
+    color: #ffffff !important;
+    cursor: pointer;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+  
+  select.form-input option {
+    background: #111827 !important;
+    color: #ffffff !important;
+    padding: 8px 12px;
+  }
+  
+  select.form-input:focus {
+    background: #111827 !important;
+    color: #ffffff !important;
+  }
+  
+  select.form-input:hover {
+    background: #111827 !important;
+    color: #ffffff !important;
+  }
+
+  .btn { padding: .5rem .75rem; border-radius:.6rem; font-weight:600; cursor:pointer; border:1px solid rgba(255,255,255,0.04); }
+  .btn-primary { background: linear-gradient(90deg,#06b6d4,#3b82f6); color:#041024; border:none; }
+  .btn-success { background: linear-gradient(90deg,#10b981,#06b6d4); color:#041024; border:none; }
+  .btn-warning { background: linear-gradient(90deg,#f59e0b,#fb923c); color:#041024; border:none; }
+  .btn-outline { 
+    background: linear-gradient(90deg, rgba(59,130,246,0.1), rgba(14,165,164,0.1)); 
+    color: #38bdf8; 
+    border: 2px solid rgba(59,130,246,0.3);
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+  .btn-outline:hover {
+    background: linear-gradient(90deg, rgba(59,130,246,0.2), rgba(14,165,164,0.2));
+    border-color: rgba(59,130,246,0.5);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59,130,246,0.2);
+  }
+
+  .trade-type {
+    display: inline-flex;
+    gap: 0.5rem;
+    background: rgba(255,255,255,0.03);
+    padding: 0.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255,255,255,0.05);
+    margin-top: 0.5rem;
+  }
+
+  .trade-type .btn {
+    min-width: 100px;
+    text-align: center;
+    font-weight: 700;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+    font-size: 0.9rem;
+  }
+
+
+  .grid-results { display:grid; grid-template-columns: repeat(3, 1fr); gap:1rem; }
+  .tile { background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.007)); border:1px solid rgba(255,255,255,0.03); padding:1rem; border-radius:.75rem; }
+  .pricing_feature { display:block; color:var(--muted); font-size:0.85rem; }
+  .pricing_value { display:block; font-weight:700; font-size:1.05rem; margin-top:.35rem; }
+  .green { color:#22c55e; }
+  .red { color:#f43f5e; }
+
+  .search-results { max-height: 260px; overflow:auto; background: rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); border-radius: .75rem; position: absolute; z-index: 50; width:100%; }
+  .search-result-item { padding: .6rem .8rem; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; color: #e6eef6; }
+  .search-result-item:hover, .search-result-item.highlighted { background: rgba(56,189,248,0.15); }
+  .buy-btn {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.2);
+  }
+
+  .buy-btn.active {
+    background: linear-gradient(90deg, #10b981, #06b6d4);
+    color: #ffffff;
+    border-color: #10b981;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .sell-btn {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+
+  .sell-btn.active {
+    background: linear-gradient(90deg, #ef4444, #f87171);
+    color: #ffffff;
+    border-color: #ef4444;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .trade-type .btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+  }
+  @media (max-width: 1023px) {
+    .grid-results { display:block; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<main id="main" tabindex="-1">
+  <header class="mb-6">
+    <h1 class="text-2xl font-extrabold">MTF Trade Calculator</h1>
+    <p class="muted mt-1 text-sm">Precision entry, exit, risk, and capital calculations for MTF trades.</p>
+  </header>
+
+  <section class="card-bg p-6">
+    <h2 class="text-lg font-semibold mb-3">Stock Search & Trade Parameters</h2>
+    <p class="muted text-sm mb-4">Use leverage, define risk, and calculate target & stop-loss for your trades.</p>
+
+      <form id="tradeForm" autocomplete="off" class="space-y-4">
+        <div>
+          <label class="text-sm muted mb-1 block">Leverage</label>
+          <select id="leverage" class="form-input">
+            <option value="1">1x (No Leverage)</option>
+            <option value="2">2x Leverage</option>
+            <option value="3">3x Leverage</option>
+            <option value="4" selected>4x Leverage</option>
+            <option value="5">5x Leverage</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-sm muted mb-2 block">Search for Stock or Enter Manually</label>
+          <div class="relative">
+            <input id="stockSearch" type="text" class="form-input pr-12" placeholder="Type symbol, company name, or enter manually" />
+            <button id="clearSearch" type="button" class="btn btn-outline absolute right-0 top-0 mt-1 mr-1" style="display:none;">✕</button>
+            <div id="searchResults" class="search-results mt-2" style="display:none;"></div>
+          </div>
+          <p class="muted text-xs mt-2">💡 Search from database or type manually (e.g., RELIANCE, TCS, CUSTOM_SYMBOL)</p>
+          <button id="useManualSymbol" type="button" class="btn btn-outline mt-2" style="display:none;">Use "<span id="manualSymbolText"></span>" as manual entry</button>
+        </div>
+        <div id="stockPriceDisplay" style="display:none;" class="tile mt-2">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 id="stockName" class="font-semibold">Stock Name</h3>
+              <div class="mt-1 text-sm muted"><span class="kbd">Symbol</span> <span id="stockSymbol" class="ml-2 badge">SYMBOL</span></div>
+            </div>
+            <div class="text-right">
+              <div id="stockPrice" class="text-xl font-semibold">₹0.00</div>
+              <div id="stockChange" class="muted text-sm mt-1">+0.00 (+0.00%)</div>
+              <div id="stockUpdateTime" class="muted text-xs mt-2">--:--:--</div>
+              <div class="mt-3">
+                <button type="button" class="btn btn-primary" onclick="autoFillPrice()">Use this price</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-sm muted mb-2 block">Trade Type</label>
+          <div class="trade-type">
+            <button type="button" class="btn buy-btn active" data-type="buy" onclick="setTradeType('buy')">▲ BUY</button>
+            <button type="button" class="btn sell-btn" data-type="sell" onclick="setTradeType('sell')">▼ SELL</button>
+          </div>
+        </div>
+        <div class="grid gap-4 lg:grid-cols-2">
+          <div>
+            <label class="text-sm muted mb-1 block">Average Price</label>
+            <input id="avgPrice" type="number" step="0.01" class="form-input" placeholder="Enter average price per share" required />
+          </div>
+          <div>
+            <label class="text-sm muted mb-1 block">Quantity</label>
+            <input id="quantity" type="number" class="form-input" placeholder="Number of shares" required />
+          </div>
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-2">
+          <div>
+            <label class="text-sm muted mb-1 block" id="expectedReturnLabel">Expected Return (%)</label>
+            <input id="expectedReturn" type="number" step="0.1" class="form-input" value="2.5" />
+          </div>
+          <div>
+            <label class="text-sm muted mb-1 block">Risk (%)</label>
+            <input id="riskPercent" type="number" step="0.1" class="form-input" value="2.5" />
+          </div>
+        </div>
+
+        <div>
+          <label class="text-sm muted mb-1 block">Trade Notes</label>
+          <input id="comment" type="text" class="form-input" placeholder="Stock name, strategy, or comments..." />
+        </div>
+
+        <div class="flex items-center gap-3 mt-2">
+          <button type="button" class="btn btn-success" onclick="calculate()">Calculate</button>
+          <button type="button" class="btn btn-warning" onclick="resetForm()">Reset</button>
+          <button type="button" class="btn btn-outline" onclick="window.location.href='/saved_mtf'">View Saved Trades</button>
+        </div>
+    </form>
+  </section>
+
+  <!-- Results Section -->
+  <section id="output" style="display: none;" class="mt-8">
+    <div class="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-2 border-teal-500/20 rounded-xl p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-semibold text-white">MTF Trade Results</h2>
+        <div id="resultTradeType" class="px-3 py-1 rounded-full text-sm font-semibold bg-green-500 text-black">BUY</div>
+      </div>
+      
+      <div class="grid-results">
+        <div class="bg-gradient-to-br from-green-900/30 to-green-800/20 border border-green-500/30 rounded-lg p-4">
+          <span class="block text-xs text-green-300 mb-1">Target Price</span>
+          <span class="block text-lg font-bold text-green-400" id="targetPrice">₹0.00</span>
+        </div>
+        <div class="bg-gradient-to-br from-red-900/30 to-red-800/20 border border-red-500/30 rounded-lg p-4">
+          <span class="block text-xs text-red-300 mb-1">Stop-Loss Price</span>
+          <span class="block text-lg font-bold text-red-400" id="stopLossPrice">₹0.00</span>
+        </div>
+        <div class="bg-gradient-to-br from-green-900/30 to-green-800/20 border border-green-500/30 rounded-lg p-4">
+          <span class="block text-xs text-green-300 mb-1">Expected Profit</span>
+          <span class="block text-lg font-bold text-green-400" id="expectedProfit">₹0.00</span>
+        </div>
+        <div class="bg-gradient-to-br from-red-900/30 to-red-800/20 border border-red-500/30 rounded-lg p-4">
+          <span class="block text-xs text-red-300 mb-1">Maximum Risk</span>
+          <span class="block text-lg font-bold text-red-400" id="maxRisk">₹0.00</span>
+        </div>
+        <div class="bg-gradient-to-br from-blue-900/30 to-blue-800/20 border border-blue-500/30 rounded-lg p-4">
+          <span class="block text-xs text-blue-300 mb-1">Capital Used</span>
+          <span class="block text-lg font-bold text-blue-400" id="capitalUsed">₹0.00</span>
+        </div>
+        <div class="bg-gradient-to-br from-purple-900/30 to-purple-800/20 border border-purple-500/30 rounded-lg p-4">
+          <span class="block text-xs text-purple-300 mb-1">Risk-Reward Ratio</span>
+          <span class="block text-lg font-bold text-purple-400" id="riskReward">0.00 : 1</span>
+        </div>
+      </div>
+      
+      <div class="mt-6 bg-gradient-to-br from-slate-700/30 to-slate-600/20 border border-slate-500/30 rounded-lg p-4">
+        <h3 class="text-sm font-semibold mb-2 text-slate-300">Trade Notes</h3>
+        <p id="resultComment" class="text-slate-400">No notes provided</p>
+      </div>
+      
+      <div class="flex items-center gap-3 mt-6">
+        <button type="button" class="btn btn-success" onclick="saveAndReset()"><i class="fa fa-save"></i> Save & Reset</button>
+        <button type="button" class="btn btn-primary" onclick="copyResults()"><i class="fa fa-copy"></i> Copy Results</button>
+        <button type="button" class="btn btn-outline" onclick="window.location.href='/saved_mtf'"><i class="fa fa-list"></i> View Saved Trades</button>
+      </div>
+    </div>
+  </section>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+
+<script>
+let tradeType = "buy";
+let selectedStock = null;
+let resultData = null;
+
+function setTradeType(type) {
+  tradeType = type;
+  document.querySelectorAll(".trade-type .btn").forEach(btn => btn.classList.remove("active"));
+  document.querySelector(`.trade-type .${type}-btn`).classList.add("active");
+}
+
+function autoFillPrice() {
+  const priceText = document.getElementById("stockPrice").innerText.replace("₹", "").trim();
+  const price = parseFloat(priceText);
+  if (!isNaN(price)) {
+    document.getElementById("avgPrice").value = price;
+  }
+}
+
+function resetForm() {
+  document.getElementById("tradeForm").reset();
+  document.getElementById("stockPriceDisplay").style.display = "none";
+  document.getElementById("clearSearch").style.display = "none";
+  document.getElementById("searchResults").style.display = "none";
+  document.querySelectorAll(".trade-type .btn").forEach(btn => btn.classList.remove("active"));
+  document.querySelector(".trade-type .buy-btn").classList.add("active");
+  tradeType = "buy";
+  selectedStock = null;
+  resultData = null;
+  const output = document.getElementById("output");
+  if (output) output.style.display = "none";
+}
+
+function calculate() {
+  const avgPrice = parseFloat(document.getElementById("avgPrice").value);
+  const quantity = parseFloat(document.getElementById("quantity").value);
+  const expectedReturn = parseFloat(document.getElementById("expectedReturn").value);
+  const riskPercent = parseFloat(document.getElementById("riskPercent").value);
+  const leverage = parseFloat(document.getElementById("leverage").value);
+  const comment = document.getElementById("comment").value.trim();
+
+  if (isNaN(avgPrice) || isNaN(quantity) || avgPrice <= 0 || quantity <= 0) {
+    alert("Please enter valid Average Price and Quantity.");
+    return;
+  }
+
+  let targetPrice, stopLoss;
+  if (tradeType === "buy") {
+    targetPrice = avgPrice * (1 + expectedReturn / 100);
+    stopLoss = avgPrice * (1 - riskPercent / 100);
+  } else {
+    targetPrice = avgPrice * (1 - expectedReturn / 100);
+    stopLoss = avgPrice * (1 + riskPercent / 100);
+  }
+
+  const investedCapital = (avgPrice * quantity) / leverage;
+  const grossRisk = Math.abs(avgPrice - stopLoss) * quantity;
+  const grossProfit = Math.abs(targetPrice - avgPrice) * quantity;
+  const rrRatio = grossRisk === 0 ? '∞' : (grossProfit / grossRisk).toFixed(2);
+
+  resultData = {
+    trade_type: tradeType,
+    avg_price: avgPrice,
+    quantity,
+    expected_return: expectedReturn,
+    risk_percent: riskPercent,
+    capital_used: investedCapital,
+    target_price: targetPrice,
+    stop_loss_price: stopLoss,
+    total_reward: grossProfit,
+    total_risk: grossRisk,
+    rr_ratio: rrRatio,
+    comment,
+    symbol: selectedStock ? selectedStock.symbol : null,
+    leverage: leverage
+  };
+
+  // Update results
+  document.getElementById("targetPrice").textContent = `₹${targetPrice.toFixed(2)}`;
+  document.getElementById("stopLossPrice").textContent = `₹${stopLoss.toFixed(2)}`;
+  document.getElementById("expectedProfit").textContent = `₹${grossProfit.toFixed(2)}`;
+  document.getElementById("maxRisk").textContent = `₹${grossRisk.toFixed(2)}`;
+  document.getElementById("capitalUsed").textContent = `₹${investedCapital.toFixed(2)}`;
+  document.getElementById("riskReward").textContent = `${rrRatio} : 1`;
+  document.getElementById("resultComment").textContent = comment || 'No notes provided';
+  
+  // Update trade type badge
+  const tradeTypeBadge = document.getElementById("resultTradeType");
+  tradeTypeBadge.className = tradeType === 'buy' ? 'px-3 py-1 rounded-full text-sm font-semibold bg-green-500 text-black' : 'px-3 py-1 rounded-full text-sm font-semibold bg-red-500 text-white';
+  tradeTypeBadge.textContent = tradeType.toUpperCase();
+
+  document.getElementById("output").style.display = "block";
+  setTimeout(() => {
+    document.getElementById("output").scrollIntoView({ behavior: "smooth" });
+  }, 100);
+}
+
+async function saveAndReset() {
+  if (!resultData) {
+    calculate();
+    if (!resultData) {
+      alert('Failed to calculate. Please check inputs.');
+      return;
+    }
+  }
+
+  try {
+    const response = await fetch('/save_mtf_result', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(resultData)
+    });
+    if (response.ok) {
+      alert('MTF trade saved successfully!');
+      resetForm();
+    } else {
+      alert('Failed to save. Try again.');
+    }
+  } catch (error) {
+    console.error('Error saving:', error);
+    alert('Error saving trade. Check console for details.');
+  }
+}
+
+function copyResults() {
+  if (!resultData) {
+    alert('Please calculate first.');
+    return;
+  }
+  const txt = `Trade Type: ${resultData.trade_type.toUpperCase()}\nAverage Price: ₹${resultData.avg_price}\nQuantity: ${resultData.quantity}\nLeverage: ${resultData.leverage}x\nExpected Return: ${resultData.expected_return}%\nRisk Percent: ${resultData.risk_percent}%\nTarget Price: ₹${resultData.target_price.toFixed(2)}\nStop Loss Price: ₹${resultData.stop_loss_price.toFixed(2)}\nExpected Profit: ₹${resultData.total_reward.toFixed(2)}\nMax Risk: ₹${resultData.total_risk.toFixed(2)}\nCapital Used: ₹${resultData.capital_used.toFixed(2)} (${resultData.leverage}x Leverage)\nRisk-Reward Ratio: ${resultData.rr_ratio} : 1\nNotes: ${resultData.comment}`;
+
+  navigator.clipboard.writeText(txt).then(() => {
+    alert('Results copied to clipboard!');
+  });
+}
+
+// Stock search functionality
+const $ = id => document.getElementById(id);
+const debounce = (func, delay = 250) => {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => func.apply(this, args), delay);
+  };
+};
+
+function highlightMatch(text, query) {
+  if (!query) return text;
+  const queryEsc = query.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
+  const regex = new RegExp(`(${queryEsc})`, 'ig');
+  return text.replace(regex, '<mark>$1</mark>');
+}
+
+async function searchStock() {
+  const query = $('stockSearch').value.trim();
+  const clearBtn = $('clearSearch');
+  const manualBtn = $('useManualSymbol');
+  
+  clearBtn.style.display = query ? 'block' : 'none';
+  
+  if (!query) {
+    $('searchResults').style.display = 'none';
+    manualBtn.style.display = 'none';
+    return;
+  }
+  
+  const resultsContainer = $('searchResults');
+  resultsContainer.innerHTML = '<div class="search-result-item loading"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
+  resultsContainer.style.display = 'block';
+  
+  try {
+    const response = await fetch(`/search-equity-symbols?query=${encodeURIComponent(query)}`);
+    const data = await response.json();
+
+    resultsContainer.innerHTML = '';
+    if (data.error) {
+      resultsContainer.innerHTML = `<div class="search-result-item error"><i class="fas fa-exclamation-triangle"></i> ${data.error}</div>`;
+      return;
+    }
+    if (data.length === 0) {
+      resultsContainer.innerHTML = `<div class="search-result-item no-results"><i class="fas fa-search"></i> No matches found for "${query}"</div>`;
+      return;
+    }
+
+    data.forEach((stock, index) => {
+      const item = document.createElement('div');
+      item.className = 'search-result-item';
+      item.innerHTML = `
+        <div class="stock-info">
+          <div class="stock-name">${highlightMatch(stock.name, query)}</div>
+          <div class="stock-symbol">${highlightMatch(stock.symbol, query)}</div>
+        </div>
+        <div class="stock-action">
+          <i class="fas fa-plus-circle"></i>
+        </div>
+      `;
+      item.onclick = () => selectStock(stock);
+      item.onmouseenter = () => item.classList.add('highlighted');
+      item.onmouseleave = () => item.classList.remove('highlighted');
+      resultsContainer.appendChild(item);
+    });
+
+  } catch (e) {
+    console.error('Search error:', e);
+    resultsContainer.innerHTML = '<div class="search-result-item error"><i class="fas fa-wifi"></i> Connection error. Please try again.</div>';
+  }
+  
+  // Show manual entry option
+  if (query.length > 0) {
+    $('manualSymbolText').textContent = query.toUpperCase();
+    manualBtn.style.display = 'block';
+  } else {
+    manualBtn.style.display = 'none';
+  }
+}
+
+function selectStock(stock) {
+  selectedStock = stock;
+  $('stockSearch').value = `${stock.name} (${stock.symbol})`;
+  $('searchResults').style.display = 'none';
+  $('clearSearch').style.display = 'block';
+
+  $('stockName').textContent = stock.name;
+  $('stockSymbol').textContent = stock.symbol;
+  $('stockPriceDisplay').style.display = 'block';
+
+  fetchPrice(stock.symbol);
+}
+
+function clearSearch() {
+  $('stockSearch').value = '';
+  $('searchResults').style.display = 'none';
+  $('clearSearch').style.display = 'none';
+  $('useManualSymbol').style.display = 'none';
+  $('stockPriceDisplay').style.display = 'none';
+  selectedStock = null;
+  $('avgPrice').value = '';
+  $('comment').value = '';
+}
+
+function useManualSymbol() {
+  const query = $('stockSearch').value.trim();
+  if (!query) return;
+  
+  selectedStock = { name: query.toUpperCase(), symbol: query.toUpperCase() };
+  $('stockSearch').value = query.toUpperCase();
+  $('searchResults').style.display = 'none';
+  $('useManualSymbol').style.display = 'none';
+  $('clearSearch').style.display = 'block';
+  $('comment').value = query.toUpperCase() + ' (Manual Entry)';
+}
+
+async function fetchPrice(symbol) {
+  try {
+    const response = await fetch(`/get-price/${encodeURIComponent(symbol)}`);
+    const data = await response.json();
+    if (data.error) {
+      $('stockPrice').textContent = 'Error';
+      $('stockChange').textContent = data.error;
+      return;
+    }
+
+    $('stockPrice').textContent = `₹${data.price.toFixed(2)}`;
+    const sign = data.change >= 0 ? '+' : '';
+    $('stockChange').textContent = `${sign}${data.change.toFixed(2)} (${sign}${data.change_percent.toFixed(2)}%)`;
+    $('stockChange').className = data.change >= 0 ? 'green' : 'red';
+    $('stockUpdateTime').textContent = `Last updated: ${data.last_updated}`;
+
+    $('avgPrice').value = data.price.toFixed(2);
+    if (selectedStock) {
+      $('comment').value = `${selectedStock.name} (${selectedStock.symbol})`;
+    }
+  } catch (e) {
+    console.error('Price fetch failed', e);
+    $('stockPrice').textContent = 'Error';
+    $('stockChange').textContent = 'Failed to fetch price';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const stockSearchInput = $('stockSearch');
+  stockSearchInput.addEventListener('input', debounce(searchStock, 300));
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#stockSearch') && !e.target.closest('#searchResults')) {
+      $('searchResults').style.display = 'none';
+    }
+  });
+  
+  $('clearSearch').addEventListener('click', clearSearch);
+  $('useManualSymbol').addEventListener('click', useManualSymbol);
+  
+  $('stockSearch').addEventListener('keydown', (e) => {
+    const results = document.querySelectorAll('.search-result-item:not(.loading):not(.error):not(.no-results)');
+    if (results.length === 0) return;
+    
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const highlighted = document.querySelector('.search-result-item.highlighted');
+      let index = highlighted ? Array.from(results).indexOf(highlighted) : -1;
+      
+      if (highlighted) highlighted.classList.remove('highlighted');
+      
+      if (e.key === 'ArrowDown') {
+        index = (index + 1) % results.length;
+      } else {
+        index = index <= 0 ? results.length - 1 : index - 1;
+      }
+      
+      results[index].classList.add('highlighted');
+    } else if (e.key === 'Enter') {
+      const highlighted = document.querySelector('.search-result-item.highlighted');
+      if (highlighted) {
+        highlighted.click();
+      }
+    }
+  });
+});
+
+(function() {
+  function loadScript(src, cb) {
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = cb;
+    s.onerror = cb;
+    document.head.appendChild(s);
+  }
+
+  function generateSeries(points, base = 1200) {
+    const out = [];
+    let v = base;
+    for (let i = 0; i < points; i++) {
+      v = Math.max(1, v + (Math.random() - 0.45) * 8);
+      out.push(+v.toFixed(2));
+    }
+    return out;
+  }
+
+  loadScript("https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js", () => {
+    const c = document.getElementById("mini-insight-chart");
+    if (!c || !window.Chart) return;
+    const ctx = c.getContext("2d");
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const rect = c.parentElement.getBoundingClientRect();
+    c.width = rect.width * dpr;
+    c.height = rect.height * dpr;
+    c.style.width = rect.width + "px";
+    c.style.height = rect.height + "px";
+    const series = generateSeries(36, 1200 + (Math.random() * 20 - 10));
+    new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: series.map((_, i) => i + 1),
+        datasets: [
+          {
+            data: series,
+            borderColor: "#38bdf8",
+            tension: 0.35,
+            pointRadius: 0,
+            fill: true,
+            backgroundColor: "rgba(56,189,248,0.10)"
+          }
+        ]
+      },
+      options: {
+        responsive: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { display: false }, y: { display: false } }
+      }
+    });
+  });
+})();
+</script>
+
+
+{% endblock %}

@@ -1,0 +1,1032 @@
+{% extends "mentor/mentor_base.html" %}
+
+{% block title %}Mentor Dashboard - Calculate N Trade{% endblock %}
+
+{% block extra_css %}
+<style>
+
+.metric-card {
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--secondary-bg) 100%);
+    border: 1px solid var(--accent-teal);
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-teal), var(--accent-blue));
+}
+
+.card:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: 0 8px 25px rgba(77, 208, 225, 0.15) !important;
+}
+
+.metric-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(45deg, var(--accent-teal), var(--accent-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.metric-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.stats-icon {
+    background: linear-gradient(45deg, var(--accent-teal), var(--accent-blue));
+    border-radius: 12px;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.chart-container {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 20px;
+    height: 400px;
+    border: 1px solid var(--border-color);
+}
+
+.activity-feed {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.activity-item {
+    background: rgba(77, 208, 225, 0.1);
+    border-left: 3px solid var(--accent-teal);
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 12px;
+    padding: 12px;
+    transition: all 0.3s ease;
+}
+
+[data-theme="light"] .activity-item {
+    background: rgba(0, 123, 255, 0.05);
+}
+
+.activity-item:hover {
+    background: rgba(77, 208, 225, 0.2);
+    transform: translateX(5px);
+}
+
+[data-theme="light"] .activity-item:hover {
+    background: rgba(0, 123, 255, 0.1);
+}
+
+.btn-primary {
+    background: linear-gradient(45deg, var(--accent-teal), var(--accent-blue));
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    padding: 10px 20px;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(77, 208, 225, 0.4);
+}
+
+.table {
+    color: var(--text-primary) !important;
+    background: var(--card-bg) !important;
+}
+
+.table th {
+    border-bottom: 2px solid var(--border-color);
+    color: var(--text-primary) !important;
+    font-weight: 600;
+    background: var(--secondary-bg) !important;
+}
+
+.table td {
+    border-top: 1px solid var(--border-color);
+    padding: 12px 15px;
+    color: var(--text-primary) !important;
+    background: var(--card-bg) !important;
+}
+
+.table tbody tr {
+    background: var(--card-bg) !important;
+}
+
+.table tbody tr:hover {
+    background: rgba(77, 208, 225, 0.1) !important;
+}
+
+.badge-teal {
+    background: var(--accent-teal);
+    color: white;
+}
+
+.quick-action-btn {
+    background: rgba(77, 208, 225, 0.1);
+    border: 1px solid var(--accent-teal);
+    color: var(--accent-teal);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    padding: 12px;
+    text-align: left;
+    font-weight: 500;
+}
+
+[data-theme="light"] .quick-action-btn {
+    background: rgba(0, 123, 255, 0.05);
+    color: var(--accent-teal);
+}
+
+.quick-action-btn:hover {
+    background: var(--accent-teal);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.portfolio-widget {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    border-radius: 12px;
+    padding: 20px;
+    color: white;
+    border: none;
+}
+
+[data-theme="light"] .portfolio-widget {
+    background: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+[data-theme="light"] .portfolio-widget .badge {
+    background: var(--accent-teal) !important;
+    color: white !important;
+}
+
+[data-theme="light"] .portfolio-widget .text-secondary {
+    color: var(--text-secondary) !important;
+}
+
+.live-indicator {
+    background: var(--success-color);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.scrollbar-custom::-webkit-scrollbar {
+    width: 6px;
+}
+
+.scrollbar-custom::-webkit-scrollbar-track {
+    background: var(--primary-bg);
+    border-radius: 3px;
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb {
+    background: var(--accent-teal);
+    border-radius: 3px;
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-blue);
+}
+
+.text-success {
+    color: var(--success-color) !important;
+}
+
+.text-warning {
+    color: var(--warning-color) !important;
+}
+
+.text-info {
+    color: var(--info-color) !important;
+}
+
+.text-danger {
+    color: var(--danger-color) !important;
+}
+
+.dropdown-menu {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+.dropdown-item {
+    color: var(--text-primary);
+    padding: 8px 16px;
+}
+
+.dropdown-item:hover {
+    background: rgba(77, 208, 225, 0.1);
+    color: var(--text-primary);
+}
+
+.form-control {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.form-control:focus {
+    background: var(--card-bg);
+    border-color: var(--accent-teal);
+    color: var(--text-primary);
+    box-shadow: 0 0 0 0.2rem rgba(77, 208, 225, 0.25);
+}
+
+.btn-outline-info {
+    color: var(--accent-teal);
+    border-color: var(--accent-teal);
+}
+
+.btn-outline-info:hover {
+    background: var(--accent-teal);
+    border-color: var(--accent-teal);
+    color: white;
+}
+
+.btn-check:checked + .btn-outline-info {
+    background: var(--accent-teal);
+    border-color: var(--accent-teal);
+    color: white;
+}
+
+/* Ensure all text elements use theme colors */
+h1, h2, h3, h4, h5, h6, p, span, div, a, li, td, th {
+    color: inherit;
+}
+
+/* Fix for table in light theme */
+[data-theme="light"] .table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--text-primary);
+}
+
+/* Fix for dropdown in light theme */
+[data-theme="light"] .dropdown-menu {
+    --bs-dropdown-bg: var(--card-bg);
+    --bs-dropdown-link-color: var(--text-primary);
+    --bs-dropdown-link-hover-color: var(--text-primary);
+    --bs-dropdown-link-hover-bg: rgba(0, 123, 255, 0.1);
+}
+
+/* Fix for input group in light theme */
+[data-theme="light"] .input-group-text {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Fix for pagination */
+.page-link {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--accent-teal);
+}
+
+.page-link:hover {
+    background: var(--accent-teal);
+    border-color: var(--accent-teal);
+    color: white;
+}
+
+.page-item.active .page-link {
+    background: var(--accent-teal);
+    border-color: var(--accent-teal);
+}
+
+/* Fix for badges */
+.badge {
+    font-weight: 500;
+}
+
+.bg-success {
+    background: var(--success-color) !important;
+}
+
+.bg-warning {
+    background: var(--warning-color) !important;
+}
+
+.bg-info {
+    background: var(--info-color) !important;
+}
+
+.bg-danger {
+    background: var(--danger-color) !important;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    .metric-card {
+        margin-bottom: 1rem;
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+    }
+    
+    .stats-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+    
+    .chart-container {
+        height: 300px;
+        padding: 15px;
+    }
+    
+    .activity-feed {
+        max-height: 300px;
+    }
+    
+    .portfolio-widget {
+        padding: 15px;
+        margin-bottom: 1rem;
+    }
+    
+    .quick-action-btn {
+        padding: 10px;
+        font-size: 14px;
+    }
+    
+    .table-responsive {
+        font-size: 14px;
+    }
+    
+    .btn-group-sm .btn {
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 576px) {
+    .container-fluid {
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+    
+    .metric-value {
+        font-size: 1.8rem;
+    }
+    
+    .metric-label {
+        font-size: 0.8rem;
+    }
+    
+    .stats-icon {
+        width: 45px;
+        height: 45px;
+        font-size: 1rem;
+    }
+    
+    .chart-container {
+        height: 250px;
+        padding: 10px;
+    }
+    
+    .portfolio-widget {
+        padding: 12px;
+    }
+    
+    .portfolio-widget .h2 {
+        font-size: 1.5rem;
+    }
+    
+    .activity-item {
+        padding: 8px;
+        margin-bottom: 8px;
+    }
+    
+    .quick-action-btn {
+        padding: 8px;
+        font-size: 13px;
+    }
+    
+    .table {
+        font-size: 12px;
+    }
+    
+    .table th,
+    .table td {
+        padding: 8px 6px;
+    }
+    
+    .btn-group-sm .btn {
+        padding: 2px 6px;
+        font-size: 11px;
+    }
+    
+    .card-header h5 {
+        font-size: 16px;
+    }
+    
+    .input-group-sm .form-control {
+        font-size: 12px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Dashboard Content -->
+<div class="container-fluid px-4 py-3">
+    <div class="row align-items-center mb-4">
+        <div class="col">
+            <div class="d-flex align-items-center gap-2">
+                <span class="live-indicator"></span>
+                <small class="text-success">Live Dashboard</small>
+                <button class="btn btn-outline-info btn-sm ms-auto" onclick="refreshDashboard()">
+                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metrics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="card metric-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="metric-label mb-1">Total Coupons</div>
+                            <div class="metric-value">{{ total_coupons or 0 }}</div>
+                            {% if total_coupons > 0 %}
+                                <div class="small text-success">
+                                    <i class="fas fa-arrow-up me-1"></i>Active
+                                </div>
+                            {% else %}
+                                <div class="small text-secondary">
+                                    <i class="fas fa-info-circle me-1"></i>No data yet
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="stats-icon">
+                            <i class="fas fa-ticket-alt"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card metric-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="metric-label mb-1">Used Coupons</div>
+                            <div class="metric-value">{{ used_coupons or 0 }}</div>
+                            {% if used_coupons > 0 %}
+                                <div class="small text-success">
+                                    <i class="fas fa-check me-1"></i>Active usage
+                                </div>
+                            {% else %}
+                                <div class="small text-secondary">
+                                    <i class="fas fa-info-circle me-1"></i>No usage yet
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="stats-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card metric-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="metric-label mb-1">Total Students</div>
+                            <div class="metric-value">{{ students.total or 0 }}</div>
+                            {% if students.total > 0 %}
+                                <div class="small text-success">
+                                    <i class="fas fa-users me-1"></i>Registered
+                                </div>
+                            {% else %}
+                                <div class="small text-secondary">
+                                    <i class="fas fa-info-circle me-1"></i>No students yet
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="stats-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card metric-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="metric-label mb-1">Commission</div>
+                            <div class="metric-value">₹{{ "%.2f"|format((total_commission / 100) if total_commission else 0) }}</div>
+                            {% if used_coupons > 0 %}
+                                <div class="small text-success">
+                                    <i class="fas fa-check me-1"></i>Earned from referrals
+                                </div>
+                            {% else %}
+                                <div class="small text-secondary">
+                                    <i class="fas fa-info-circle me-1"></i>Earn when students use coupons
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="stats-icon">
+                            <i class="fas fa-rupee-sign"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Portfolio Widget -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="portfolio-widget">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Commission Snapshot</h5>
+                    {% if used_coupons > 0 %}
+                        <span class="badge bg-success">Active</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Waiting for data</span>
+                    {% endif %}
+                </div>
+                <div class="h2 mb-1">₹{{ "%.2f"|format((total_commission / 100) if total_commission else 0) }}</div>
+                {% if used_coupons > 0 %}
+                    <div class="text-success">
+                        <i class="fas fa-arrow-up me-1"></i>{{ used_coupons }} referral{{ 's' if used_coupons != 1 else '' }}
+                    </div>
+                {% else %}
+                    <div class="text-secondary">
+                        <i class="fas fa-info-circle me-1"></i>Commission will appear when students use coupons
+                    </div>
+                {% endif %}
+                <div class="mt-3 text-center">
+                    {% if used_coupons > 0 %}
+                        <i class="fas fa-coins fa-3x text-warning mb-2"></i>
+                        <p class="small mt-2">Total Earnings</p>
+                    {% else %}
+                        <i class="fas fa-chart-line fa-3x text-secondary opacity-50"></i>
+                        <p class="small text-secondary mt-2">No data to display</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header border-0">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-2" style="color: var(--accent-teal);"></i>
+                        Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-3">
+                        <a href="{{ url_for('mentor.coupons') }}" class="btn quick-action-btn">
+                            <i class="fas fa-share me-2"></i>Share Coupons
+                        </a>
+                        <button class="btn quick-action-btn" onclick="generateReport()">
+                            <i class="fas fa-download me-2"></i>Download Report
+                        </button>
+                        <button class="btn quick-action-btn" onclick="viewAnalytics()">
+                            <i class="fas fa-chart-bar me-2"></i>View Analytics
+                        </button>
+                        <button class="btn quick-action-btn" onclick="contactSupport()">
+                            <i class="fas fa-headset me-2"></i>Contact Support
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Students Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header border-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-users me-2" style="color: var(--accent-teal);"></i>
+                            Student Management
+                        </h5>
+                        <div class="d-flex gap-2">
+                            <form method="GET" class="d-flex">
+                                <div class="input-group input-group-sm">
+                                    <input type="text" name="search" class="form-control" 
+                                           placeholder="Search students..." value="{{ search }}">
+                                    <button type="submit" class="btn btn-outline-info">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </form>
+                            <button class="btn btn-sm btn-outline-success" onclick="exportStudents()">
+                                <i class="fas fa-download me-1"></i>Export
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if students.items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th class="border-0">Student</th>
+                                        <th class="border-0">Email</th>
+                                        <th class="border-0">Coupon</th>
+                                        <th class="border-0">Student Paid</th>
+                                        <th class="border-0">Commission (40%)</th>
+                                        <th class="border-0">Date</th>
+                                        <th class="border-0">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for student in students.items %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="stats-icon me-3" style="width: 35px; height: 35px; font-size: 0.9rem;">
+                                                    {{ student[1][0] if student[1] else student[0][0] }}
+                                                </div>
+                                                <div>
+                                                    <div class="fw-bold">{{ student[1] or 'N/A' }}</div>
+                                                    <small class="metric-label">ID: #{{ loop.index }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{{ student[0] }}</td>
+                                        <td>
+                                            <span class="badge badge-teal">{{ student[2] }}</span>
+                                        </td>
+                                        <td class="text-info fw-bold">₹{{ "%.2f"|format((student[4] or 0) / 100) }}</td>
+                                        <td class="text-warning fw-bold">₹{{ "%.2f"|format((student[5] or 0) / 100) }}</td>
+                                        <td>
+                                            {% if student[3] %}
+                                                {% if student[3] is string %}
+                                                    <div>{{ student[3][:10] }}</div>
+                                                    <small class="metric-label">{{ student[3][11:16] if student[3]|length > 16 else '' }}</small>
+                                                {% else %}
+                                                    <div>{{ student[3].strftime('%d %b %Y') }}</div>
+                                                    <small class="metric-label">{{ student[3].strftime('%I:%M %p') }}</small>
+                                                {% endif %}
+                                            {% else %}
+                                                <div>N/A</div>
+                                                <small class="metric-label"></small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-info" onclick="viewStudent('{{ student[0] }}')">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-outline-success" onclick="messageStudent('{{ student[0] }}')">
+                                                    <i class="fas fa-message"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-users fa-4x metric-label mb-3"></i>
+                            <h5 class="metric-label">No students found</h5>
+                            <p class="metric-label mb-4">Start sharing your coupons to attract students!</p>
+                            <a href="{{ url_for('mentor.coupons') }}" class="btn btn-primary">
+                                <i class="fas fa-share me-2"></i>Share Coupons
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Theme toggle functionality
+function toggleTheme() {
+    const body = document.body;
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = themeToggle.querySelector('i');
+    const themeText = themeToggle.querySelector('span');
+    
+    if (body.getAttribute('data-theme') === 'light') {
+        body.setAttribute('data-theme', 'dark');
+        themeIcon.className = 'fas fa-moon';
+        themeText.textContent = 'Mode';
+        localStorage.setItem('theme', 'dark');
+        updateChartTheme('dark');
+    } else {
+        body.setAttribute('data-theme', 'light');
+        themeIcon.className = 'fas fa-sun';
+        themeText.textContent = 'Light Mode';
+        localStorage.setItem('theme', 'light');
+        updateChartTheme('light');
+    }
+}
+
+// Load saved theme
+function loadTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    const body = document.body;
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = themeToggle.querySelector('i');
+    const themeText = themeToggle.querySelector('span');
+    
+    body.setAttribute('data-theme', savedTheme);
+    
+    if (savedTheme === 'light') {
+        themeIcon.className = 'fas fa-sun';
+        themeText.textContent = 'Light Mode';
+    } else {
+        themeIcon.className = 'fas fa-moon';
+        themeText.textContent = 'Mode';
+    }
+    
+    updateChartTheme(savedTheme);
+}
+
+// Update chart colors based on theme
+function updateChartTheme(theme) {
+    const isDark = theme === 'dark';
+    
+    // Update Chart.js defaults
+    Chart.defaults.color = isDark ? '#ffffff' : '#000000';
+    Chart.defaults.borderColor = isDark ? '#37474f' : '#dee2e6';
+    
+    // Update existing charts
+    if (performanceChart) {
+        performanceChart.options.scales.y.ticks.color = isDark ? '#ffffff' : '#000000';
+        performanceChart.options.scales.x.ticks.color = isDark ? '#ffffff' : '#000000';
+        performanceChart.options.scales.y.grid.color = isDark ? 'rgba(55, 71, 79, 0.5)' : 'rgba(222, 226, 230, 0.5)';
+        performanceChart.options.scales.x.grid.color = isDark ? 'rgba(55, 71, 79, 0.5)' : 'rgba(222, 226, 230, 0.5)';
+        performanceChart.options.plugins.legend.labels.color = isDark ? '#ffffff' : '#000000';
+        performanceChart.update();
+    }
+    
+    if (portfolioChart) {
+        portfolioChart.data.datasets[0].borderColor = isDark ? '#ffffff' : '#ffffff';
+        portfolioChart.data.datasets[0].backgroundColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.1)';
+        portfolioChart.update();
+    }
+}
+
+// Chart.js default colors
+Chart.defaults.color = '#ffffff';
+Chart.defaults.borderColor = '#37474f';
+
+// Performance Chart
+const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+let performanceChart = null;
+
+function initPerformanceChart() {
+    const hasUsage = {% if used_coupons and used_coupons > 0 %}true{% else %}false{% endif %};
+    
+    performanceChart = new Chart(performanceCtx, {
+        type: 'line',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+                label: hasUsage ? 'Coupon Usage' : 'Sample: Coupon Usage',
+                data: hasUsage ? [{{ used_coupons }}, 0, 0, 0, 0, 0, 0] : [0, 0, 0, 0, 0, 0, 0],
+                borderColor: '#4dd0e1',
+                backgroundColor: 'rgba(77, 208, 225, 0.1)',
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: '#4dd0e1',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2
+            }, {
+                label: hasUsage ? 'Commission (₹)' : 'Sample: Commission (₹)',
+                data: hasUsage ? [{{ "%.0f"|format(((2500 - (used_coupons * 750)) * 0.4 * used_coupons) / 100) if used_coupons > 0 else 0 }}, 0, 0, 0, 0, 0, 0] : [0, 0, 0, 0, 0, 0, 0],
+                borderColor: '#42a5f5',
+                backgroundColor: 'rgba(66, 165, 245, 0.1)',
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: '#42a5f5',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20,
+                        color: getComputedStyle(document.body).getPropertyValue('--text-primary'),
+                        font: {
+                            weight: 'bold'
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: getComputedStyle(document.body).getPropertyValue('--border-color')
+                    },
+                    ticks: {
+                        color: getComputedStyle(document.body).getPropertyValue('--text-primary'),
+                        font: {
+                            weight: 'bold'
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        color: getComputedStyle(document.body).getPropertyValue('--border-color')
+                    },
+                    ticks: {
+                        color: getComputedStyle(document.body).getPropertyValue('--text-primary'),
+                        font: {
+                            weight: 'bold'
+                        }
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            }
+        }
+    });
+}
+
+// Portfolio Chart (Mini chart)
+const portfolioCtx = document.getElementById('portfolioChart').getContext('2d');
+let portfolioChart = null;
+
+function initPortfolioChart() {
+    portfolioChart = new Chart(portfolioCtx, {
+        type: 'line',
+        data: {
+            labels: Array.from({length: 30}, (_, i) => i + 1),
+            datasets: [{
+                data: [12000, 12100, 12050, 12200, 12150, 12300, 12250, 12400, 12350, 12450, 
+                       12400, 12500, 12480, 12520, 12490, 12550, 12530, 12580, 12560, 12600,
+                       12580, 12620, 12600, 12650, 12630, 12680, 12660, 12700, 12680, 12450],
+                borderColor: '#ffffff',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                tension: 0.4,
+                fill: true,
+                pointRadius: 0,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    display: false
+                },
+                x: {
+                    display: false
+                }
+            },
+            elements: {
+                point: {
+                    radius: 0
+                }
+            }
+        }
+    });
+}
+
+// Dashboard Functions
+function refreshDashboard() {
+    location.reload();
+}
+
+function generateReport() {
+    // Simulate report generation
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
+    btn.disabled = true;
+    
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        alert('Report generated successfully! Download will start shortly.');
+    }, 2000);
+}
+
+function viewAnalytics() {
+    alert('Opening advanced analytics dashboard...');
+}
+
+function contactSupport() {
+    window.open('mailto:support@calculatentrade.com?subject=Mentor Support Request', '_blank');
+}
+
+function exportStudents() {
+    alert('Exporting student data to CSV...');
+}
+
+function viewStudent(email) {
+    alert(`Viewing profile for: ${email}`);
+}
+
+function messageStudent(email) {
+    window.open(`mailto:${email}?subject=Message from your mentor`, '_blank');
+}
+
+// Time range filter functionality
+document.querySelectorAll('input[name="timeRange"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        updateChartData(this.id);
+    });
+});
+
+function updateChartData(range) {
+    let newData;
+    switch(range) {
+        case 'week':
+            newData = [12, 19, 8, 15, 22, 18, 25];
+            break;
+        case 'month':
+            newData = [45, 52, 38, 48, 65, 58, 72, 68, 75, 82, 78, 85, 88, 92, 89, 95, 98, 102, 99, 105, 108, 112, 109, 115, 118, 122, 119, 125, 128, 132];
+            break;
+        case 'quarter':
+            newData = [120, 135, 128, 142, 155, 148, 162, 158, 165, 172, 168, 175];
+            break;
+    }
+    
+    performanceChart.data.datasets[0].data = newData;
+    performanceChart.update();
+}
+
+// Initialize theme on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadTheme();
+    
+    // Always initialize portfolio chart for commission display
+    if (document.getElementById('portfolioChart')) {
+        initPortfolioChart();
+    }
+    // Portfolio chart removed as it shows dummy data
+});
+
+// Auto-refresh every 5 minutes
+setInterval(() => {
+    console.log('Auto-refreshing dashboard data...');
+    // Update metrics without full page reload
+}, 300000);
+
+// Smooth scroll for activity feed
+document.querySelector('.activity-feed').style.scrollBehavior = 'smooth';
+</script>
+{% endblock %}

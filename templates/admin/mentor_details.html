@@ -1,0 +1,238 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Mentor Details - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="fas fa-user-tie me-2"></i>{{ mentor.name }} - Details</h2>
+                <p class="text-muted">Mentor ID: {{ mentor.mentor_id }}</p>
+            </div>
+            <a href="{{ url_for('admin.mentors') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Mentors
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Mentor Info & Analytics -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Mentor Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-2">
+                    <div class="col-sm-5"><strong>Name:</strong></div>
+                    <div class="col-sm-7">{{ mentor.name }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-sm-5"><strong>Email:</strong></div>
+                    <div class="col-sm-7">{{ mentor.email }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-sm-5"><strong>Status:</strong></div>
+                    <div class="col-sm-7">
+                        <span class="badge bg-{{ 'success' if mentor.active else 'danger' }}">
+                            {{ 'Active' if mentor.active else 'Inactive' }}
+                        </span>
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-sm-5"><strong>Joined:</strong></div>
+                    <div class="col-sm-7">{{ mentor.created_at[:10] if mentor.created_at else 'N/A' }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-sm-5"><strong>Commission:</strong></div>
+                    <div class="col-sm-7">
+                        <span class="badge bg-info">{{ "%.1f"|format(analytics[5] or 10) }}%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Performance Analytics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <h4 class="text-primary">{{ analytics[0] or 0 }}</h4>
+                            <p class="mb-0 small">Total Coupon Uses</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <h4 class="text-info">{{ analytics[1] or 0 }}</h4>
+                            <p class="mb-0 small">Unique Students</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <h4 class="text-success">₹{{ "%.2f"|format((analytics[2] or 0) / 100) }}</h4>
+                            <p class="mb-0 small">Commission Owed</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <h4 class="text-warning">₹{{ "%.2f"|format((analytics[3] or 0) / 100) }}</h4>
+                            <p class="mb-0 small">Total Discounts</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assigned Coupons -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-ticket-alt me-2"></i>Assigned Coupons ({{ coupons|length }})</h5>
+            </div>
+            <div class="card-body">
+                {% if coupons %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Discount</th>
+                                    <th>Usage</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for coupon in coupons %}
+                                <tr>
+                                    <td><code>{{ coupon[0] }}</code></td>
+                                    <td><span class="badge bg-success">{{ coupon[1] }}%</span></td>
+                                    <td>
+                                        <div class="progress" style="height: 15px; width: 80px;">
+                                            {% set usage_percent = (coupon[3] / coupon[2] * 100) if coupon[2] > 0 else 0 %}
+                                            <div class="progress-bar" style="width: {{ usage_percent }}%">
+                                                {{ coupon[3] }}/{{ coupon[2] }}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if coupon[4] else 'danger' }}">
+                                            {{ 'Active' if coupon[4] else 'Inactive' }}
+                                        </span>
+                                    </td>
+                                    <td>{{ coupon[5][:10] if coupon[5] else 'N/A' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center">No coupons assigned to this mentor.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Students -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-users me-2"></i>Recent Students ({{ students|length }})</h5>
+            </div>
+            <div class="card-body">
+                {% if students %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Student Email</th>
+                                    <th>Name</th>
+                                    <th>Coupon Used</th>
+                                    <th>Usage Date</th>
+                                    <th>Commission</th>
+                                    <th>Discount Given</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student in students %}
+                                <tr>
+                                    <td>{{ student[0] }}</td>
+                                    <td>{{ student[1] or 'N/A' }}</td>
+                                    <td><span class="badge bg-primary">{{ student[2] }}</span></td>
+                                    <td>
+                                        {% if student[3] %}
+                                            {% if student[3] is string %}
+                                                {{ student[3][:16] }}
+                                            {% else %}
+                                                {{ student[3].strftime('%Y-%m-%d %H:%M') }}
+                                            {% endif %}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td><strong class="text-success">₹{{ "%.2f"|format((student[4] or 0) / 100) }}</strong></td>
+                                    <td><span class="text-info">₹{{ "%.2f"|format((student[5] or 0) / 100) }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5>No Students Yet</h5>
+                        <p class="text-muted">No students have used this mentor's coupons yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Actions -->
+{% if analytics[2] and analytics[2] > 0 %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i>Commission Payment</h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h4>Total Commission Owed: <span class="text-success">₹{{ "%.2f"|format((analytics[2] or 0) / 100) }}</span></h4>
+                        <p class="mb-0">Based on {{ analytics[0] or 0 }} successful coupon uses from {{ analytics[1] or 0 }} unique students.</p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <button class="btn btn-success btn-lg" onclick="markAsPaid({{ mentor.id }}, {{ analytics[2] or 0 }})">
+                            <i class="fas fa-check me-2"></i>Mark as Paid
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function markAsPaid(mentorId, amount) {
+    if (confirm(`Mark ₹${(amount/100).toFixed(2)} as paid to this mentor?`)) {
+        // Here you would implement the payment marking logic
+        alert('Payment marking functionality to be implemented');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Required - CalculatenTrade</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .pricing-card {
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+        }
+        .pricing-card:hover {
+            border-color: #007bff;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,123,255,0.1);
+        }
+        .popular-badge {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            position: absolute;
+            top: -10px;
+            right: 20px;
+        }
+        .price {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #f8f9fa;
+        }
+        .feature-list li:before {
+            content: "✓";
+            color: #28a745;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="text-center mb-5">
+                    <h1 class="display-4 text-primary">Unlock Premium Features</h1>
+                    <p class="lead text-muted">Choose a plan to access all trading calculators and advanced features</p>
+                </div>
+
+                <div class="row g-4">
+                    <!-- Monthly Plan -->
+                    <div class="col-md-6">
+                        <div class="pricing-card p-4 h-100 text-center position-relative">
+                            <h3 class="mb-3">Monthly Plan</h3>
+                            <div class="price mb-3">₹250<small class="text-muted fs-6">/month</small></div>
+                            
+                            <ul class="feature-list mb-4">
+                                <li>All Trading Calculators</li>
+                                <li>Intraday Calculator (5x Leverage)</li>
+                                <li>Delivery Calculator</li>
+                                <li>Swing Calculator</li>
+                                <li>MTF Calculator</li>
+                                <li>F&O Calculator</li>
+                                <li>Position Splitting</li>
+                                <li>Pivot Point Analysis</li>
+                                <li>Trade Journal Integration</li>
+                                <li>Real-time Market Data</li>
+                                <li>Risk Management Tools</li>
+                                <li>Email Support</li>
+                            </ul>
+                            
+                            <form method="POST" action="{{ url_for('purchase_subscription') }}">
+                                <input type="hidden" name="plan_type" value="monthly">
+                                <button type="submit" class="btn btn-outline-primary btn-lg w-100">
+                                    Choose Monthly Plan
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Yearly Plan -->
+                    <div class="col-md-6">
+                        <div class="pricing-card p-4 h-100 text-center position-relative">
+                            <div class="popular-badge">BEST VALUE</div>
+                            <h3 class="mb-3">Yearly Plan</h3>
+                            <div class="price mb-3">₹2,700<small class="text-muted fs-6">/year</small></div>
+                            <p class="text-success mb-3"><strong>Save ₹300!</strong> (₹225/month)</p>
+                            
+                            <ul class="feature-list mb-4">
+                                <li>All Trading Calculators</li>
+                                <li>Intraday Calculator (5x Leverage)</li>
+                                <li>Delivery Calculator</li>
+                                <li>Swing Calculator</li>
+                                <li>MTF Calculator</li>
+                                <li>F&O Calculator</li>
+                                <li>Position Splitting</li>
+                                <li>Pivot Point Analysis</li>
+                                <li>Trade Journal Integration</li>
+                                <li>Real-time Market Data</li>
+                                <li>Risk Management Tools</li>
+                                <li>Priority Email Support</li>
+                                <li><strong>Advanced Analytics</strong></li>
+                                <li><strong>Custom Strategies</strong></li>
+                            </ul>
+                            
+                            <form method="POST" action="{{ url_for('purchase_subscription') }}">
+                                <input type="hidden" name="plan_type" value="yearly">
+                                <button type="submit" class="btn btn-primary btn-lg w-100">
+                                    Choose Yearly Plan
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-5">
+                    <div class="alert alert-info mb-3">
+                        <h6><i class="fas fa-info-circle"></i> Important Notice</h6>
+                        <p class="mb-0 small"><strong>CalculatenTrade is a SOFTWARE SERVICE only.</strong> We provide trading calculation tools and journaling software. We do NOT engage in any trading activities or provide trading services.</p>
+                    </div>
+                    <p class="text-muted">
+                        <small>
+                            By purchasing a subscription, you agree to our 
+                            <a href="{{ url_for('terms') }}" target="_blank">Terms and Conditions</a>
+                        </small>
+                    </p>
+                    <a href="{{ url_for('home') }}" class="btn btn-link">← Back to Home</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

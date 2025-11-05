@@ -1,0 +1,296 @@
+{# templates/base.html - responsive + sticky sidebar + collapse + active-link (Tailwind) #}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{% block title %}CalculateNTrade{% endblock %}</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root{
+      --bg: #071022;      
+      --card: #0f1724;
+      --muted: #94a3b8;
+      --accent: #0ea5a4;
+      --accent-2: #0369a1;
+    }
+  
+    html,body { height:100%; background:var(--bg); color: #e6eef6; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+    a { color: var(--accent); }
+   
+    .focus-ring:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(14,165,164,0.12); border-radius: .5rem; }
+    
+    .screenshot-placeholder { background: linear-gradient(135deg, rgba(14,165,164,0.04), rgba(2,6,23,0.55)); border: 1px dashed rgba(14,165,164,0.08); }
+    
+    .sidebar-hidden { transform: translateX(-110%); }
+    
+    .muted { color: var(--muted); }
+    .scrollable { scrollbar-color: rgba(255,255,255,0.08) transparent; }
+    .overlay { background: rgba(2,6,23,0.6); }
+    .sidebar-collapsed { width: 5.25rem !important; } 
+    .sidebar-collapsed .sidebar-label { display: none !important; }
+    .sidebar-collapsed .sidebar-brand { display: none !important; } 
+
+    .sidebar-collapsed .sidebar-item { justify-content: center; padding-left: 0.5rem; padding-right: 0.5rem; }
+    .sidebar-collapsed .profile-snippet { justify-content: center; }
+    .sidebar a.active { background: linear-gradient(90deg, rgba(14,165,164,0.08), rgba(3,105,161,0.03)); border-left: 3px solid var(--accent); }
+    .sr-only.focus\:not-sr-only:focus { position: static; width: auto; height: auto; margin: 0.5rem; clip: auto; transform: none; }
+    @media (max-width: 767px) {
+      .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 40; }
+      .mobile-header-menu { display: inline-flex; }
+    }
+    @media (min-width: 768px) {
+      #mobile-sidebar { display: none !important; }
+      .mobile-header-menu { display: none; }
+    }
+  </style>
+
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="antialiased">
+
+  <a class="sr-only focus:not-sr-only focus:ring-4 focus:ring-[color:var(--accent)] p-2 m-2 rounded" href="#page-main">Skip to main content</a>
+
+  <div class="min-h-screen flex">
+
+    <!-- Sidebar-->
+    <aside id="sidebar" class="w-72 bg-[color:var(--card)] border-r border-slate-800 p-4 hidden md:block sticky top-0 h-screen overflow-y-auto sidebar" aria-label="Main sidebar">
+      
+      <div class="mb-6 flex items-center gap-3 profile-snippet">
+        <img src="{{ url_for('static', filename='favicons/android-chrome-192x192.png') }}" alt="CNT Logo" class="w-10 h-10 rounded-lg">
+        <div>
+          <div class="text-sm sidebar-label">{{ (current_user.email.split('@')[0] if (current_user is defined and current_user.is_authenticated) else 'Trader') }}</div>
+          <div class="text-xs muted sidebar-label">Active trader</div>
+        </div>
+      </div>
+
+      <nav aria-label="Sidebar navigation" class="space-y-1 text-sm sidebar-nav">
+        <div class="text-xs muted mb-2 sidebar-label">Home</div>
+
+        <a id="link-calculator" href="{{ url_for('calculator') }}" class="block sidebar-item px-3 py-2 rounded hover:bg-slate-800 focus-ring">
+          <span class="inline-flex items-center gap-3">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+              <polyline points="9,22 9,12 15,12 15,22"/>
+            </svg>
+            <span class="sidebar-label">Calculator Home</span>
+          </span>
+        </a>
+
+        <div class="mt-4 text-xs muted mb-2 sidebar-label">Calculators</div>
+
+        <a id="link-intraday" href="{{ url_for('intraday') }}" class="block sidebar-item px-3 py-2 rounded hover:bg-slate-800 focus-ring">
+          <span class="inline-flex items-center gap-3">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            <span class="sidebar-label">Intraday</span>
+          </span>
+        </a>
+
+        <a id="link-fo" href="{{ url_for('fo_calculator') }}" class="block sidebar-item px-3 py-2 rounded hover:bg-slate-800 focus-ring">
+          <span class="inline-flex items-center gap-3">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+              <polyline points="3.27,6.96 12,12.01 20.73,6.96"/>
+              <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+            <span class="sidebar-label">F&amp;O</span>
+          </span>
+        </a>
+
+        <a id="link-mtf" href="{{ url_for('mtf_calculator') }}" class="block sidebar-item px-3 py-2 rounded hover:bg-slate-800 focus-ring">
+          <span class="inline-flex items-center gap-3">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+            <span class="sidebar-label">MTF</span>
+          </span>
+        </a>
+
+        <a id="link-swing" href="{{ url_for('swing_calculator') }}" class="block sidebar-item px-3 py-2 rounded hover:bg-slate-800 focus-ring">
+          <span class="inline-flex items-center gap-3">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/>
+            </svg>
+            <span class="sidebar-label">Swing</span>
+          </span>
+        </a>
+
+        <a id="link-delivery" href="{{ url_for('delivery_calculator') }}" class="block sidebar-item px-3 py-2 rounded hover:bg-slate-800 focus-ring">
+          <span class="inline-flex items-center gap-3">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="1" y="3" width="15" height="13"/>
+              <polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/>
+              <circle cx="5.5" cy="18.5" r="2.5"/>
+              <circle cx="18.5" cy="18.5" r="2.5"/>
+            </svg>
+            <span class="sidebar-label">Delivery</span>
+          </span>
+        </a>
+
+      </nav>
+    </aside>
+
+    <div id="mobile-sidebar" class="fixed inset-0 z-50 md:hidden hidden" aria-hidden="true">
+      <div id="mobile-sidebar-overlay" class="absolute inset-0 overlay" aria-hidden="true"></div>
+      <div class="absolute left-0 top-0 bottom-0 w-72 bg-[color:var(--card)] border-r border-slate-800 p-4 overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+          <a href="{{ url_for('home') }}" class="flex items-center gap-3">
+            <img src="{{ url_for('static', filename='favicons/android-chrome-192x192.png') }}" alt="CNT Logo" class="w-10 h-10 rounded-lg">
+          </a>
+          <button id="mobile-sidebar-close" class="p-2 rounded focus-ring" aria-label="Close menu">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+
+        <nav aria-label="Mobile sidebar navigation" class="space-y-2 text-sm">
+          <a href="{{ url_for('calculator') }}" class="block px-3 py-2 rounded hover:bg-slate-800 focus-ring">Calculator Home</a>
+          <a href="{{ url_for('intraday') }}" class="block px-3 py-2 rounded hover:bg-slate-800 focus-ring">Intraday</a>
+          <a href="{{ url_for('fo_calculator') }}" class="block px-3 py-2 rounded hover:bg-slate-800 focus-ring">F&amp;O</a>
+          <a href="{{ url_for('mtf_calculator') }}" class="block px-3 py-2 rounded hover:bg-slate-800 focus-ring">MTF</a>
+          <a href="{{ url_for('swing_calculator') }}" class="block px-3 py-2 rounded hover:bg-slate-800 focus-ring">Swing</a>
+          <a href="{{ url_for('delivery_calculator') }}" class="block px-3 py-2 rounded hover:bg-slate-800 focus-ring">Delivery</a>
+          <div class="mt-4 text-xs muted">Saved Trades</div>
+          <a href="{{ url_for('show_saved_trades') }}" class="block px-3 py-2 rounded hover:bg-slate-800 focus-ring">Intraday</a>
+
+        </nav>
+      </div>
+    </div>
+
+    <div class="flex-1 min-h-screen flex flex-col">
+      <main class="p-6 lg:p-6 overflow-y-auto" id="page-main">
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="text-xs muted px-6 py-4 border-t border-slate-800 bg-[color:var(--card)]">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+          <div>© <span id="year"></span> CalculateNTrade</div>
+          <div class="text-right">Risk Warning: Trading involves risk of loss.</div>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    
+    function locPath(){ try{ return window.location.pathname || ''; }catch(e){ return ''; } }
+    (function(){
+      const sidebar = document.getElementById('sidebar');
+      const collapseBtn = document.getElementById('sidebar-collapse');
+      const mobileToggle = document.getElementById('mobile-menu-toggle');
+      const mobileSidebar = document.getElementById('mobile-sidebar');
+      const mobileOverlay = document.getElementById('mobile-sidebar-overlay');
+      const mobileClose = document.getElementById('mobile-sidebar-close');
+
+      function setCollapsed(collapsed){
+        if(!sidebar) return;
+        if(collapsed){
+          sidebar.classList.add('sidebar-collapsed');
+          collapseBtn && collapseBtn.setAttribute('aria-pressed','true');
+        } else {
+          sidebar.classList.remove('sidebar-collapsed');
+          collapseBtn && collapseBtn.setAttribute('aria-pressed','false');
+        }
+        try{ localStorage.setItem('calcnt_sidebar_collapsed', collapsed ? '1' : '0'); }catch(e){}
+      }
+
+      try {
+        const persisted = localStorage.getItem('calcnt_sidebar_collapsed');
+        const collapsed = persisted === '1';
+        setCollapsed(collapsed);
+      } catch(e){ }
+
+      collapseBtn && collapseBtn.addEventListener('click', () => {
+        const isCollapsed = sidebar && sidebar.classList.contains('sidebar-collapsed');
+        setCollapsed(!isCollapsed);
+      });
+
+      function openMobile(){ if(mobileSidebar){ mobileSidebar.classList.remove('hidden'); mobileSidebar.setAttribute('aria-hidden','false'); mobileToggle && mobileToggle.setAttribute('aria-expanded','true'); document.body.style.overflow='hidden'; } }
+      function closeMobile(){ if(mobileSidebar){ mobileSidebar.classList.add('hidden'); mobileSidebar.setAttribute('aria-hidden','true'); mobileToggle && mobileToggle.setAttribute('aria-expanded','false'); document.body.style.overflow=''; } }
+
+      if(mobileToggle){
+        mobileToggle.addEventListener('click', () => { if(mobileSidebar && mobileSidebar.classList.contains('hidden')) openMobile(); else closeMobile(); });
+      }
+      mobileOverlay && mobileOverlay.addEventListener('click', closeMobile);
+      mobileClose && mobileClose.addEventListener('click', closeMobile);
+      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeMobile(); });
+
+      function highlightActive(){
+        const path = locPath().replace(/\/+$/,''); 
+        const container = sidebar || document;
+        const links = container.querySelectorAll('a');
+        links.forEach(a => {
+          try{
+            const href = a.getAttribute('href') || '';
+            if(!href || href.startsWith('#')) { a.classList.remove('active'); a.removeAttribute('aria-current'); return; }
+            const url = new URL(href, window.location.origin);
+            const p = url.pathname.replace(/\/+$/,'');
+            if(p && path === p){
+              a.classList.add('active');
+              a.setAttribute('aria-current','page');
+            } else {
+              a.classList.remove('active');
+              a.removeAttribute('aria-current');
+            }
+          }catch(e){ }
+        });
+      }
+
+      try { highlightActive(); } catch(e){}
+
+      window.addEventListener('popstate', highlightActive);
+    })();
+
+    (function(){ const y = document.getElementById('year'); if(y) y.textContent = new Date().getFullYear(); })();
+
+    (function(){
+      const toggle = document.getElementById('theme-toggle');
+      const sun = document.getElementById('icon-sun');
+      const moon = document.getElementById('icon-moon');
+
+      function applyTheme(t){
+        if (t === 'light') {
+          document.body.classList.add('light');
+          sun && sun.classList.remove('hidden');
+          moon && moon.classList.add('hidden');
+        } else {
+          document.body.classList.remove('light');
+          sun && sun.classList.add('hidden');
+          moon && moon.classList.remove('hidden');
+        }
+      }
+
+      try{
+        const stored = localStorage.getItem('calcnt_theme') || 'dark';
+        applyTheme(stored);
+        toggle && toggle.addEventListener('click', ()=>{
+          const next = document.body.classList.contains('light') ? 'dark' : 'light';
+          try{ localStorage.setItem('calcnt_theme', next); }catch(e){}
+          applyTheme(next);
+        });
+      }catch(e){}
+    })();
+  </script>
+
+  <!-- Toast Service -->
+  <script src="{{ url_for('static', filename='js/toast-service.js') }}"></script>
+  
+  <!-- Flash Messages Integration -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div id="flash-messages" style="display: none;">
+        {% for category, message in messages %}
+          <div data-flash-message data-flash-category="{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

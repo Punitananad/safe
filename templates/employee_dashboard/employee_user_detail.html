@@ -1,0 +1,185 @@
+{% extends "employee_dashboard/employee_base.html" %}
+
+{% block title %}User Details | CalculatenTrade{% endblock %}
+
+{% block content %}
+<div class="">
+    <div class="page-title">
+        <div class="title_left">
+            <h3>User Details</h3>
+        </div>
+    </div>
+
+    <div class="clearfix"></div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="x_panel">
+                <div class="x_title">
+                    <h2>User Information</h2>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="x_content">
+                    <table class="table table-striped">
+                        <tbody>
+                            <tr>
+                                <td><strong>User ID:</strong></td>
+                                <td>{{ user.id }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Email:</strong></td>
+                                <td>{{ user.email }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Name:</strong></td>
+                                <td>{{ user.name if user.name else 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td>
+                                    <span class="badge {{ 'badge-success' if user.verified else 'badge-danger' }}">
+                                        {{ 'Active' if user.verified else 'Inactive' }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Subscription:</strong></td>
+                                <td>
+                                    <span class="badge {{ 'badge-success' if user.subscription_active else 'badge-secondary' }}">
+                                        {{ 'Active' if user.subscription_active else 'Inactive' }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Registered On:</strong></td>
+                                <td>{{ user.registered_on[:10] if user.registered_on else 'N/A' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="x_panel">
+                <div class="x_title">
+                    <h2>Quick Actions</h2>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="x_content">
+                    <div class="btn-group-vertical" style="width: 100%;">
+                        <button onclick="toggleUser({{ user.id }}, {{ user.verified|lower }})" 
+                                class="btn {{ 'btn-danger' if user.verified else 'btn-success' }} mb-2"
+                                id="toggle-btn-{{ user.id }}">
+                            {{ 'Deactivate' if user.verified else 'Activate' }} User
+                        </button>
+                        <button onclick="disableLogin({{ user.id }})" 
+                                class="btn btn-warning mb-2">
+                            Disable Login
+                        </button>
+                        <a href="{{ url_for('employee_dashboard.users_list') }}" 
+                           class="btn btn-secondary">
+                            Back to Users
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if sessions %}
+    <div class="row">
+        <div class="col-md-12">
+            <div class="x_panel">
+                <div class="x_title">
+                    <h2>Recent Sessions</h2>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="x_content">
+                    <div class="table-responsive">
+                        <table class="table table-striped jambo_table">
+                            <thead>
+                                <tr>
+                                    <th>Session Token</th>
+                                    <th>IP Address</th>
+                                    <th>User Agent</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Last Activity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in sessions %}
+                                <tr>
+                                    <td>{{ session.session_token[:20] }}...</td>
+                                    <td>{{ session.ip_address }}</td>
+                                    <td>{{ session.user_agent[:50] }}...</td>
+                                    <td>
+                                        <span class="badge {{ 'badge-success' if session.is_active else 'badge-secondary' }}">
+                                            {{ 'Active' if session.is_active else 'Inactive' }}
+                                        </span>
+                                    </td>
+                                    <td>{{ session.created_at[:19] if session.created_at else 'N/A' }}</td>
+                                    <td>{{ session.last_activity[:19] if session.last_activity else 'N/A' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function toggleUser(userId, isVerified) {
+    const action = isVerified ? 'deactivate' : 'activate';
+    
+    if (confirm(`Are you sure you want to ${action} this user?`)) {
+        fetch(`/employee/api/user/${userId}/toggle`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error);
+        });
+    }
+}
+
+function disableLogin(userId) {
+    if (confirm('Are you sure you want to disable login for this user?')) {
+        fetch(`/employee/api/user/${userId}/disable-login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error);
+        });
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,456 @@
+{% extends "simple_base.html" %}
+
+{% block title %}CalculateNTrade — Trading Calculator & Journal{% endblock %}
+
+{% block content %}
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+
+    <section id="hero" class="mt-10 lg:mt-16">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <div class="lg:col-span-7">
+                <h1 class="text-4xl sm:text-5xl font-extrabold leading-tight tracking-tight">
+                    CalculateNTrade
+                    <span class="text-teal-400"> — Trading Calculator & Journal</span>
+                </h1>
+                <p class="mt-4 text-slate-300 max-w-xl">
+                    Fast, precise position sizing and trade journaling for active traders. Calculate risk, manage positions, and keep a clean audit trail — all in one place.
+                </p>
+
+                <div class="mt-6 flex flex-wrap gap-3">
+                    {% if not current_user.is_authenticated %}
+                    <a href="{{ url_for('login') }}" class="inline-flex items-center gap-2 px-5 py-3 rounded-md bg-gradient-to-r from-sky-600 to-teal-500 shadow-lg text-white focus-ring" role="button">
+                    
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Get Started
+                    </a>
+                    {% endif %}
+                    {% if current_user.is_authenticated %}
+                        {% set active_sub = get_user_active_subscription(current_user.id) if current_user else None %}
+                        {% if active_sub %}
+                            <a href="{{ url_for('calculator') }}" class="inline-flex items-center gap-2 px-4 py-3 rounded-md border border-slate-700 text-slate-200 hover:border-slate-500 focus-ring">
+                                Explore Calculators
+                            </a>
+                        {% else %}
+                            <button onclick="showPremiumModal()" class="inline-flex items-center gap-2 px-4 py-3 rounded-md border border-slate-700 text-slate-200 hover:border-slate-500 focus-ring">
+                                Explore Calculators
+                            </button>
+                        {% endif %}
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="inline-flex items-center gap-2 px-4 py-3 rounded-md border border-slate-700 text-slate-200 hover:border-slate-500 focus-ring">
+                            Login to Start
+                        </a>
+                    {% endif %}
+                </div>
+                <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
+    {% if current_user.is_authenticated %}
+        {% set active_sub = get_user_active_subscription(current_user.id) if current_user else None %}
+        {% if active_sub %}
+            <a href="{{ url_for('calculator') }}" class="flex items-center gap-4 bg-slate-900 rounded-xl p-4 shadow-sm hover:shadow-lg transition no-underline" role="button">
+                <div class="p-2 rounded bg-gradient-to-br from-sky-600 to-teal-500 text-white flex-shrink-0" aria-hidden="true">
+                     <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <rect x="6" y="3" width="12" height="18" rx="2" stroke="white" stroke-width="1.2"/>
+                                    <rect x="9" y="7" width="6" height="4" rx="1" fill="white"/>
+                                    <path d="M9 14h2M13 14h2M9 17h2M13 17h2" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
+                                </svg>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-base font-semibold text-white">Calculators</div>
+                    <div class="text-xs text-slate-400 truncate">Position size, risk, F&amp;O, pivots</div>
+                </div>
+            </a>
+        {% else %}
+            <button onclick="showPremiumModal()" class="flex items-center gap-4 bg-slate-900 rounded-xl p-4 shadow-sm hover:shadow-lg transition no-underline" role="button">
+                <div class="p-2 rounded bg-gradient-to-br from-sky-600 to-teal-500 text-white flex-shrink-0" aria-hidden="true">
+                     <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <rect x="6" y="3" width="12" height="18" rx="2" stroke="white" stroke-width="1.2"/>
+                                    <rect x="9" y="7" width="6" height="4" rx="1" fill="white"/>
+                                    <path d="M9 14h2M13 14h2M9 17h2M13 17h2" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
+                                </svg>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-base font-semibold text-white">Calculators</div>
+                    <div class="text-xs text-slate-400 truncate">Position size, risk, F&amp;O, pivots</div>
+                </div>
+            </button>
+        {% endif %}
+    {% else %}
+        <a href="{{ url_for('login') }}" class="flex items-center gap-4 bg-slate-900 rounded-xl p-4 shadow-sm hover:shadow-lg transition no-underline" role="button">
+            <div class="p-2 rounded bg-gradient-to-br from-sky-600 to-teal-500 text-white flex-shrink-0" aria-hidden="true">
+                 <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <rect x="6" y="3" width="12" height="18" rx="2" stroke="white" stroke-width="1.2"/>
+                                <rect x="9" y="7" width="6" height="4" rx="1" fill="white"/>
+                                <path d="M9 14h2M13 14h2M9 17h2M13 17h2" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
+                            </svg>
+            </div>
+            <div class="min-w-0">
+                <div class="text-base font-semibold text-white">Calculators</div>
+                <div class="text-xs text-slate-400 truncate">Login to start calculating</div>
+            </div>
+        </a>
+    {% endif %}
+
+    {% if current_user.is_authenticated %}
+        {% set active_sub = get_user_active_subscription(current_user.id) if current_user else None %}
+        {% if active_sub %}
+            <a href="{{ url_for('calculatentrade.dashboard') }}" class="flex items-center gap-4 bg-slate-900 rounded-xl p-4 shadow-sm hover:shadow-lg transition no-underline">
+                <div class="p-2 rounded bg-gradient-to-br from-teal-500 to-sky-600 text-white flex-shrink-0" aria-hidden="true">
+                    <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M7 8h10M7 12h10M7 16h6" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
+                        <rect x="3" y="3" width="18" height="18" rx="3" stroke="white" stroke-width="1"/>
+                    </svg>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-base font-semibold text-white">Trade Journal</div>
+                    <div class="text-xs text-slate-400 truncate">Tag trades, view P&amp;L trends</div>
+                </div>
+            </a>
+        {% else %}
+            <a href="{{ url_for('subscription') }}" class="flex items-center gap-4 bg-gradient-to-br from-amber-900/50 to-orange-900/50 border border-amber-600/30 rounded-xl p-4 shadow-sm hover:shadow-lg transition no-underline">
+                <div class="p-2 rounded bg-gradient-to-br from-amber-500 to-orange-500 text-white flex-shrink-0" aria-hidden="true">
+                    <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                    </svg>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-base font-semibold text-amber-300">CNT-Premium</div>
+                    <div class="text-xs text-amber-400/80 truncate">Unlock advanced calculator & Journal</div>
+                </div>
+            </a>
+        {% endif %}
+    {% else %}
+        <a href="{{ url_for('login') }}" class="flex items-center gap-4 bg-slate-900 rounded-xl p-4 shadow-sm hover:shadow-lg transition no-underline">
+            <div class="p-2 rounded bg-gradient-to-br from-teal-500 to-sky-600 text-white flex-shrink-0" aria-hidden="true">
+                <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M7 8h10M7 12h10M7 16h6" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
+                    <rect x="3" y="3" width="18" height="18" rx="3" stroke="white" stroke-width="1"/>
+                </svg>
+            </div>
+            <div class="min-w-0">
+                <div class="text-base font-semibold text-white">Trade Journal</div>
+                <div class="text-xs text-slate-400 truncate">Login to start journaling</div>
+            </div>
+        </a>
+    {% endif %}
+
+</div>
+
+            </div>
+            <div class="lg:col-span-5">
+                <div class="w-full rounded-2xl overflow-hidden border border-slate-800 shadow-lg">
+                    <img src="{{ url_for('static', filename='extra_img/Home-Snap-ai.png') }}" alt="Trading Dashboard Preview" class="w-full h-82 object-cover">
+                </div>
+            </div>
+        </div>
+    </section>
+<section id="features" class="mt-12" aria-labelledby="features-heading">
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 id="features-heading" class="text-2xl font-semibold">Product features</h2>
+      <p class="text-slate-400 mt-2 max-w-2xl">Everything a trader needs: calculators across styles and a comprehensive journaling workflow.</p>
+    </div>
+  </div>
+
+    <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <article role="article" aria-labelledby="feat-calculators" tabindex="0" class="h-full flex flex-col justify-between relative overflow-hidden rounded-2xl bg-[color:rgba(15,23,42,0.6)] border border-slate-800/40 backdrop-blur-sm p-6 hover:shadow-2xl focus:shadow-2xl transition-transform transform hover:-translate-y-1 focus:-translate-y-1">
+            <div>
+                <div class="flex items-start gap-4">
+                    <div class="rounded-lg p-3 bg-gradient-to-r from-sky-600 to-teal-500 text-white flex-shrink-0">
+                       
+                        <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <rect x="6" y="3" width="12" height="18" rx="2" stroke="white" stroke-width="1.2"/>
+                            <rect x="9" y="7" width="6" height="4" rx="1" fill="white"/>
+                            <path d="M9 14h2M13 14h2M9 17h2M13 17h2" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 id="feat-calculators" class="text-lg font-semibold text-white">Calculators — all styles</h3>
+                        <p class="mt-1 text-slate-300 text-sm">Fast, auditable sizing outputs for Intraday, Delivery, Swing, MTF and F&O traders.</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 grid gap-3 text-sm">
+                    <ul class="space-y-2">
+                        <li class="flex items-center gap-3">
+                            <span class="inline-flex items-center justify-center w-7 h-7 rounded bg-white/8 text-white">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </span>
+                            <span class="text-slate-300">5× Intraday demo with position & margin estimates</span>
+                        </li>
+
+                        <li class="flex items-center gap-3">
+                            <span class="inline-flex items-center justify-center w-7 h-7 rounded bg-white/8 text-white">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </span>
+                            <span class="text-slate-300">Delivery sizing with tax & margin considerations</span>
+                        </li>
+
+                        <li class="flex items-center gap-3">
+                            <span class="inline-flex items-center justify-center w-7 h-7 rounded bg-white/8 text-white">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </span>
+                            <span class="text-slate-300">F&O scenarios & Greeks planning</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+        <div class="mt-6">
+            {% if current_user.is_authenticated %}
+                {% set active_sub = get_user_active_subscription(current_user.id) if current_user else None %}
+                {% if active_sub %}
+                    <a href="{{ url_for('calculator') }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gradient-to-r from-sky-600 to-teal-500 text-white" aria-label="Explore Calculators">Explore Calculators</a>
+                {% else %}
+                    <button onclick="showPremiumModal()" class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gradient-to-r from-sky-600 to-teal-500 text-white" aria-label="Explore Calculators">Explore Calculators</button>
+                {% endif %}
+            {% else %}
+                <a href="{{ url_for('login') }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gradient-to-r from-sky-600 to-teal-500 text-white" aria-label="Login to Start">Login to Start</a>
+            {% endif %}
+        </div>
+        </article>
+
+        <article role="article" aria-labelledby="feat-journal" tabindex="0" class="h-full flex flex-col justify-between relative overflow-hidden rounded-2xl bg-[color:rgba(15,23,42,0.5)] border border-slate-800/30 backdrop-blur-sm p-6 hover:shadow-2xl focus:shadow-2xl transition-transform transform hover:-translate-y-1 focus:-translate-y-1">
+            <div>
+                <div class="flex items-start gap-4">
+                    <div class="rounded-lg p-3 bg-gradient-to-br from-indigo-600 to-purple-500 text-white flex-shrink-0">
+                        
+                        <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <rect x="4" y="3" width="14" height="18" rx="2" stroke="white" stroke-width="1.2"/>
+                            <path d="M8 7h6M8 11h6" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+                            <path d="M18 16l3 3" stroke="white" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 id="feat-journal" class="text-lg font-semibold text-white">Trading Journal</h3>
+                        <p class="mt-1 text-slate-300 text-sm">Detailed trade logging, P/L analytics, and mistake tracking to improve your edge.</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 grid gap-3 text-sm">
+                    <ul class="space-y-2">
+                        <li class="flex items-center gap-3"><span class="inline-flex items-center justify-center w-7 h-7 rounded bg-white/8 text-white"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="text-slate-300">Tag trades & attach strategies</span></li>
+                        <li class="flex items-center gap-3"><span class="inline-flex items-center justify-center w-7 h-7 rounded bg-white/8 text-white"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="text-slate-300">Performance reports & trends</span></li>
+                        <li class="flex items-center gap-3"><span class="inline-flex items-center justify-center w-7 h-7 rounded bg-white/8 text-white"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="text-slate-300">Mistake tracking & annotations</span></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                {% if current_user.is_authenticated %}
+                    {% set active_sub = get_user_active_subscription(current_user.id) if current_user else None %}
+                    {% if active_sub %}
+                        <a href="{{ url_for('calculatentrade.dashboard') }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gradient-to-br from-indigo-600 to-purple-500 text-white" aria-label="Start Journaling">Start Journaling</a>
+                    {% else %}
+                        <button onclick="showPremiumModal()" class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gradient-to-br from-indigo-600 to-purple-500 text-white" aria-label="Start Journaling">Start Journaling</button>
+                    {% endif %}
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gradient-to-br from-indigo-600 to-purple-500 text-white" aria-label="Login to Start">Login to Start</a>
+                {% endif %}
+            </div>
+        </article>
+
+       
+    </div>
+</section>
+
+
+
+<!-- Premium Modal -->
+<div id="premiumModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+    <div class="relative overflow-hidden rounded-3xl bg-slate-900 border border-amber-600/30 p-8 max-w-4xl w-full">
+        <div class="absolute inset-0 bg-gradient-to-r from-slate-800 to-slate-900"></div>
+        <button onclick="hidePremiumModal()" class="absolute top-4 right-4 text-white hover:text-amber-300 z-10">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+        <div class="relative z-10">
+            <div class="text-center">
+                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-400/30 mb-6">
+                    <svg class="w-5 h-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                    </svg>
+                    <span class="text-amber-300 font-medium">Premium Features</span>
+                </div>
+                <h2 class="text-3xl font-bold text-white mb-4">Unlock Your Trading Potential</h2>
+                <p class="text-slate-300 text-lg mb-8 max-w-2xl mx-auto">Get advanced analytics, unlimited trades, and AI-powered insights to accelerate your trading journey.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+                    <div class="text-center">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-sky-500 to-teal-500 flex items-center justify-center mx-auto mb-3">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold text-white mb-2 text-sm">Advanced Calculators</h3>
+                        <p class="text-slate-400 text-xs">All calculators with risk management</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center mx-auto mb-3">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold text-white mb-2 text-sm">Advanced Journal</h3>
+                        <p class="text-slate-400 text-xs">Complete trading journal with analytics</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center mx-auto mb-3">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold text-white mb-2 text-sm">Integrated Platform</h3>
+                        <p class="text-slate-400 text-xs">Calculator & journal work together</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center mx-auto mb-3">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold text-white mb-2 text-sm">Broker Connection</h3>
+                        <p class="text-slate-400 text-xs">Connect with your trading broker</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center mx-auto mb-3">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold text-white mb-2 text-sm">AI Assistant</h3>
+                        <p class="text-slate-400 text-xs">Smart trade analysis & insights</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-3">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold text-white mb-2 text-sm">Unlimited Access</h3>
+                        <p class="text-slate-400 text-xs">No limits on trades or features</p>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <a href="{{ url_for('subscription') }}" class="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                        </svg>
+                        Upgrade to Premium
+                    </a>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-amber-400">₹299/month</div>
+                        <div class="text-xs text-slate-400">Cancel anytime</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</main>
+{% endblock %}
+
+{% block extra_js %}
+
+<script>
+(function(){
+    const capitalEl = document.getElementById('capital');
+    const riskEl = document.getElementById('risk');
+    const entryEl = document.getElementById('entry');
+    const stopEl = document.getElementById('stop');
+    const results = document.getElementById('intraday-results');
+    const resetBtn = document.getElementById('calc-reset');
+    const LEVERAGE = 5;
+
+    function formatCurrency(n){ return '₹' + Number(n).toLocaleString('en-IN', {maximumFractionDigits:2}); }
+    function safeNum(v){ const n = Number(v); return isFinite(n)?n:0; }
+
+    function compute(){
+        const capital = safeNum(capitalEl.value);
+        const riskPct = safeNum(riskEl.value);
+        const entry = safeNum(entryEl.value);
+        const stop = safeNum(stopEl.value);
+
+        if (capital <= 0 || entry <= 0 || stop <= 0 || riskPct < 0) {
+            results.innerHTML = '<div class="text-sm text-slate-400">Please enter valid positive numbers for capital, entry and stop.</div>';
+            return;
+        }
+        const stopDist = Math.abs(entry - stop);
+        if (stopDist === 0) {
+            results.innerHTML = '<div class="text-sm text-slate-400">Entry and stop must be different (stop distance cannot be zero).</div>';
+            return;
+        }
+
+        const riskAmount = capital * (riskPct / 100);
+        const shares = Math.floor(riskAmount / stopDist);
+        const positionValue = shares * entry;
+        const marginRequired = positionValue / LEVERAGE;
+        const maxAffordableShares = Math.floor((capital * LEVERAGE) / entry);
+
+        results.innerHTML = `
+            <div class="grid grid-cols-1 gap-2">
+                <div class="flex justify-between"><div class="text-xs text-slate-400">Risk amount</div><div class="font-medium">${formatCurrency(riskAmount)}</div></div>
+                <div class="flex justify-between"><div class="text-xs text-slate-400">Stop distance</div><div class="font-medium">${stopDist.toFixed(2)} ₹</div></div>
+                <div class="flex justify-between"><div class="text-xs text-slate-400">Position (shares) — suggested</div><div class="font-medium">${shares.toLocaleString()}</div></div>
+                <div class="flex justify-between"><div class="text-xs text-slate-400">Position value</div><div class="font-medium">${formatCurrency(positionValue)}</div></div>
+                <div class="flex justify-between"><div class="text-xs text-slate-400">Margin required (at ${LEVERAGE}×)</div><div class="font-medium">${formatCurrency(marginRequired)}</div></div>
+                <div class="flex justify-between"><div class="text-xs text-slate-400">Max affordable shares (using full buying power)</div><div class="font-medium">${maxAffordableShares.toLocaleString()}</div></div>
+            </div>
+        `;
+    }
+
+    [capitalEl, riskEl, entryEl, stopEl].forEach(el => el && el.addEventListener('input', compute));
+    resetBtn && resetBtn.addEventListener('click', () => {
+        if(!capitalEl) return;
+        capitalEl.value = '50000'; riskEl.value = '1'; entryEl.value = '1200'; stopEl.value = '1180';
+        compute();
+    });
+    compute();
+})();
+
+(function(){
+    const toggle = document.getElementById('theme-toggle');
+    if(!toggle) return;
+    const iconSun = document.getElementById('icon-sun');
+    const iconMoon = document.getElementById('icon-moon');
+
+    function applyTheme(t){
+        if(t === 'light'){
+            document.body.classList.add('light');
+            iconSun && iconSun.classList.remove('hidden');
+            iconMoon && iconMoon.classList.add('hidden');
+        } else {
+            document.body.classList.remove('light');
+            iconSun && iconSun.classList.add('hidden');
+            iconMoon && iconMoon.classList.remove('hidden');
+        }
+    }
+
+    const stored = localStorage.getItem('calcnt_theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    applyTheme(stored);
+
+    toggle.addEventListener('click', () => {
+        const next = document.body.classList.contains('light') ? 'dark' : 'light';
+        localStorage.setItem('calcnt_theme', next);
+        applyTheme(next);
+    });
+})();
+
+function showPremiumModal() {
+    document.getElementById('premiumModal').classList.remove('hidden');
+}
+
+function hidePremiumModal() {
+    document.getElementById('premiumModal').classList.add('hidden');
+}
+
+// Close modal when clicking outside
+document.getElementById('premiumModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hidePremiumModal();
+    }
+});
+
+</script>
+{% endblock %}

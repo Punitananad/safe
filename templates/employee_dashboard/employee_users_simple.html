@@ -1,0 +1,55 @@
+{% extends "employee_dashboard/employee_base.html" %}
+
+{% block title %}Manage Users | CalculatenTrade{% endblock %}
+
+{% block content %}
+<div class="">
+    <div class="page-title">
+        <div class="title_left">
+            <h3>Manage Users ({{ users|length }})</h3>
+        </div>
+    </div>
+
+    <div class="clearfix"></div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="x_panel">
+                <div class="x_content">
+                    {% if users %}
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>Status</th>
+                                <th>Registered</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    <span class="badge {{ 'badge-success' if user.verified else 'badge-danger' }}">
+                                        {{ 'Active' if user.verified else 'Inactive' }}
+                                    </span>
+                                </td>
+                                <td>{{ user.registered_on[:10] if user.registered_on else 'N/A' }}</td>
+                                <td>
+                                    <a href="{{ url_for('employee_dashboard.user_detail', user_id=user.id) }}" 
+                                       class="btn btn-success btn-xs">Manage</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p>No users found.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

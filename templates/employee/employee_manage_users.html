@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Employee Manage Users</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
+        .employee-header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
+        .employee-title { font-size: 24px; font-weight: bold; }
+        .employee-nav a { color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 5px; margin-left: 10px; }
+        .employee-nav a:hover { background: rgba(255,255,255,0.3); }
+        .employee-section { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .search-box { margin-bottom: 20px; }
+        .search-box input { padding: 10px; width: 300px; border: 2px solid #ddd; border-radius: 5px; font-size: 16px; }
+        .employee-table { width: 100%; border-collapse: collapse; }
+        .employee-table th, .employee-table td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        .employee-table th { background: #f8f9fa; font-weight: bold; }
+        .employee-btn { padding: 6px 12px; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; text-decoration: none; display: inline-block; }
+        .employee-btn.toggle { background: #ffc107; color: #212529; }
+        .employee-btn.toggle:hover { background: #e0a800; }
+        .employee-btn.activate { background: #28a745; color: white; }
+        .employee-btn.activate:hover { background: #218838; }
+        .employee-btn.deactivate { background: #dc3545; color: white; }
+        .employee-btn.deactivate:hover { background: #c82333; }
+        .flash { background: #d4edda; color: #155724; padding: 12px; border-radius: 5px; margin-bottom: 20px; }
+        .status-active { color: #28a745; font-weight: bold; }
+        .status-inactive { color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="employee-header">
+        <div class="employee-title">👥 Manage Users</div>
+        <div class="employee-nav">
+            <a href="{{ url_for('employee.employee_dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('employee.employee_payments') }}">My Payments</a>
+            <a href="{{ url_for('employee.employee_logout') }}">Logout</a>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="employee-section">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search users by email..." onkeyup="searchUsers()">
+        </div>
+
+        <table class="employee-table" id="usersTable">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Coupon Used</th>
+                    <th>Registered Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.email }}</td>
+                    <td>
+                        <span class="{{ 'status-active' if user.verified else 'status-inactive' }}">
+                            {{ 'ACTIVE' if user.verified else 'INACTIVE' }}
+                        </span>
+                    </td>
+                    <td>{{ user.coupon_code or 'None' }}</td>
+                    <td>{{ user.registered_on.strftime('%Y-%m-%d %H:%M') if user.registered_on else 'N/A' }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('employee.toggle_user_status', user_id=user.id) }}" style="display: inline;">
+                            <button type="submit" class="employee-btn {{ 'deactivate' if user.verified else 'activate' }}">
+                                {{ 'Deactivate' if user.verified else 'Activate' }}
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align: center; color: #666; padding: 40px;">
+                        No users found in the system.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function searchUsers() {
+            const input = document.getElementById('searchInput');
+            const filter = input.value.toLowerCase();
+            const table = document.getElementById('usersTable');
+            const rows = table.getElementsByTagName('tr');
+
+            for (let i = 1; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                let found = false;
+                
+                for (let j = 0; j < cells.length - 1; j++) {
+                    if (cells[j].textContent.toLowerCase().includes(filter)) {
+                        found = true;
+                        break;
+                    }
+                }
+                
+                rows[i].style.display = found ? '' : 'none';
+            }
+        }
+    </script>
+</body>
+</html>

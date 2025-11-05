@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}Toast System Test{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto p-6">
+    <h1 class="text-3xl font-bold mb-8 text-center">Toast Notification System Test</h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <button onclick="testSuccess()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+            Test Success Toast
+        </button>
+        
+        <button onclick="testError()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+            Test Error Toast
+        </button>
+        
+        <button onclick="testWarning()" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+            Test Warning Toast
+        </button>
+        
+        <button onclick="testInfo()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+            Test Info Toast
+        </button>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <button onclick="testDeduplication()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+            Test Deduplication (Click Multiple Times)
+        </button>
+        
+        <button onclick="testLongMessage()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+            Test Long Message
+        </button>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <button onclick="testCustomDuration()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+            Test Custom Duration (10s)
+        </button>
+        
+        <button onclick="testMultipleToasts()" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+            Test Multiple Toasts
+        </button>
+    </div>
+    
+    <div class="text-center">
+        <button onclick="dismissAllToasts()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">
+            Dismiss All Toasts
+        </button>
+    </div>
+    
+    <div class="mt-12 bg-gray-100 dark:bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-semibold mb-4">Test Instructions</h2>
+        <ul class="list-disc list-inside space-y-2 text-sm">
+            <li>Click each button to test different toast types</li>
+            <li>Toasts should appear in the top-right corner (bottom-center on mobile)</li>
+            <li>Success, warning, and info toasts auto-dismiss after 3 seconds</li>
+            <li>Error toasts auto-dismiss after 4 seconds</li>
+            <li>Deduplication test should only show one toast even when clicked multiple times quickly</li>
+            <li>Check browser console for any JavaScript errors</li>
+            <li>Test on mobile devices to verify responsive positioning</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+function testSuccess() {
+    window.toastService.success('Operation completed successfully!');
+}
+
+function testError() {
+    window.toastService.error('Something went wrong. Please try again.');
+}
+
+function testWarning() {
+    window.toastService.warning('This action cannot be undone.');
+}
+
+function testInfo() {
+    window.toastService.info('New feature available in settings.');
+}
+
+function testDeduplication() {
+    window.toastService.show({
+        message: 'This message should only appear once',
+        variant: 'info',
+        id: 'dedup-test',
+        dedupe: true
+    });
+}
+
+function testLongMessage() {
+    window.toastService.error('This is a very long error message that should wrap properly and not break the toast layout. It contains multiple sentences to test how the toast handles longer content.');
+}
+
+function testCustomDuration() {
+    window.toastService.show({
+        message: 'This toast will stay for 10 seconds',
+        variant: 'info',
+        duration: 10000
+    });
+}
+
+function testMultipleToasts() {
+    window.toastService.success('First toast');
+    setTimeout(() => window.toastService.warning('Second toast'), 500);
+    setTimeout(() => window.toastService.info('Third toast'), 1000);
+    setTimeout(() => window.toastService.error('Fourth toast'), 1500);
+}
+
+function dismissAllToasts() {
+    window.toastService.dismissAll();
+}
+
+// Test flash message integration on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Simulate a flash message being converted to toast
+    setTimeout(() => {
+        window.toastService.info('Page loaded successfully! Toast system is working.');
+    }, 500);
+});
+</script>
+{% endblock %}

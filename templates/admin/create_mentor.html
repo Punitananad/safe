@@ -1,0 +1,353 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Create Mentor | CalculatenTrade{% endblock %}
+{% block page_title %}Create Mentor{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('admin.mentors') }}">Mentors</a></li>
+        <li class="breadcrumb-item active">Create Mentor</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- Info Card -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="info-icon me-3">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-1">Mentor Account Creation</h6>
+                        <p class="text-muted mb-0">Create a new mentor account with commission tracking. Mentors can refer students and earn commissions from successful subscriptions.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Mentor Form -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-plus me-2"></i>Mentor Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="createMentorForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-4">
+                                <label for="name" class="form-label">
+                                    <i class="fas fa-user me-2"></i>Full Name
+                                    <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-chalkboard-teacher"></i>
+                                    </span>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="name" 
+                                           name="name" 
+                                           placeholder="Enter mentor's full name"
+                                           required>
+                                </div>
+                                <div class="form-text">Mentor's complete name for identification</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-4">
+                                <label for="email" class="form-label">
+                                    <i class="fas fa-envelope me-2"></i>Email Address
+                                    <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-at"></i>
+                                    </span>
+                                    <input type="email" 
+                                           class="form-control" 
+                                           id="email" 
+                                           name="email" 
+                                           placeholder="Enter mentor's email address"
+                                           required>
+                                </div>
+                                <div class="form-text">Used for communication and login notifications</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-4">
+                                <label for="commission" class="form-label">
+                                    <i class="fas fa-percentage me-2"></i>Commission Rate
+                                    <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-rupee-sign"></i>
+                                    </span>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="commission" 
+                                           name="commission" 
+                                           value="40" 
+                                           min="0" 
+                                           max="100" 
+                                           step="0.1" 
+                                           required>
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <div class="form-text">Commission percentage from successful referrals</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-4">
+                                <label class="form-label">
+                                    <i class="fas fa-id-badge me-2"></i>Mentor ID
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-magic"></i>
+                                    </span>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           value="Auto-generated"
+                                           readonly>
+                                </div>
+                                <div class="form-text">Unique ID will be generated automatically</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Commission Preview -->
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-calculator me-2"></i>Commission Preview
+                            </h6>
+                            <div class="row text-center">
+                                <div class="col-md-4">
+                                    <div class="commission-preview">
+                                        <div class="commission-amount" id="commissionPreview">₹400</div>
+                                        <div class="commission-label">Per ₹1000 Sale</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="commission-preview">
+                                        <div class="commission-amount">₹2000</div>
+                                        <div class="commission-label">Per ₹5000 Sale</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="commission-preview">
+                                        <div class="commission-amount">₹4000</div>
+                                        <div class="commission-label">Per ₹10000 Sale</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Important Notes -->
+                    <div class="alert alert-warning">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Important Information
+                        </h6>
+                        <ul class="mb-0">
+                            <li><strong>Mentor ID</strong> and <strong>Password</strong> will be automatically generated</li>
+                            <li>Credentials will be displayed <strong>only once</strong> after creation</li>
+                            <li>Make sure to save the credentials securely</li>
+                            <li>Mentor will be able to change password after first login</li>
+                        </ul>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="d-flex justify-content-between align-items-center pt-3">
+                        <a href="{{ url_for('admin.mentors') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Mentors
+                        </a>
+                        <div>
+                            <button type="reset" class="btn btn-outline-warning me-2">
+                                <i class="fas fa-undo me-2"></i>Reset Form
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="submitBtn">
+                                <i class="fas fa-user-plus me-2"></i>Create Mentor
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .info-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #9b59b6, #8e44ad);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 20px;
+    }
+    
+    .commission-preview {
+        padding: 15px;
+    }
+    
+    .commission-amount {
+        font-size: 24px;
+        font-weight: bold;
+        color: var(--success-color);
+        margin-bottom: 5px;
+    }
+    
+    .commission-label {
+        font-size: 12px;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .form-control:focus {
+        border-color: #9b59b6;
+        box-shadow: 0 0 0 0.2rem rgba(155, 89, 182, 0.25);
+    }
+    
+    .input-group-text {
+        background-color: var(--light-color);
+        border-color: #ced4da;
+    }
+    
+    .alert-warning {
+        background: linear-gradient(135deg, rgba(243, 156, 18, 0.1), rgba(230, 126, 34, 0.1));
+        border: 1px solid rgba(243, 156, 18, 0.2);
+    }
+    
+    .breadcrumb {
+        background: transparent;
+        padding: 0;
+    }
+    
+    .breadcrumb-item + .breadcrumb-item::before {
+        content: "/";
+        color: #6c757d;
+    }
+    
+    .breadcrumb-item a {
+        color: var(--secondary-color);
+        text-decoration: none;
+    }
+    
+    .breadcrumb-item a:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Commission calculator
+    function updateCommissionPreview() {
+        const commission = parseFloat(document.getElementById('commission').value) || 0;
+        const preview1000 = (1000 * commission / 100).toFixed(0);
+        const preview5000 = (5000 * commission / 100).toFixed(0);
+        const preview10000 = (10000 * commission / 100).toFixed(0);
+        
+        document.getElementById('commissionPreview').textContent = `₹${preview1000}`;
+        document.querySelectorAll('.commission-amount')[1].textContent = `₹${preview5000}`;
+        document.querySelectorAll('.commission-amount')[2].textContent = `₹${preview10000}`;
+    }
+    
+    // Update preview on commission change
+    document.getElementById('commission').addEventListener('input', updateCommissionPreview);
+    
+    // Form validation
+    document.getElementById('createMentorForm').addEventListener('submit', function(e) {
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const commission = parseFloat(document.getElementById('commission').value);
+        
+        if (name.length < 2) {
+            alert('Mentor name must be at least 2 characters long');
+            e.preventDefault();
+            return;
+        }
+        
+        if (!email.includes('@') || !email.includes('.')) {
+            alert('Please enter a valid email address');
+            e.preventDefault();
+            return;
+        }
+        
+        if (commission < 0 || commission > 100) {
+            alert('Commission rate must be between 0 and 100');
+            e.preventDefault();
+            return;
+        }
+        
+        // Show loading state
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating Mentor...';
+        submitBtn.disabled = true;
+    });
+    
+    // Auto-focus first field
+    document.getElementById('name').focus();
+    
+    // Real-time email validation
+    document.getElementById('email').addEventListener('input', function() {
+        const value = this.value;
+        const feedback = this.parentNode.nextElementSibling;
+        
+        if (value.length > 0 && (!value.includes('@') || !value.includes('.'))) {
+            this.classList.add('is-invalid');
+            feedback.textContent = 'Please enter a valid email address';
+            feedback.classList.add('text-danger');
+        } else if (value.includes('@') && value.includes('.')) {
+            this.classList.remove('is-invalid');
+            this.classList.add('is-valid');
+            feedback.textContent = 'Used for communication and login notifications';
+            feedback.classList.remove('text-danger');
+        } else {
+            this.classList.remove('is-invalid', 'is-valid');
+            feedback.textContent = 'Used for communication and login notifications';
+            feedback.classList.remove('text-danger');
+        }
+    });
+    
+    // Real-time commission validation
+    document.getElementById('commission').addEventListener('input', function() {
+        const value = parseFloat(this.value);
+        const feedback = this.parentNode.nextElementSibling;
+        
+        if (isNaN(value) || value < 0 || value > 100) {
+            this.classList.add('is-invalid');
+            feedback.textContent = 'Commission rate must be between 0 and 100';
+            feedback.classList.add('text-danger');
+        } else {
+            this.classList.remove('is-invalid');
+            this.classList.add('is-valid');
+            feedback.textContent = 'Commission percentage from successful referrals';
+            feedback.classList.remove('text-danger');
+        }
+        
+        updateCommissionPreview();
+    });
+    
+    // Initialize commission preview
+    updateCommissionPreview();
+</script>
+{% endblock %}

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Refund & Cancellation Policy - CalculatenTrade</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <style>
+    body { background:#f8fafc; color:#1a202c; font-family: 'Inter', sans-serif; }
+    .card { border-radius:12px; border:none; box-shadow:0 4px 20px rgba(0,0,0,0.05); }
+    h1,h4 { color:#0d6efd; }
+    .small-note { font-size:0.95rem; color:#555; }
+    .muted { color:#6c757d; }
+  </style>
+</head>
+<body>
+  <div class="container my-5">
+    <div class="row justify-content-center">
+      <div class="col-lg-9">
+        <div class="card p-4">
+          <div class="text-center mb-4">
+            <h1 class="fw-bold mb-2">Refund & Cancellation Policy</h1>
+            <p class="muted mb-0"><strong>Last updated:</strong> October 2025</p>
+          </div>
+          <hr/>
+
+          <section>
+            <h4>1. General Policy</h4>
+            <p class="small-note">
+              All payments made to <strong>CalculatenTrade</strong> are considered final. Our services provide instant access to
+              proprietary trading calculators, journaling systems, analytics, and personalized insights — which are digital
+              and non-returnable.  
+              However, we understand genuine issues can occur and provide a <strong>partial refund mechanism (30–40%)</strong> under
+              specific conditions outlined below.
+            </p>
+          </section>
+
+          <section class="mt-4">
+            <h4>2. Eligible Refund Scenarios (30–40%)</h4>
+            <p class="small-note">Partial refunds may be approved in the following verified cases:</p>
+            <ul>
+              <li><strong>Technical Failures:</strong> Inability to access key tools or platform features due to system errors persisting beyond 72 hours.</li>
+              <li><strong>Billing Errors:</strong> Duplicate or incorrect charges due to technical or payment gateway issues.</li>
+              <li><strong>Smart Plan Refund:</strong> If you subscribed to the Smart or Pro plan and found it unsuitable within 7 days, you may request a <strong>40% refund</strong> of the amount paid.</li>
+              <li><strong>Service Disruption:</strong> Unexpected downtime or discontinuation of major platform functions for more than 3 consecutive days.</li>
+            </ul>
+            <p class="small-note">
+              All refund claims are verified manually. Approved cases receive between <strong>30% and 40%</strong> of the paid amount,
+              depending on usage duration and account activity.
+            </p>
+          </section>
+
+          <section class="mt-4">
+            <h4>3. Non-Refundable Scenarios</h4>
+            <ul>
+              <li>Change of mind or user dissatisfaction after full usage of tools.</li>
+              <li>Partial months or unused portions of subscription periods.</li>
+              <li>Trading losses, miscalculations, or strategy misinterpretations.</li>
+              <li>Incorrect data entries or user-side errors.</li>
+              <li>Account suspensions due to violation of our <a href="{{ url_for('terms') }}">Terms & Conditions</a>.</li>
+            </ul>
+          </section>
+
+          <section class="mt-4">
+            <h4>4. Cancellation Policy</h4>
+            <p class="small-note">
+              CalculatenTrade operates on a recurring subscription model. Users may cancel their plan at any time from
+              their account dashboard. Cancellation stops future renewals but does not trigger a refund for the current billing cycle.
+            </p>
+            <ul>
+              <li>Access remains active until the billing period ends.</li>
+              <li>No additional charges are applied post-cancellation.</li>
+              <li>Reactivation can be done anytime by subscribing again.</li>
+            </ul>
+          </section>
+
+          <section class="mt-4">
+            <h4>5. Platform Scope</h4>
+            <p class="small-note">
+              <strong>CalculatenTrade</strong> is designed for <strong>trade journaling, portfolio tracking, trade calculation, and performance analysis</strong>.
+              It does not offer investment advice, stock recommendations, or buy/sell signals. All calculations are derived from user input and public market data APIs.
+            </p>
+            <p class="small-note">
+              Users should validate all data before making financial decisions. CalculatenTrade is not liable for
+              trading or investment outcomes. Use of the platform implies acceptance of this understanding.
+            </p>
+          </section>
+
+          <section class="mt-4">
+            <h4>6. Refund Request Process</h4>
+            <ol>
+              <li>Email us at <strong><a href="mailto:support@calculatentrade.com">support@calculatentrade.com</a></strong>.</li>
+              <li>Use subject line: <strong>"Refund Request - [Registered Email]"</strong>.</li>
+              <li>Include details: Registered email, plan type, transaction ID, issue summary, and any proof (screenshots/errors).</li>
+              <li>Requests must be made within <strong>7 days</strong> of billing date.</li>
+            </ol>
+            <p class="small-note"><strong>Processing Time:</strong> 5–10 business days after approval. Refunds are credited to the original payment method.</p>
+          </section>
+
+          <section class="mt-4">
+            <h4>7. Contact Information</h4>
+            <div class="p-3 bg-light rounded">
+              <p class="mb-1"><strong><i class="fas fa-envelope"></i> Email:</strong> support@calculatentrade.com</p>
+              <p class="mb-1"><strong><i class="fas fa-map-marker-alt"></i> Address:</strong> 20/A, Main Market, Rohtak(Haryana)</p>
+              <p class="mb-0 small-note"><strong><i class="fas fa-clock"></i> Business Hours:</strong> Monday – Friday, 9 AM – 6 PM IST</p>
+            </div>
+          </section>
+
+          <section class="mt-4">
+            <h4>8. Policy Revisions</h4>
+            <p class="small-note">
+              This policy may be updated periodically. The latest version will always be available on this page.
+              Significant changes will be communicated via email to active users.
+            </p>
+          </section>
+
+          <div class="d-flex justify-content-between align-items-center mt-4">
+            <div>
+              <a href="{{ url_for('home') }}" class="btn btn-primary btn-sm">Back to Home</a>
+              <a href="{{ url_for('terms') }}" class="btn btn-outline-secondary btn-sm ms-2">Terms & Conditions</a>
+              <a href="{{ url_for('privacy_policy') }}" class="btn btn-outline-secondary btn-sm ms-2">Privacy Policy</a>
+            </div>
+            <div class="text-end small-note">
+              <strong>By subscribing, you accept this Refund & Cancellation Policy.</strong>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

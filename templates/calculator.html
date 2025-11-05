@@ -1,0 +1,494 @@
+{# templates/calculator.html - responsive version #}
+{% extends "base.html" %}
+
+{% block title %}Calculators — CalculateNTrade{% endblock %}
+
+{% block extra_css %}
+<style>
+  :root { --muted: #94a3b8; }
+  .muted { color: var(--muted); }
+  .card-bg { background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005)); }
+  .stat-tile { background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02)); border:1px solid rgba(255,255,255,0.03); }
+  .focus-ring:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(14,165,164,0.12); border-radius: .5rem; }
+  .btn-range.active { background: rgba(255,255,255,0.03); border-radius:6px; }
+  .spinner { width: 20px; height: 20px; border-radius:50%; border:2px solid rgba(255,255,255,0.08); border-top-color: rgba(14,165,164,0.9); animation: spin .8s linear infinite; display:inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .card-focus:focus { box-shadow: 0 8px 30px rgba(2,6,23,0.6); transform: translateY(-4px); }
+
+  .chart-wrap { position: relative; width: 100%; height: 200px; padding-bottom: 42%; } /* ~ 16:7 */
+  @media (min-width: 1024px) { .chart-wrap { padding-bottom: 30%;} }
+  .intraday-results { max-height: 220px; overflow:auto; }
+  @media (max-width: 420px) {
+    .card-bg { padding: 1rem; }
+    .stat-tile .text-xl { font-size: 1.05rem; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" id="main" tabindex="-1">
+  <header class="mb-6">
+    <h1 class="text-3xl sm:text-4xl font-extrabold">Trading Calculators</h1>
+    <p class="text-sm muted mt-1">Fast, auditable sizing: Intraday, F&amp;O, MTF, Swing and Delivery — try the demo or open a full calculator.</p>
+  </header>
+  <section aria-label="Statistics" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="stat-tile p-4 rounded-2xl flex items-center gap-3" role="group" aria-label="Calculators">
+      <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-600 to-teal-500 text-white">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
+      </div>
+      <div>
+        <div class="text-xs muted">Calculators</div>
+        <div class="text-xl font-semibold">5</div>
+        <div class="text-xs muted">Available tools</div>
+      </div>
+    </div>
+
+    <div class="stat-tile p-4 rounded-2xl flex items-center gap-3" role="group" aria-label="Max leverage">
+      <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-500 text-white">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      </div>
+      <div>
+        <div class="text-xs muted">Max Leverage</div>
+        <div class="text-xl font-semibold">10×</div>
+        <div class="text-xs muted">F&amp;O Trading</div>
+      </div>
+    </div>
+
+    <div class="stat-tile p-4 rounded-2xl flex items-center gap-3" role="group" aria-label="Accuracy">
+      <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-rose-500 to-orange-400 text-white">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="16,12 12,8 8,12"/></svg>
+      </div>
+      <div>
+        <div class="text-xs muted">Accuracy</div>
+        <div class="text-xl font-semibold">99%</div>
+        <div class="text-xs muted">Risk Management</div>
+      </div>
+    </div>
+
+    <div class="stat-tile p-4 rounded-2xl flex items-center gap-3" role="group" aria-label="Traders">
+      <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-700 to-teal-400 text-white">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <div>
+        <div class="text-xs muted">Traders</div>
+        <div class="text-xl font-semibold">1K+</div>
+        <div class="text-xs muted">Active users</div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="calculators-heading" class="mb-8">
+    <div class="flex items-center justify-between mb-4">
+      <h2 id="calculators-heading" class="text-xl font-semibold">Calculators</h2>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {# Card pattern: clickable, keyboard accessible, clear label #}
+      <article tabindex="0" role="link" aria-label="Open Intraday Calculator" data-href="{{ url_for('intraday') }}" class="card-bg p-5 sm:p-6 rounded-2xl border border-slate-800 focus-ring cursor-pointer card-focus">
+        <div class="flex items-start gap-4">
+          <div class="rounded-lg p-3 bg-gradient-to-br from-sky-600 to-teal-500 text-white flex-shrink-0">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+          <div class="min-w-0">
+            <h3 class="font-semibold text-lg">Intraday</h3>
+            <p class="text-sm muted mt-1">Position sizing, stop-loss, and margin for quick trades. Demo below.</p>
+          </div>
+        </div>
+        <div class="mt-4 flex items-center justify-between">
+          <span class="text-xs muted">Leverage</span>
+          <span class="text-sm font-medium">Up to 5×</span>
+        </div>
+      </article>
+
+      <article tabindex="0" role="link" aria-label="Open F and O Calculator" data-href="{{ url_for('fo_calculator') }}" class="card-bg p-5 sm:p-6 rounded-2xl border border-slate-800 focus-ring cursor-pointer card-focus">
+        <div class="flex items-start gap-4">
+          <div class="rounded-lg p-3 bg-gradient-to-br from-teal-500 to-sky-600 text-white flex-shrink-0">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27,6.96 12,12.01 20.73,6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          </div>
+          <div class="min-w-0">
+            <h3 class="font-semibold text-lg">F&amp;O</h3>
+            <p class="text-sm muted mt-1">Greeks, lots and scenario P/L for derivatives traders.</p>
+          </div>
+        </div>
+        <div class="mt-4 flex items-center justify-between">
+          <span class="text-xs muted">Leverage</span>
+          <span class="text-sm font-medium">Up to 10×</span>
+        </div>
+      </article>
+
+      <article tabindex="0" role="link" aria-label="Open MTF Calculator" data-href="{{ url_for('mtf_calculator') }}" class="card-bg p-5 sm:p-6 rounded-2xl border border-slate-800 focus-ring cursor-pointer card-focus">
+        <div class="flex items-start gap-4">
+          <div class="rounded-lg p-3 bg-gradient-to-br from-indigo-600 to-purple-500 text-white flex-shrink-0">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <div class="min-w-0">
+            <h3 class="font-semibold text-lg">MTF</h3>
+            <p class="text-sm muted mt-1">Margin Trading Facility sizing for multi-day positions.</p>
+          </div>
+        </div>
+        <div class="mt-4 flex items-center justify-between">
+          <span class="text-xs muted">Leverage</span>
+          <span class="text-sm font-medium">Up to 4×</span>
+        </div>
+      </article>
+
+      <article tabindex="0" role="link" aria-label="Open Swing Calculator" data-href="{{ url_for('swing_calculator') }}" class="card-bg p-5 sm:p-6 rounded-2xl border border-slate-800 focus-ring cursor-pointer card-focus">
+        <div class="flex items-start gap-4">
+          <div class="rounded-lg p-3 bg-gradient-to-br from-orange-500 to-yellow-500 text-white flex-shrink-0">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          </div>
+          <div class="min-w-0">
+            <h3 class="font-semibold text-lg">Swing</h3>
+            <p class="text-sm muted mt-1">Multi-day sizing with volatility adjustments.</p>
+          </div>
+        </div>
+        <div class="mt-4 flex items-center justify-between">
+          <span class="text-xs muted">Leverage</span>
+          <span class="text-sm font-medium">Up to 2×</span>
+        </div>
+      </article>
+
+      <article tabindex="0" role="link" aria-label="Open Delivery Calculator" data-href="{{ url_for('delivery_calculator') }}" class="card-bg p-5 sm:p-6 rounded-2xl border border-slate-800 focus-ring cursor-pointer card-focus">
+        <div class="flex items-start gap-4">
+          <div class="rounded-lg p-3 bg-gradient-to-br from-purple-600 to-pink-600 text-white flex-shrink-0">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m22 2-5 10-5-4-2 3"/></svg>
+          </div>
+          <div class="min-w-0">
+            <h3 class="font-semibold text-lg">Delivery</h3>
+            <p class="text-sm muted mt-1">Long-term equity sizing with taxes and margin considered.</p>
+          </div>
+        </div>
+        <div class="mt-4 flex items-center justify-between">
+          <span class="text-xs muted">Leverage</span>
+          <span class="text-sm font-medium">1×</span>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section aria-labelledby="trading-philosophy" class="mb-8">
+    <div class="card-bg p-6 sm:p-8 rounded-2xl border border-slate-800 text-center">
+      <div class="max-w-3xl mx-auto">
+        <blockquote class="text-lg sm:text-xl lg:text-2xl font-light leading-relaxed text-white">
+          <span class="block mb-3">"Beyond a <span class="text-teal-400 font-medium">calculator</span> — it's a mirror that unveils market reality.</span>
+          <span class="block text-base sm:text-lg lg:text-xl text-white font-normal italic">An invaluable guide for beginners and a precision benchmark for professionals."</span>
+        </blockquote>
+        <div class="mt-6 w-20 h-px bg-gradient-to-r from-transparent via-teal-400/40 to-transparent mx-auto"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+window.IS_AUTHENTICATED = "{{ 'true' if current_user is defined and current_user.is_authenticated else 'false' }}";
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[role="link"][data-href]').forEach(card => {
+    card.addEventListener('click', () => {
+      const href = card.dataset.href;
+      if (href) location.href = href;
+    });
+    card.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
+    });
+  });
+
+  function loadScript(src, cb){ const s=document.createElement('script'); s.src=src; s.onload=cb; s.onerror=cb; document.head.appendChild(s); }
+
+  function safeNum(v){ const n=Number(v); return isFinite(n)?n:0; }
+  function formatCurrency(n){ return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 }); }
+  function generateSeries(points, base=1200){
+    const out=[]; let v=base;
+    for (let i=0;i<points;i++){ v = Math.max(1, v + (Math.random()-0.45)*10); out.push(+v.toFixed(2)); }
+    return out;
+  }
+
+  function updateMetrics(series){
+    if (!series || !series.length) return;
+    const last = series[series.length-1];
+    const avg = series.reduce((s,x)=>s+x,0)/series.length;
+    const vol = series.reduce((s,x,i,a)=> s + (i?Math.abs(x-a[i-1]):0),0)/series.length;
+    const lastEl = document.getElementById('metric-last');
+    const avgEl = document.getElementById('metric-avg');
+    const volEl = document.getElementById('metric-vol');
+    if (lastEl) lastEl.textContent = '₹' + Number(last).toLocaleString();
+    if (avgEl) avgEl.textContent = '₹' + Number(avg.toFixed(2)).toLocaleString();
+    if (volEl) volEl.textContent = Number(vol.toFixed(2));
+  }
+  function initChart(){
+    const canvas = document.getElementById('insight-chart');
+    if (!canvas) return;
+    if (!window.Chart) return;
+
+    if (window.insightChart) {
+      try { window.insightChart.destroy(); } catch(e){ /* ignore */ }
+      window.insightChart = null;
+    }
+
+    const parent = canvas.parentElement;
+    if (!parent) return;
+    parent.style.overflow = 'hidden';
+
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvasToContainer(){
+      const rect = parent.getBoundingClientRect();
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      canvas.style.width = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
+      if (window.insightChart && typeof window.insightChart.resize === 'function') {
+        window.insightChart.resize();
+      }
+    }
+
+    function makeGradient(){
+      const h = Math.max(1, canvas.height);
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, 'rgba(56,189,248,0.20)');
+      g.addColorStop(1, 'rgba(14,165,164,0.04)');
+      return g;
+    }
+
+    function paddedBounds(series){
+      if (!series || series.length === 0) return { min: 0, max: 1 };
+      let min = Number.POSITIVE_INFINITY, max = Number.NEGATIVE_INFINITY;
+      for (let v of series) {
+        const n = Number(v) || 0;
+        if (n < min) min = n;
+        if (n > max) max = n;
+      }
+      if (min === max) {
+        const delta = Math.abs(min) * 0.02 || 1;
+        return { min: min - delta, max: max + delta };
+      }
+      const range = max - min;
+      const pad = range * 0.06; 
+      return { min: min - pad, max: max + pad };
+    }
+    window.insightChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Price',
+          data: [],
+          borderWidth: 2,
+          tension: 0.25,
+          pointRadius: 0,
+          borderColor: '#38bdf8',
+          fill: true,
+          backgroundColor: makeGradient()
+        }]
+      },
+      options: {
+        responsive: false,
+        maintainAspectRatio: false,
+        animation: { duration: 300 },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            intersect: false,
+            mode: 'index',
+            callbacks: {
+              label: ctxTip => {
+                const v = ctxTip.parsed && ctxTip.parsed.y !== undefined ? ctxTip.parsed.y : ctxTip.parsed;
+                return 'Price: ₹' + Number(v).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+              }
+            }
+          }
+        },
+        scales: {
+          x: { display: false },
+          y: {
+            grid: { drawBorder: false, color: 'rgba(255,255,255,0.03)' },
+            ticks: {
+              callback: val => '₹' + Number(val).toLocaleString('en-IN', { maximumFractionDigits: 0 })
+            }
+            
+          }
+        },
+        onResize: chart => {
+          if (chart && chart.data && chart.data.datasets && chart.data.datasets[0]) {
+            chart.data.datasets[0].backgroundColor = makeGradient();
+          }
+        }
+      },
+      plugins: [{
+        id: 'applyGradientAndClipFix',
+        beforeDraw: (chart) => {
+          const ds = chart.data.datasets[0];
+          if (!ds) return;
+          ds.backgroundColor = makeGradient();
+          ds.borderColor = '#38bdf8';
+        }
+      }]
+    });
+
+    window.setInsightSeries = function(series){
+      if (!window.insightChart) return;
+      const chart = window.insightChart;
+      chart.data.labels = series.map((_,i)=>i+1);
+      chart.data.datasets[0].data = series;
+
+      const bounds = paddedBounds(series);
+      if (!chart.options.scales) chart.options.scales = {};
+      if (!chart.options.scales.y) chart.options.scales.y = {};
+      chart.options.scales.y.min = bounds.min;
+      chart.options.scales.y.max = bounds.max;
+
+      chart.data.datasets[0].backgroundColor = makeGradient();
+      chart.update('none');
+      updateMetrics(series);
+    };
+
+    resizeCanvasToContainer();
+    let scheduled = false;
+    window.addEventListener('resize', () => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        resizeCanvasToContainer();
+        scheduled = false;
+      });
+    });
+  }
+
+  function setRange(range){
+    const map = { '1D': 24, '1W': 7*24, '1M': 30*24, '3M': 90*24 };
+    const pts = Math.min(200, map[range] || 24);
+    const series = generateSeries(pts, 1200 + (Math.random()*40 - 20));
+    if (window.setInsightSeries) {
+      window.setInsightSeries(series);
+    } else if (window.insightChart) {
+      window.insightChart.data.labels = series.map((_,i)=>i+1);
+      window.insightChart.data.datasets[0].data = series;
+      window.insightChart.update();
+      updateMetrics(series);
+    } else {
+      updateMetrics(series);
+    }
+  }
+
+  loadScript('https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js', () => {
+    try{
+      initChart();
+      setRange('1D');
+    } catch(e){
+      console.warn('Chart init failed', e);
+    }
+  });
+
+  document.querySelectorAll('.btn-range').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.btn-range').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected','false'); });
+      btn.classList.add('active'); btn.setAttribute('aria-selected','true');
+      setRange(btn.dataset.range);
+    });
+    btn.addEventListener('keydown', e => { if (e.key==='Enter' || e.key===' ') { e.preventDefault(); btn.click(); } });
+  });
+
+  const capitalEl = document.getElementById('capital');
+  const riskEl = document.getElementById('risk');
+  const entryEl = document.getElementById('entry');
+  const stopEl = document.getElementById('stop');
+  const leverageEl = document.getElementById('leverage');
+  const resultsEl = document.getElementById('intraday-results');
+  const resetBtn = document.getElementById('calc-reset');
+  const saveBtn = document.getElementById('calc-save');
+
+  function computeIntraday(){
+    try {
+      const capital = safeNum(capitalEl && capitalEl.value);
+      const riskPct = safeNum(riskEl && riskEl.value);
+      const entry = safeNum(entryEl && entryEl.value);
+      const stop = safeNum(stopEl && stopEl.value);
+      const leverage = Math.max(1, safeNum(leverageEl && leverageEl.value) || 1);
+
+      if (!resultsEl) return;
+
+      if (capital <= 0 || entry <= 0 || stop <= 0 || riskPct < 0){
+        resultsEl.innerHTML = '<div class="text-sm muted">Please enter positive numbers for capital, entry and stop.</div>';
+        return;
+      }
+
+      const stopDist = Math.abs(entry - stop);
+      if (stopDist === 0) { resultsEl.innerHTML = '<div class="text-sm muted">Entry and stop must differ (stop distance cannot be zero).</div>'; return; }
+
+      const riskAmount = capital * (riskPct / 100);
+      const shares = Math.max(0, Math.floor(riskAmount / stopDist));
+      const positionValue = shares * entry;
+      const marginRequired = positionValue / leverage;
+      const maxAffordableShares = Math.floor((capital * leverage) / entry);
+
+      resultsEl.innerHTML = `
+        <div class="grid grid-cols-1 gap-2 text-sm">
+          <div class="flex justify-between"><div class="text-xs muted">Risk amount</div><div class="font-medium">${formatCurrency(riskAmount)}</div></div>
+          <div class="flex justify-between"><div class="text-xs muted">Stop distance</div><div class="font-medium">${stopDist.toFixed(2)} ₹</div></div>
+          <div class="flex justify-between"><div class="text-xs muted">Position (shares) — suggested</div><div class="font-medium">${shares.toLocaleString()}</div></div>
+          <div class="flex justify-between"><div class="text-xs muted">Position value</div><div class="font-medium">${formatCurrency(positionValue)}</div></div>
+          <div class="flex justify-between"><div class="text-xs muted">Margin required (at ${leverage}×)</div><div class="font-medium">${formatCurrency(marginRequired)}</div></div>
+          <div class="flex justify-between"><div class="text-xs muted">Max affordable shares (full buying power)</div><div class="font-medium">${maxAffordableShares.toLocaleString()}</div></div>
+        </div>
+      `;
+    } catch (e) {
+      console.error('computeIntraday error', e);
+    }
+  }
+
+  [capitalEl, riskEl, entryEl, stopEl, leverageEl].forEach(el => { if (!el) return; el.addEventListener('input', computeIntraday); el.addEventListener('change', computeIntraday); });
+
+  resetBtn && resetBtn.addEventListener('click', () => {
+    if (!capitalEl) return;
+    capitalEl.value = '50000'; riskEl.value = '1'; entryEl.value = '1200'; stopEl.value = '1180'; leverageEl.value = '5';
+    computeIntraday();
+  });
+
+  if (saveBtn) {
+    saveBtn.addEventListener('click', async () => {
+      if (window.IS_AUTHENTICATED !== 'true') {
+        window.location.href = '{{ url_for("register") }}';
+        return;
+      }
+
+      const payload = {
+        capital: safeNum(capitalEl.value),
+        risk_pct: safeNum(riskEl.value),
+        entry: safeNum(entryEl.value),
+        stop: safeNum(stopEl.value),
+        leverage: safeNum(leverageEl.value)
+      };
+
+      const endpoint = '{{ url_for("register") }}';
+
+      try {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner" aria-hidden="true"></span> Saving';
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Network response not ok');
+        resultsEl.innerHTML = '<div class="text-sm" role="status">Saved ✓ — <a class="underline" href="{{ url_for("show_saved_trades") }}">View in journal</a></div>';
+      } catch (err) {
+        console.error(err);
+        resultsEl.innerHTML = '<div class="text-sm muted">Save failed — try again or sign in if required.</div>';
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = 'Save to Journal';
+      }
+    });
+  }
+
+  computeIntraday();
+});
+</script>
+{% endblock %}

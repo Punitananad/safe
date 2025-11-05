@@ -1,0 +1,546 @@
+{% extends "base_new_journal.html" %}
+
+{% block title %}Dashboard | Calculate N Trade{% endblock %}
+
+{% block content %}
+<div class="px-6 py-6 space-y-8">
+  <div class="flex items-center justify-between">
+    <h1 class="text-3xl font-bold tracking-tight">📊 Trading Dashboard</h1>
+    <div class="flex items-center gap-4">
+      <select id="timeRange" class="bg-[color:var(--card)] border border-slate-700 rounded-lg px-3 py-2 text-sm">
+        <option value="30">Last 30 Days</option>
+        <option value="90">Last 3 Months</option>
+        <option value="365">Last Year</option>
+      </select>
+      <span class="text-sm text-[color:var(--muted)]">
+        Updated {{ now.strftime('%b %d, %Y at %H:%M') if now else '' }}
+      </span>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+    <div class="p-5 rounded-2xl bg-gradient-to-br from-teal-700/30 to-sky-800/20 border border-slate-700 shadow hover:shadow-lg transition-shadow">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-slate-400">Total P&L</p>
+          <h3 class="text-2xl font-semibold mt-1 text-white" id="totalPnl">₹{{ "{:,.2f}".format(total_pnl) }}</h3>
+          <p class="text-xs text-slate-500 mt-1">{{ 'Profitable' if total_pnl > 0 else 'Loss' }}</p>
+        </div>
+        <div class="p-3 rounded-full bg-teal-500/20">
+          <i class="fa-solid fa-coins text-teal-400 text-xl"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-5 rounded-2xl bg-gradient-to-br from-emerald-700/30 to-sky-800/20 border border-slate-700 shadow hover:shadow-lg transition-shadow">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-slate-400">Win Rate</p>
+          <h3 class="text-2xl font-semibold mt-1 text-white" id="winRate">{{ win_rate }}%</h3>
+          <p class="text-xs text-slate-500 mt-1">{{ winning_trades }}/{{ total_trades }} wins</p>
+        </div>
+        <div class="p-3 rounded-full bg-emerald-500/20">
+          <i class="fa-solid fa-trophy text-emerald-400 text-xl"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-5 rounded-2xl bg-gradient-to-br from-sky-700/30 to-indigo-800/20 border border-slate-700 shadow hover:shadow-lg transition-shadow">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-slate-400">Total Trades</p>
+          <h3 class="text-2xl font-semibold mt-1 text-white" id="totalTrades">{{ total_trades }}</h3>
+          <p class="text-xs text-slate-500 mt-1">{{ trades_this_month }} this month</p>
+        </div>
+        <div class="p-3 rounded-full bg-sky-500/20">
+          <i class="fa-solid fa-chart-line text-sky-400 text-xl"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-5 rounded-2xl bg-gradient-to-br from-purple-700/30 to-sky-800/20 border border-slate-700 shadow hover:shadow-lg transition-shadow">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-slate-400">This Month</p>
+          <h3 class="text-2xl font-semibold mt-1 text-white" id="monthlyPnl">₹{{ "{:,.2f}".format(monthly_pnl) }}</h3>
+          <p class="text-xs text-slate-500 mt-1">{{ '↗️' if monthly_pnl > 0 else '↘️' }} vs last month</p>
+        </div>
+        <div class="p-3 rounded-full bg-purple-500/20">
+          <i class="fa-solid fa-calendar-days text-purple-400 text-xl"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Section -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Equity Curve Chart -->
+    <div class="lg:col-span-2 bg-[color:var(--card)] rounded-xl border border-slate-800 p-6 shadow">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Equity Curve</h2>
+        <div class="flex items-center gap-2">
+          <div class="w-3 h-3 rounded-full bg-teal-400"></div>
+          <span class="text-xs text-slate-400">Cumulative P&L</span>
+        </div>
+      </div>
+      <div class="h-64 relative">
+        <canvas id="equityChart" class="w-full h-full"></canvas>
+      </div>
+    </div>
+
+    <!-- Win/Loss Distribution -->
+    <div class="bg-[color:var(--card)] rounded-xl border border-slate-800 p-6 shadow">
+      <h2 class="text-lg font-semibold mb-4">Win/Loss Distribution</h2>
+      <div class="h-64 relative">
+        <canvas id="winLossChart" class="w-full h-full"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Performance Metrics & Monthly Heatmap -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Performance Metrics -->
+    <div class="bg-[color:var(--card)] rounded-xl border border-slate-800 p-6 shadow">
+      <h2 class="text-lg font-semibold mb-4">Performance Metrics</h2>
+      <div class="space-y-4">
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-slate-400">Profit Factor</span>
+          <span class="text-white font-medium" id="profitFactor">{{ "%.2f"|format(profit_factor) if profit_factor else 'N/A' }}</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-slate-400">Avg Win</span>
+          <span class="text-green-400 font-medium">₹{{ "{:,.2f}".format(avg_win) if avg_win else 0 }}</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-slate-400">Avg Loss</span>
+          <span class="text-red-400 font-medium">₹{{ "{:,.2f}".format(avg_loss) if avg_loss else 0 }}</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-slate-400">R:R Ratio</span>
+          <span class="text-white font-medium">{{ "1:%.2f"|format(risk_reward) if risk_reward else 'N/A' }}</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-slate-400">Max Drawdown</span>
+          <span class="text-red-400 font-medium">₹{{ "{:,.2f}".format(max_drawdown) if max_drawdown else 0 }}</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-slate-400">Expectancy</span>
+          <span class="text-white font-medium">₹{{ "{:,.2f}".format(expectancy) if expectancy else 0 }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monthly Heatmap -->
+    <div class="bg-[color:var(--card)] rounded-xl border border-slate-800 p-6 shadow">
+      <h2 class="text-lg font-semibold mb-4">Monthly Performance</h2>
+      <div class="h-64 relative">
+        <canvas id="monthlyChart" class="w-full h-full"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Trades Table -->
+  <div class="bg-[color:var(--card)] rounded-xl border border-slate-800 p-6 shadow">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-semibold">Recent Trades</h2>
+      <a href="{{ url_for('calculatentrade.get_trades') }}" class="text-sm text-[color:var(--accent)] hover:underline flex items-center gap-1">
+        View All <i class="fa-solid fa-arrow-right text-xs"></i>
+      </a>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="border-b border-slate-700 text-slate-400 uppercase text-xs">
+            <th class="text-left py-3 px-3">Symbol</th>
+            <th class="text-left py-3 px-3">Date</th>
+            <th class="text-left py-3 px-3">Type</th>
+            <th class="text-left py-3 px-3">P&L</th>
+            <th class="text-left py-3 px-3">Result</th>
+            <th class="text-left py-3 px-3">Strategy</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for trade in recent_trades[:10] %}
+          <tr class="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
+            <td class="py-3 px-3 font-medium text-white">{{ trade.symbol }}</td>
+            <td class="py-3 px-3 text-slate-400">{{ trade.date.strftime('%m/%d') }}</td>
+            <td class="py-3 px-3">
+              <span class="px-2 py-1 text-xs rounded-full {{ 
+                'bg-blue-900/40 text-blue-300' if trade.trade_type == 'long' else 
+                'bg-orange-900/40 text-orange-300' }}">
+                {{ trade.trade_type.title() }}
+              </span>
+            </td>
+            <td class="py-3 px-3 font-medium {{ 'text-green-400' if trade.pnl > 0 else 'text-red-400' }}">
+              {{ '₹{:,.0f}'.format(trade.pnl) }}
+            </td>
+            <td class="py-3 px-3">
+              <span class="px-2 py-1 text-xs rounded-full font-medium {{ 
+                'bg-green-900/40 text-green-300' if trade.result == 'win' else 
+                'bg-red-900/40 text-red-300' if trade.result == 'loss' else
+                'bg-gray-900/40 text-gray-300' }}">
+                {{ trade.result.title() }}
+              </span>
+            </td>
+            <td class="py-3 px-3 text-slate-400 text-xs">
+              {{ trade.strategy.name[:15] + '...' if trade.strategy and trade.strategy.name|length > 15 else (trade.strategy.name if trade.strategy else '-') }}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="py-8 text-center text-slate-500">
+              <i class="fa-solid fa-chart-line text-2xl mb-2 block"></i>
+              No trades recorded yet. Start trading to see your performance!
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Dashboard Charts and Real-time Updates
+class TradingDashboard {
+  constructor() {
+    this.charts = {};
+    console.log('Initializing Trading Dashboard...');
+    this.initCharts();
+    this.setupEventListeners();
+    // Load sample data immediately, then try to load real data
+    this.loadSampleData();
+    setTimeout(() => this.loadData(), 1000);
+  }
+
+  loadSampleData() {
+    console.log('Loading sample data for charts...');
+    this.loadSampleEquityData();
+    this.loadSampleMonthlyData();
+  }
+
+  initCharts() {
+    // Equity Curve Chart
+    const equityCtx = document.getElementById('equityChart')?.getContext('2d');
+    if (equityCtx) {
+      console.log('Creating equity chart...');
+      this.charts.equity = new Chart(equityCtx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Cumulative P&L',
+            data: [],
+            borderColor: '#14b8a6',
+            backgroundColor: 'rgba(20, 184, 166, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.9)',
+              titleColor: '#e2e8f0',
+              bodyColor: '#e2e8f0',
+              borderColor: '#334155',
+              borderWidth: 1,
+              callbacks: {
+                label: function(context) {
+                  return 'P&L: ₹' + context.parsed.y.toLocaleString();
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#334155', display: false },
+              ticks: { color: '#94a3b8', maxTicksLimit: 8 }
+            },
+            y: {
+              grid: { color: '#334155' },
+              ticks: { 
+                color: '#94a3b8',
+                callback: function(value) {
+                  return '₹' + value.toLocaleString();
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Win/Loss Pie Chart
+    const winLossCtx = document.getElementById('winLossChart')?.getContext('2d');
+    if (winLossCtx) {
+      console.log('Creating win/loss chart...');
+      this.charts.winLoss = new Chart(winLossCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Wins', 'Losses', 'Breakeven'],
+          datasets: [{
+            data: [{{ winning_trades }}, {{ losing_trades }}, {{ total_trades - winning_trades - losing_trades }}],
+            backgroundColor: ['#10b981', '#ef4444', '#6b7280'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { 
+                color: '#e2e8f0', 
+                padding: 15,
+                usePointStyle: true,
+                pointStyle: 'circle'
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.9)',
+              titleColor: '#e2e8f0',
+              bodyColor: '#e2e8f0',
+              callbacks: {
+                label: function(context) {
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const percentage = ((context.parsed * 100) / total).toFixed(1);
+                  return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Monthly Performance Chart
+    const monthlyCtx = document.getElementById('monthlyChart')?.getContext('2d');
+    if (monthlyCtx) {
+      console.log('Creating monthly chart...');
+      this.charts.monthly = new Chart(monthlyCtx, {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Monthly P&L',
+            data: [],
+            backgroundColor: function(context) {
+              const value = context.parsed?.y || context.raw;
+              return value >= 0 ? '#10b981' : '#ef4444';
+            },
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.9)',
+              titleColor: '#e2e8f0',
+              bodyColor: '#e2e8f0',
+              callbacks: {
+                label: function(context) {
+                  return 'P&L: ₹' + context.parsed.y.toLocaleString();
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#334155', display: false },
+              ticks: { color: '#94a3b8', maxRotation: 45 }
+            },
+            y: {
+              grid: { color: '#334155' },
+              ticks: { 
+                color: '#94a3b8',
+                callback: function(value) {
+                  return '₹' + value.toLocaleString();
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  setupEventListeners() {
+    // Time range selector
+    const timeRange = document.getElementById('timeRange');
+    if (timeRange) {
+      timeRange.addEventListener('change', () => {
+        this.loadData(timeRange.value);
+      });
+    }
+  }
+
+  async loadData(days = 30) {
+    try {
+      // Load equity curve data
+      const equityResponse = await fetch(`/calculatentrade_journal/api/dashboard/equity_curve?days=${days}`);
+      const equityData = await equityResponse.json();
+      
+      if (equityData.success && this.charts.equity) {
+        this.charts.equity.data.labels = equityData.data.map(d => d.date);
+        this.charts.equity.data.datasets[0].data = equityData.data.map(d => d.equity);
+        this.charts.equity.update();
+      } else {
+        // Fallback with sample data if API fails
+        this.loadSampleEquityData();
+      }
+
+      // Load monthly heatmap data
+      const monthlyResponse = await fetch(`/calculatentrade_journal/api/dashboard/monthly_heatmap?months=12`);
+      const monthlyData = await monthlyResponse.json();
+      
+      if (monthlyData.success && this.charts.monthly) {
+        this.charts.monthly.data.labels = monthlyData.data.map(d => d.month);
+        this.charts.monthly.data.datasets[0].data = monthlyData.data.map(d => d.pnl);
+        this.charts.monthly.update();
+      } else {
+        // Fallback with sample data if API fails
+        this.loadSampleMonthlyData();
+      }
+
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      // Load sample data as fallback
+      this.loadSampleEquityData();
+      this.loadSampleMonthlyData();
+    }
+  }
+
+  loadSampleEquityData() {
+    if (!this.charts.equity) return;
+    
+    // Generate sample equity curve data
+    const sampleData = [];
+    let cumulative = 0;
+    const today = new Date();
+    
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      cumulative += (Math.random() - 0.4) * 1000; // Slight upward bias
+      sampleData.push({
+        date: date.toISOString().split('T')[0],
+        equity: Math.round(cumulative)
+      });
+    }
+    
+    this.charts.equity.data.labels = sampleData.map(d => d.date);
+    this.charts.equity.data.datasets[0].data = sampleData.map(d => d.equity);
+    this.charts.equity.update();
+  }
+
+  loadSampleMonthlyData() {
+    if (!this.charts.monthly) return;
+    
+    // Generate sample monthly data
+    const months = ['Jan 2024', 'Feb 2024', 'Mar 2024', 'Apr 2024', 'May 2024', 'Jun 2024', 
+                   'Jul 2024', 'Aug 2024', 'Sep 2024', 'Oct 2024', 'Nov 2024', 'Dec 2024'];
+    const samplePnl = months.map(() => (Math.random() - 0.3) * 5000);
+    
+    this.charts.monthly.data.labels = months;
+    this.charts.monthly.data.datasets[0].data = samplePnl;
+    this.charts.monthly.update();
+  }
+
+  // Update KPI cards with animation
+  updateKPIs(data) {
+    const elements = {
+      totalPnl: document.getElementById('totalPnl'),
+      winRate: document.getElementById('winRate'),
+      totalTrades: document.getElementById('totalTrades'),
+      monthlyPnl: document.getElementById('monthlyPnl')
+    };
+
+    Object.entries(elements).forEach(([key, element]) => {
+      if (element && data[key] !== undefined) {
+        element.style.transform = 'scale(1.05)';
+        setTimeout(() => {
+          element.textContent = data[key];
+          element.style.transform = 'scale(1)';
+        }, 150);
+      }
+    });
+  }
+}
+
+// Initialize dashboard when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM loaded, Chart.js available:', typeof Chart !== 'undefined');
+  
+  if (typeof Chart !== 'undefined') {
+    try {
+      const dashboard = new TradingDashboard();
+      console.log('Dashboard initialized successfully');
+    } catch (error) {
+      console.error('Error initializing dashboard:', error);
+      // Fallback: Initialize charts directly
+      initChartsDirectly();
+    }
+  } else {
+    console.error('Chart.js not loaded - charts will not work');
+  }
+});
+
+// Fallback chart initialization
+function initChartsDirectly() {
+  console.log('Initializing charts directly...');
+  
+  // Equity Chart
+  const equityCtx = document.getElementById('equityChart')?.getContext('2d');
+  if (equityCtx) {
+    new Chart(equityCtx, {
+      type: 'line',
+      data: {
+        labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5'],
+        datasets: [{
+          label: 'P&L',
+          data: [0, 500, 300, 800, 1200],
+          borderColor: '#14b8a6',
+          backgroundColor: 'rgba(20, 184, 166, 0.1)',
+          fill: true
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+  
+  // Monthly Chart
+  const monthlyCtx = document.getElementById('monthlyChart')?.getContext('2d');
+  if (monthlyCtx) {
+    new Chart(monthlyCtx, {
+      type: 'bar',
+      data: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
+        datasets: [{
+          data: [1000, -500, 2000, 800, 1500],
+          backgroundColor: function(context) {
+            return context.parsed.y >= 0 ? '#10b981' : '#ef4444';
+          }
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+}
+</script>
+{% endblock %}

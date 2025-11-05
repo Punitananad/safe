@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Employee Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
+        .employee-header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
+        .employee-title { font-size: 24px; font-weight: bold; }
+        .employee-nav { display: flex; gap: 15px; }
+        .employee-nav a { color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 5px; }
+        .employee-nav a:hover { background: rgba(255,255,255,0.3); }
+        .employee-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
+        .stat-number { font-size: 32px; font-weight: bold; color: #28a745; }
+        .stat-label { color: #666; margin-top: 5px; }
+        .employee-section { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .section-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #333; }
+        .employee-table { width: 100%; border-collapse: collapse; }
+        .employee-table th, .employee-table td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        .employee-table th { background: #f8f9fa; font-weight: bold; }
+        .employee-btn { padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 12px; }
+        .employee-btn:hover { background: #218838; }
+        .employee-btn.danger { background: #dc3545; }
+        .employee-btn.danger:hover { background: #c82333; }
+        .search-box { margin-bottom: 15px; }
+        .search-box input { padding: 8px; width: 300px; border: 1px solid #ddd; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="employee-header">
+        <div class="employee-title">👨💼 Employee Dashboard - {{ employee_username }}</div>
+        <div class="employee-nav">
+            <a href="{{ url_for('employee.manage_users') }}">Manage Users</a>
+            <a href="{{ url_for('employee.employee_payments') }}">My Payments</a>
+            <a href="{{ url_for('employee.employee_logout') }}">Logout</a>
+        </div>
+    </div>
+
+    <div class="employee-stats">
+        <div class="stat-card">
+            <div class="stat-number">{{ users|length }}</div>
+            <div class="stat-label">Total Users</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ active_users|length }}</div>
+            <div class="stat-label">Active Users</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ users|length - active_users|length }}</div>
+            <div class="stat-label">Inactive Users</div>
+        </div>
+    </div>
+
+    <div class="employee-section">
+        <div class="section-title">Recent Users</div>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search users..." onkeyup="searchUsers()">
+        </div>
+        <table class="employee-table" id="usersTable">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Registered</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users[:10] %}
+                <tr>
+                    <td>{{ user.email }}</td>
+                    <td>
+                        <span style="color: {{ 'green' if user.verified else 'red' }}">
+                            {{ 'Active' if user.verified else 'Inactive' }}
+                        </span>
+                    </td>
+                    <td>{{ user.registered_on[:10] if user.registered_on else 'N/A' }}</td>
+                    <td>
+                        <a href="{{ url_for('employee.manage_users') }}" class="employee-btn">Manage</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" style="text-align: center; color: #666;">No users found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function searchUsers() {
+            const input = document.getElementById('searchInput');
+            const filter = input.value.toLowerCase();
+            const table = document.getElementById('usersTable');
+            const rows = table.getElementsByTagName('tr');
+
+            for (let i = 1; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                let found = false;
+                
+                for (let j = 0; j < cells.length - 1; j++) {
+                    if (cells[j].textContent.toLowerCase().includes(filter)) {
+                        found = true;
+                        break;
+                    }
+                }
+                
+                rows[i].style.display = found ? '' : 'none';
+            }
+        }
+    </script>
+</body>
+</html>

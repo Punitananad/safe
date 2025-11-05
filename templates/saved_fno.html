@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+
+{% block title %}Saved F&O Trades — Journal{% endblock %}
+
+{% block extra_css %}
+<style>
+  .table-header{display:flex;justify-content:space-between;align-items:center;margin:10px 2px 14px}
+  .table-header h1{font-size:1.6rem;margin:0}
+  .table-header p{color:var(--muted);margin:4px 0 0}
+
+  .table-wrapper{overflow:auto;border-radius:12px;border:1px solid var(--line)}
+  .trades-table{width:100%;border-collapse:separate;border-spacing:0;font-size:.93rem}
+  .trades-table thead th{
+    position:sticky;top:0;z-index:1;background:linear-gradient(90deg,#26283a,#1f2131);
+    color:#e9edf5;text-align:center;padding:10px 12px;border-bottom:1px solid var(--line);
+    user-select:none; cursor:pointer;
+  }
+  .trades-table thead th.sortable::after{
+    content:" ⇅"; opacity:.55; font-size:.85em;
+  }
+  .trades-table thead th.sorted-asc::after{content:" ↑";}
+  .trades-table thead th.sorted-desc::after{content:" ↓";}
+
+  .trades-table tbody td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:center;vertical-align:middle}
+  .trades-table tbody tr:hover{background:rgba(255,255,255,.04)}
+  .trades-table tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
+  .trades-table .num{text-align:right;font-variant-numeric:tabular-nums}
+  .status-closed{opacity:.75}
+  .trade-type{padding:5px 10px;border-radius:8px;font-weight:700;font-size:.8rem;color:#fff}
+  .trade-type.buy{background:#16a34a}
+  .trade-type.sell{background:#ef4444}
+  .closed-badge{margin-left:6px;padding:3px 8px;border-radius:6px;font-size:.7rem;background:#6b7280;color:#fff}
+
+  .lot-badge{padding:4px 8px;background:rgba(78,84,200,0.1);color:#8f94fb;border-radius:6px;font-weight:600;font-size:.7rem}
+  .derivative-name{font-family:monospace;font-weight:600;color:#4e54c8}
+
+  .actions-cell{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+  .copy-btn{padding:6px 10px;border-radius:8px;border:1px dashed var(--line);background:#2a2d3a;color:var(--text);cursor:pointer}
+
+  .profit-green{color:#22c55e !important}
+  .loss-red{color:#ef4444 !important}
+
+  .btn{padding:6px 12px;border-radius:6px;border:none;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-success{background:#16a34a;color:#fff}
+  .btn-danger{background:#ef4444;color:#fff}
+  .btn-primary{background:#3b82f6;color:#fff}
+  .btn:hover{opacity:0.9;transform:translateY(-1px)}
+
+  .settings-btn{background:#6b7280;color:#fff;padding:8px;border-radius:50%;border:none;cursor:pointer;position:relative}
+  .settings-btn:hover{background:#4b5563}
+  .dropdown-menu{position:absolute;top:100%;right:0;background:#1f2937;border:1px solid #374151;border-radius:8px;min-width:120px;z-index:1000;display:none;box-shadow:0 4px 6px rgba(0,0,0,0.3)}
+  .dropdown-menu.show{display:block}
+  .dropdown-item{display:block;padding:8px 12px;color:#fff;text-decoration:none;border:none;background:none;width:100%;text-align:left;cursor:pointer}
+  .dropdown-item:hover{background:#374151}
+  .dropdown-item.danger{color:#ef4444}
+  .dropdown-item.success{color:#16a34a}
+  .dropdown-item.primary{color:#3b82f6}
+
+  .no-trades{text-align:center;color:var(--muted);font-style:italic;padding:20px}
+
+  @media (max-width:900px){
+    .trades-table thead th,.trades-table tbody td{font-size:.82rem;padding:8px}
+    .btn{font-size:.8rem;padding:6px 10px}
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+  <main class="saved-trades-container" id="main" tabindex="-1">
+    <header class="table-header">
+      <div>
+        <h1>Saved F&O Trades</h1>
+        <p>View and manage your saved futures & options trading positions.</p>
+      </div>
+    </header>
+
+    <section class="card-bg">
+      <div class="table-wrapper">
+        <table class="trades-table" id="tradesTable">
+          <thead>
+            <tr>
+              <th class="sortable" data-key="type" data-type="text">Type</th>
+              <th class="sortable" data-key="id" data-type="num">ID</th>
+              <th class="sortable" data-key="avg" data-type="num">Entry (₹)</th>
+              <th class="sortable" data-key="qty" data-type="num">Qty</th>
+              <th class="sortable" data-key="lot" data-type="num">Lot Size</th>
+              <th class="sortable" data-key="tgtpct" data-type="num">Target (%)</th>
+              <th class="sortable" data-key="riskpct" data-type="num">Risk (%)</th>
+              <th class="sortable" data-key="cap" data-type="num">Capital (₹)</th>
+              <th class="sortable" data-key="tgt" data-type="num">Target (₹)</th>
+              <th class="sortable" data-key="sl" data-type="num">Stop Loss (₹)</th>
+              <th class="sortable" data-key="pnl" data-type="num">Profit (₹)</th>
+              <th class="sortable" data-key="risk" data-type="num">Risk (₹)</th>
+              <th class="sortable" data-key="rr" data-type="num">R:R</th>
+              <th class="sortable" data-key="sym" data-type="text">Derivative</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for trade in trades %}
+            <tr {% if trade.status == 'closed' %}class="status-closed"{% endif %}
+                data-type="{{ trade.trade_type|upper }}"
+                data-id="{{ trade.id }}"
+                data-avg="{{ '%.6f'|format(trade.avg_price if trade.avg_price else 0) }}"
+                data-qty="{{ trade.quantity or 0 }}"
+                data-lot="{{ trade.lot_size or 0 }}"
+                data-tgtpct="{{ '%.6f'|format(trade.expected_return if trade.expected_return else 0) }}"
+                data-riskpct="{{ '%.6f'|format(trade.risk_percent if trade.risk_percent else 0) }}"
+                data-cap="{{ '%.6f'|format(trade.capital_used if trade.capital_used else 0) }}"
+                data-tgt="{{ '%.6f'|format(trade.target_price if trade.target_price else 0) }}"
+                data-sl="{{ '%.6f'|format(trade.stop_loss_price if trade.stop_loss_price else 0) }}"
+                data-pnl="{{ '%.6f'|format(trade.total_reward if trade.total_reward else 0) }}"
+                data-risk="{{ '%.6f'|format(trade.total_risk if trade.total_risk else 0) }}"
+                data-rr="{{ '%.6f'|format(trade.rr_ratio if trade.rr_ratio else 0) }}"
+                data-sym="{{ trade.derivative_name or trade.symbol or '' }}">
+              <td>
+                <span class="trade-type {{ trade.trade_type|lower }}">{{ trade.trade_type|upper }}</span>
+                {% if trade.status == 'closed' %}
+                  <span class="closed-badge">CLOSED</span>
+                {% endif %}
+              </td>
+              <td class="num">{{ trade.id }}</td>
+              <td class="num">{{ "%.2f"|format(trade.avg_price) if trade.avg_price else "—" }}</td>
+              <td class="num">{{ trade.quantity if trade.quantity else "—" }}</td>
+              <td>
+                {% if trade.lot_size %}
+                <span class="lot-badge">{{ trade.lot_size }}</span>
+                {% else %}
+                —
+                {% endif %}
+              </td>
+              <td class="num">{{ "%.2f"|format(trade.expected_return) if trade.expected_return else "—" }}</td>
+              <td class="num">{{ "%.2f"|format(trade.risk_percent) if trade.risk_percent else "—" }}</td>
+              <td class="num">{{ "%.2f"|format(trade.capital_used) if trade.capital_used else "—" }}</td>
+              <td class="num profit-green">{{ "%.2f"|format(trade.target_price) if trade.target_price else "—" }}</td>
+              <td class="num loss-red">{{ "%.2f"|format(trade.stop_loss_price) if trade.stop_loss_price else "—" }}</td>
+              <td class="num profit-green">{{ "%.2f"|format(trade.total_reward) if trade.total_reward else "—" }}</td>
+              <td class="num loss-red">{{ "%.2f"|format(trade.total_risk) if trade.total_risk else "—" }}</td>
+              <td class="num">{{ trade.rr_ratio if trade.rr_ratio else "—" }}</td>
+              <td>
+                {% if trade.derivative_name %}
+                <span class="derivative-name">{{ trade.derivative_name }}</span>
+                {% elif trade.symbol %}
+                {{ trade.symbol }}
+                {% if trade.symbol %}
+                  <button class="copy-btn" type="button" onclick="copySymbol('{{ trade.symbol }}', this)" title="Copy symbol">Copy</button>
+                {% endif %}
+                {% else %}
+                —
+                {% endif %}
+              </td>
+              <td class="actions-cell">
+                <div style="position:relative">
+                  <button type="button" class="settings-btn" onclick="toggleDropdown({{ trade.id }})">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66Z"/>
+                    </svg>
+                  </button>
+                  <div class="dropdown-menu" id="dropdown-{{ trade.id }}">
+                    <button type="button" class="dropdown-item success" onclick="addToJournal({{ trade.id }}, this)">Add to Journal</button>
+                    <a href="/fno/detail/{{ trade.id }}" class="dropdown-item primary">Details</a>
+                    <button type="button" class="dropdown-item danger" onclick="deleteTradeConfirm({{ trade.id }})">Delete</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="15" class="no-trades">
+                <p>No saved F&O trades found.</p>
+                <p>Start by creating your first trade to see it here.</p>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showAlert(message, type='info') {
+  const alertDiv = document.createElement('div');
+  alertDiv.className = `alert alert-${type}`;
+  alertDiv.textContent = message;
+  const header = document.querySelector('.table-header');
+  header.parentNode.insertBefore(alertDiv, header.nextSibling);
+  setTimeout(() => alertDiv.remove(), 5000);
+}
+
+async function copySymbol(sym, btn){
+  try{
+    await navigator.clipboard.writeText(sym);
+    const prev = btn.textContent;
+    btn.textContent = 'Copied';
+    setTimeout(()=> btn.textContent = prev, 900);
+  }catch(e){
+    showAlert('Copy failed. '+(e?.message||''), 'error');
+  }
+}
+
+function toggleDropdown(tradeId) {
+  const dropdown = document.getElementById(`dropdown-${tradeId}`);
+  const allDropdowns = document.querySelectorAll('.dropdown-menu');
+  allDropdowns.forEach(d => {
+    if (d !== dropdown) d.classList.remove('show');
+  });
+  dropdown.classList.toggle('show');
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.settings-btn')) {
+    document.querySelectorAll('.dropdown-menu').forEach(d => d.classList.remove('show'));
+  }
+});
+
+function deleteTradeConfirm(tradeId) {
+  if (confirm(`Are you sure you want to delete trade #${tradeId}? This action cannot be undone.`)) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/delete_fno/${tradeId}`;
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
+
+async function addToJournal(tradeId, buttonEl) {
+  if (!confirm('Add this F&O trade to your trading journal?')) return;
+  let originalText = '';
+  try {
+    if (buttonEl){
+      originalText = buttonEl.innerHTML;
+      buttonEl.innerHTML = 'Adding...';
+      buttonEl.disabled = true;
+    }
+    const response = await fetch('/add_fno_to_journal', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ trade_id: tradeId })
+    });
+    const result = await response.json();
+    if (result.success) {
+      showAlert('F&O trade successfully added to journal!', 'success');
+      setTimeout(() => {
+        if (confirm('Open your trading journal now?')) {
+          window.location.href = '/calculatentrade_journal/trades';
+        }
+      }, 800);
+    } else {
+      showAlert('Error: ' + (result.error || 'Failed to add trade to journal'), 'error');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    showAlert('Failed to add trade to journal. Please try again.', 'error');
+  } finally {
+    if (buttonEl){
+      buttonEl.innerHTML = originalText || 'Journal';
+      buttonEl.disabled = false;
+    }
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  enableSorting();
+});
+
+function enableSorting(){
+  const table = document.getElementById('tradesTable');
+  if(!table) return;
+  const headers = table.querySelectorAll('thead th.sortable');
+  headers.forEach(h=>{
+    h.addEventListener('click', () => {
+      const key = h.dataset.key;
+      const type = h.dataset.type || 'text';
+      const current = h.classList.contains('sorted-asc') ? 'asc' : h.classList.contains('sorted-desc') ? 'desc' : null;
+      const nextDir = current === 'asc' ? 'desc' : 'asc';
+      headers.forEach(x=>x.classList.remove('sorted-asc','sorted-desc'));
+      h.classList.add(nextDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+      sortTableByData(table, key, type, nextDir === 'asc');
+    });
+  });
+}
+
+function sortTableByData(table, key, type, asc=true){
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelector('td') && !r.classList.contains('no-trades'));
+  const factor = asc ? 1 : -1;
+  rows.sort((a,b)=>{
+    const va = a.dataset[key] ?? '';
+    const vb = b.dataset[key] ?? '';
+    if(type === 'num'){
+      const na = parseFloat(va) || 0;
+      const nb = parseFloat(vb) || 0;
+      return (na - nb) * factor;
+    }else{
+      return va.localeCompare(vb, undefined, {numeric:true, sensitivity:'base'}) * factor;
+    }
+  });
+  rows.forEach(r=>tbody.appendChild(r));
+}
+</script>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Create Coupon | CalculatenTrade{% endblock %}
+
+{% block content %}
+<div class="">
+  <div class="page-title">
+    <div class="title_left">
+      <h3>Create New Coupon</h3>
+    </div>
+  </div>
+
+  <div class="clearfix"></div>
+
+  <div class="row">
+    <div class="col-md-12 col-sm-12">
+      <div class="x_panel">
+        <div class="x_title">
+          <h2>Coupon Details</h2>
+          <div class="clearfix"></div>
+        </div>
+        <div class="x_content">
+          <form method="POST" class="form-horizontal form-label-left">
+            <div class="form-group row">
+              <label class="control-label col-md-3 col-sm-3" for="code">Coupon Code <span class="required">*</span></label>
+              <div class="col-md-6 col-sm-6">
+                <input type="text" id="code" name="code" required="required" class="form-control" placeholder="e.g., SAVE20, WELCOME10" maxlength="50" style="text-transform: uppercase;">
+                <small class="form-text text-muted">Enter a unique code for this coupon</small>
+              </div>
+            </div>
+            
+            <div class="form-group row">
+              <label class="control-label col-md-3 col-sm-3" for="discount_percent">Discount Percentage <span class="required">*</span></label>
+              <div class="col-md-6 col-sm-6">
+                <input type="number" id="discount_percent" name="discount_percent" required="required" class="form-control" min="1" max="100" placeholder="Enter percentage (1-100)">
+                <small class="form-text text-muted">Enter a value between 1 and 100</small>
+              </div>
+            </div>
+            
+            <div class="form-group row">
+              <label class="control-label col-md-3 col-sm-3" for="active">Status</label>
+              <div class="col-md-6 col-sm-6">
+                <div class="checkbox">
+                  <label>
+                    <input type="checkbox" id="active" name="active" checked> Activate coupon immediately
+                  </label>
+                </div>
+              </div>
+            </div>
+            
+            <div class="ln_solid"></div>
+            
+            <div class="form-group row">
+              <div class="col-md-6 col-sm-6 offset-md-3">
+                <a href="{{ url_for('admin.admin_manage_coupons') }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-success">Create Coupon</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('code').addEventListener('input', function(e) {
+    e.target.value = e.target.value.toUpperCase();
+  });
+</script>
+{% endblock %}

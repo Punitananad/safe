@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Employee Login</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .employee-login-container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); max-width: 400px; width: 100%; }
+        .employee-header { text-align: center; margin-bottom: 30px; }
+        .employee-header h2 { color: #333; margin: 0; font-size: 28px; }
+        .employee-header p { color: #666; margin: 10px 0 0 0; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; color: #333; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
+        input:focus { border-color: #28a745; outline: none; }
+        .employee-btn { width: 100%; padding: 12px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .employee-btn:hover { opacity: 0.9; }
+        .flash { background: #f8d7da; color: #721c24; padding: 12px; border-radius: 5px; margin-bottom: 20px; text-align: center; }
+        .info-notice { background: #d1ecf1; color: #0c5460; padding: 10px; border-radius: 5px; margin-bottom: 20px; font-size: 14px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="employee-login-container">
+        <div class="employee-header">
+            <h2>👨‍💼 Employee Portal</h2>
+            <p>Staff Access Login</p>
+        </div>
+        
+        <div class="info-notice">
+            <strong>Employee Access:</strong> Use credentials provided by admin
+        </div>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="flash">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="form-group">
+                <label for="username">Employee ID:</label>
+                <input type="text" id="username" name="username" required placeholder="Enter employee username">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required placeholder="Enter password">
+            </div>
+            
+            <button type="submit" class="employee-btn">Login to Employee Portal</button>
+        </form>
+    </div>
+</body>
+</html>

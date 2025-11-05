@@ -1,0 +1,258 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}User Subscription Details - {{ user.email }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Subscription Details for {{ user.email }}</h2>
+            
+            <!-- User Info -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>User Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>User ID:</strong> {{ user.id }}</p>
+                            <p><strong>Email:</strong> {{ user.email }}</p>
+                            <p><strong>Registered:</strong> {{ user.registered_on.strftime('%Y-%m-%d %H:%M') if user.registered_on else 'N/A' }}</p>
+                            <p><strong>Verified:</strong> {{ 'Yes' if user.verified else 'No' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            {% if user.google_id %}
+                            <p><strong>Google Account:</strong> Yes</p>
+                            <p><strong>Name:</strong> {{ user.name or 'N/A' }}</p>
+                            {% endif %}
+                            {% if user.coupon_code %}
+                            <p><strong>Coupon Used:</strong> {{ user.coupon_code }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Subscription -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>Current Subscription</h5>
+                    <div>
+                        {% if active_sub and active_sub.is_active() %}
+                        <button class="btn btn-warning btn-sm" onclick="extendSubscription()">Extend</button>
+                        <button class="btn btn-danger btn-sm" onclick="cancelSubscription()">Cancel</button>
+                        {% else %}
+                        <button class="btn btn-success btn-sm" onclick="createSubscription()">Create Subscription</button>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if active_sub %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Plan:</strong> {{ active_sub.plan.display_name }}</p>
+                            <p><strong>Status:</strong> 
+                                <span class="badge badge-{% if active_sub.is_active() %}success{% else %}danger{% endif %}">
+                                    {{ active_sub.status.title() }}
+                                </span>
+                            </p>
+                            <p><strong>Start Date:</strong> {{ active_sub.start_date.strftime('%Y-%m-%d') if active_sub.start_date else 'N/A' }}</p>
+                            <p><strong>End Date:</strong> {{ active_sub.end_date.strftime('%Y-%m-%d') if active_sub.end_date else 'N/A' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Days Remaining:</strong> 
+                                <span class="badge badge-{% if active_sub.days_remaining() <= 7 %}warning{% else %}info{% endif %}">
+                                    {{ active_sub.days_remaining() }} days
+                                </span>
+                            </p>
+                            <p><strong>Amount Paid:</strong> ₹{{ "%.2f"|format(active_sub.amount_paid / 100) }}</p>
+                            <p><strong>Auto Renew:</strong> {{ 'Yes' if active_sub.auto_renew else 'No' }}</p>
+                        </div>
+                    </div>
+                    {% if active_sub.admin_notes %}
+                    <div class="row">
+                        <div class="col-md-12">
+                            <p><strong>Admin Notes:</strong></p>
+                            <div class="alert alert-info">{{ active_sub.admin_notes }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fa fa-exclamation-triangle"></i> No active subscription found for this user.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Subscription History -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>All Subscriptions</h5>
+                </div>
+                <div class="card-body">
+                    {% if subscriptions %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Plan</th>
+                                    <th>Status</th>
+                                    <th>Start Date</th>
+                                    <th>End Date</th>
+                                    <th>Amount</th>
+                                    <th>Created</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sub in subscriptions %}
+                                <tr>
+                                    <td>{{ sub.id }}</td>
+                                    <td>{{ sub.plan.display_name }}</td>
+                                    <td>
+                                        <span class="badge badge-{% if sub.status == 'active' %}success{% elif sub.status == 'expired' %}danger{% else %}warning{% endif %}">
+                                            {{ sub.status.title() }}
+                                        </span>
+                                    </td>
+                                    <td>{{ sub.start_date.strftime('%Y-%m-%d') if sub.start_date else 'N/A' }}</td>
+                                    <td>{{ sub.end_date.strftime('%Y-%m-%d') if sub.end_date else 'N/A' }}</td>
+                                    <td>₹{{ "%.2f"|format(sub.amount_paid / 100) }}</td>
+                                    <td>{{ sub.created_at.strftime('%Y-%m-%d %H:%M') if sub.created_at else 'N/A' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">No subscription history found.</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Action History -->
+            <div class="card">
+                <div class="card-header">
+                    <h5>Action History</h5>
+                </div>
+                <div class="card-body">
+                    {% if history %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                    <th>Plan</th>
+                                    <th>Status Change</th>
+                                    <th>Amount</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for h in history %}
+                                <tr>
+                                    <td>{{ h.created_at.strftime('%Y-%m-%d %H:%M') if h.created_at else 'N/A' }}</td>
+                                    <td>
+                                        <span class="badge badge-{% if 'admin' in h.action %}warning{% elif h.action == 'created' %}success{% elif h.action == 'expired' %}danger{% else %}info{% endif %}">
+                                            {{ h.action.replace('_', ' ').title() }}
+                                        </span>
+                                    </td>
+                                    <td>{{ h.plan_name or '-' }}</td>
+                                    <td>
+                                        {% if h.old_status and h.new_status %}
+                                        {{ h.old_status }} → {{ h.new_status }}
+                                        {% elif h.new_status %}
+                                        → {{ h.new_status }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if h.amount %}
+                                        ₹{{ "%.2f"|format(h.amount / 100) }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ h.notes or '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">No action history found.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals would go here - similar to manage_users.html -->
+<script>
+function createSubscription() {
+    // Redirect to manage users page with create modal
+    window.location.href = "{{ url_for('subscription_admin.manage_users') }}?user_id={{ user.id }}";
+}
+
+function extendSubscription() {
+    const days = prompt("Extend subscription by how many days?", "30");
+    const notes = prompt("Admin notes (optional):", "");
+    
+    if (days && parseInt(days) > 0) {
+        fetch(`/admin/subscription/user/{{ user.id }}/extend_subscription`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                days: parseInt(days),
+                notes: notes || ''
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error);
+        });
+    }
+}
+
+function cancelSubscription() {
+    const notes = prompt("Cancel subscription? Enter reason (optional):", "");
+    if (notes !== null) {
+        fetch(`/admin/subscription/user/{{ user.id }}/cancel_subscription`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                notes: notes
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error);
+        });
+    }
+}
+</script>
+{% endblock %}

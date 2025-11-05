@@ -1,0 +1,81 @@
+{% extends 'simple_base.html' %}
+{% block content %}
+<style>
+  .auth-page{ min-height:60vh; display:flex; align-items:center; justify-content:center; }
+  .wrapper{ max-width:430px; width:100%; background:#fff; padding:34px; border-radius:6px; box-shadow:0 10px 25px rgba(0,0,0,.1); }
+  .wrapper h2{ font-size:28px; font-weight:600; color:#333; margin-bottom:20px; }
+  .input-box{ margin:18px 0; }
+  .input-box input{ width:100%; height:52px; padding:0 15px; border:1.5px solid #C7BEBE; border-radius:6px; }
+  .button input{ width:100%; color:#fff; background:#4070f4; border:none; padding:14px 16px; border-radius:6px; cursor:pointer; font-weight:600; }
+  .helper{ font-size:13px; color:#555; margin-top:8px; }
+  .helper ul{ margin:8px 0 0; padding-left:18px; }
+  .helper li.valid{ color:#1aa14b; }
+  .helper li.invalid{ color:#d93025; }
+  .hidden{ display:none !important; }
+</style>
+<div class="auth-page">
+  <div class="wrapper">
+    <h2>Enter code and set a new password</h2>
+    <form method="POST" action="{{ url_for('verify_otp_route') }}" id="resetForm" spellcheck="false">
+      <input type="hidden" name="email" value="{{ email }}">
+      <div class="input-box">
+        <input type="text" name="otp" id="otp" placeholder="6-digit code" inputmode="numeric" maxlength="6" required>
+      </div>
+      <div class="input-box">
+        <input type="password" name="password" id="password" placeholder="New password" required autocomplete="new-password">
+      </div>
+      <div class="input-box">
+        <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm new password" required autocomplete="new-password">
+      </div>
+
+      <div id="guidelines" class="helper hidden" aria-live="polite">
+        Password should:
+        <ul>
+          <li id="g-len" class="invalid">At least 8 characters</li>
+          <li id="g-upper" class="invalid">1 uppercase letter</li>
+          <li id="g-lower" class="invalid">1 lowercase letter</li>
+          <li id="g-digit" class="invalid">1 number</li>
+          <li id="g-special" class="invalid">1 special character</li>
+          <li id="g-match" class="invalid">Match confirm password</li>
+        </ul>
+      </div>
+
+      <div class="input-box button">
+        <input type="submit" value="Reset password">
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function(){
+  const pw = document.getElementById('password');
+  const cpw = document.getElementById('confirm_password');
+  const guide = document.getElementById('guidelines');
+  const g = {
+    len: document.getElementById('g-len'),
+    up: document.getElementById('g-upper'),
+    lo: document.getElementById('g-lower'),
+    di: document.getElementById('g-digit'),
+    sp: document.getElementById('g-special'),
+    ma: document.getElementById('g-match')
+  };
+  const reU=/[A-Z]/, reL=/[a-z]/, reD=/[0-9]/, reS=/[^A-Za-z0-9]/;
+
+  function toggle(el, ok){ el.classList.toggle('valid', ok); el.classList.toggle('invalid', !ok); }
+  function validate(){
+    const p = pw.value||'', c = cpw.value||'';
+    const okLen=p.length>=8, okU=reU.test(p), okL=reL.test(p), okD=reD.test(p), okS=reS.test(p), okM=p && p===c;
+    toggle(g.len, okLen); toggle(g.up, okU); toggle(g.lo, okL); toggle(g.di, okD); toggle(g.sp, okS); toggle(g.ma, okM);
+    const allOk = okLen && okU && okL && okD && okS && okM;
+    if((p.length===0 && c.length===0) || allOk){ guide.classList.add('hidden'); } else { guide.classList.remove('hidden'); }
+    return allOk;
+  }
+  pw.addEventListener('input', validate);
+  cpw.addEventListener('input', validate);
+  document.getElementById('resetForm').addEventListener('submit', function(e){
+    if(!validate()) e.preventDefault();
+  });
+})();
+</script>
+{% endblock %}

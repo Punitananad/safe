@@ -1,0 +1,1037 @@
+{% extends "base_new_journal.html" %}
+
+{% block title %}Trading Mistakes - Trading Journal{% endblock %}
+
+{% block extra_css %}
+<style>
+  .mistake-card {
+    background: #071022;
+    border: none;
+    border-radius: 1.25rem;
+    padding: 2rem;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    backdrop-filter: blur(15px);
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+  
+  .mistake-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    border-radius: 1rem 0 0 1rem;
+    transition: width 0.3s ease;
+  }
+  
+  .mistake-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 70% 30%, rgba(14, 165, 164, 0.05) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+  }
+  
+  .severity-critical::before { 
+    background: linear-gradient(135deg, #dc2626, #991b1b);
+    box-shadow: 0 0 20px rgba(220, 38, 38, 0.4);
+  }
+  .severity-high::before { 
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+  }
+  .severity-medium::before { 
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+  }
+  .severity-low::before { 
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  }
+  
+  .mistake-card:hover {
+    transform: translateY(-8px) rotateX(2deg);
+    box-shadow: 
+      0 25px 50px rgba(14, 165, 164, 0.15),
+      0 15px 35px rgba(0, 0, 0, 0.3),
+      0 0 0 1px rgba(14, 165, 164, 0.2);
+  }
+  
+  .mistake-card:hover::before {
+    width: 8px;
+  }
+  
+  .mistake-card:hover::after {
+    opacity: 1;
+  }
+  
+  .filter-card {
+    background: transparent;
+    border: none;
+    border-radius: 1rem;
+    padding: 2rem;
+    backdrop-filter: none;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 2rem;
+  }
+  
+  .filter-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 20% 80%, rgba(14, 165, 164, 0.05) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  
+  .form-input, .form-select, .form-textarea {
+    background: linear-gradient(135deg, #1e293b, rgba(30, 41, 59, 0.8)) !important;
+    border: 1px solid #334155 !important;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    color: #e6eef6 !important;
+    width: 100%;
+    font-weight: 500;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+  }
+  
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    outline: none;
+    border-color: var(--accent) !important;
+    box-shadow: 
+      0 0 0 0.2rem rgba(14, 165, 164, 0.25),
+      0 10px 25px rgba(14, 165, 164, 0.1) !important;
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #1e293b, rgba(30, 41, 59, 0.95)) !important;
+  }
+  
+  .form-textarea {
+    resize: vertical;
+    min-height: 120px;
+  }
+  
+  .form-select option {
+    background: #1e293b !important;
+    color: #e6eef6 !important;
+    padding: 0.5rem;
+  }
+  
+  .form-input::placeholder {
+    color: rgba(148, 163, 184, 0.7);
+    font-style: italic;
+  }
+  
+  .tag {
+    background: linear-gradient(135deg, rgba(14, 165, 164, 0.2), rgba(14, 165, 164, 0.1));
+    color: var(--accent);
+    padding: 0.375rem 0.875rem;
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid rgba(14, 165, 164, 0.4);
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 10px rgba(14, 165, 164, 0.1);
+  }
+  
+  .tag:hover {
+    transform: translateY(-1px) scale(1.05);
+    box-shadow: 0 5px 15px rgba(14, 165, 164, 0.2);
+    border-color: var(--accent);
+  }
+  
+  .severity-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .severity-badge::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  .severity-badge:hover::before {
+    left: 100%;
+  }
+  
+  .severity-critical { 
+    background: linear-gradient(135deg, #0c5460, #991b1b); 
+    color: white;
+    box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+  }
+  .severity-high { 
+    background: linear-gradient(135deg, #0c5460, #993434); 
+    color: white;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+  }
+  .severity-medium { 
+    background: linear-gradient(135deg, #0c5460, #56432d); 
+    color: white;
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+  }
+  .severity-low { 
+    background: linear-gradient(135deg, #0c5460, #059669); 
+    color: white;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+  }
+  
+  .category-badge {
+    background: linear-gradient(135deg, #374151, #1f2937);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(55, 65, 81, 0.3);
+    transition: all 0.3s ease;
+  }
+  
+  .category-badge:hover {
+    transform: translateY(-1px) scale(1.05);
+  }
+  
+  .related-trade {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.05));
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin: 0.75rem 0;
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .related-trade::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  
+  .pnl-positive { 
+    color: #10b981; 
+    font-weight: 700;
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+  }
+  .pnl-negative { 
+    color: #ef4444; 
+    font-weight: 700;
+    text-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+  }
+  
+  .attachment-indicator {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
+    color: #10b981;
+    padding: 0.375rem 0.75rem;
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 10px rgba(16, 185, 129, 0.1);
+    transition: all 0.3s ease;
+  }
+  
+  .attachment-indicator:hover {
+    transform: translateY(-1px) scale(1.05);
+    box-shadow: 0 5px 15px rgba(16, 185, 129, 0.2);
+  }
+  
+  .tag-input-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 1rem;
+    background: linear-gradient(135deg, #1e293b, rgba(30, 41, 59, 0.8));
+    border: 1px solid #334155;
+    border-radius: 0.75rem;
+    min-height: 60px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+  }
+  
+  .tag-input-container:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 0.2rem rgba(14, 165, 164, 0.25);
+    transform: translateY(-2px);
+  }
+  
+  .tag-chip {
+    background: linear-gradient(135deg, rgba(14, 165, 164, 0.2), rgba(14, 165, 164, 0.1));
+    color: var(--accent);
+    padding: 0.375rem 0.75rem;
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid rgba(14, 165, 164, 0.4);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+  }
+  
+  .tag-chip:hover {
+    transform: translateY(-1px) scale(1.05);
+    box-shadow: 0 5px 15px rgba(14, 165, 164, 0.2);
+  }
+  .strong {
+    font-weight: bolder;
+    color: beige;
+}
+  
+  .tag-chip button {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 0;
+    font-size: 1.2rem;
+    line-height: 1;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+  }
+  
+  .tag-chip button:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+  }
+  
+  .tag-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #e6eef6;
+    flex: 1;
+    min-width: 120px;
+    font-size: 0.875rem;
+    padding: 0.5rem;
+  }
+  
+  .tag-input::placeholder {
+    color: rgba(148, 163, 184, 0.7);
+    font-style: italic;
+  }
+  
+  /* Animation effects */
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .mistake-card {
+    animation: slideInUp 0.6s ease forwards;
+  }
+  
+  .mistake-card:nth-child(1) { animation-delay: 0.1s; }
+  .mistake-card:nth-child(2) { animation-delay: 0.2s; }
+  .mistake-card:nth-child(3) { animation-delay: 0.3s; }
+  .mistake-card:nth-child(4) { animation-delay: 0.4s; }
+  .mistake-card:nth-child(5) { animation-delay: 0.5s; }
+  .mistake-card:nth-child(6) { animation-delay: 0.6s; }
+  
+  /* Enhanced button styles */
+  .mistake-card button {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 0.5rem;
+    font-weight: 600;
+  }
+  
+  .mistake-card button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  .mistake-card button:hover::before {
+    left: 100%;
+  }
+  
+  .mistake-card button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Modal enhancements */
+  #mistakeModal .bg-\[color\:var\(--card\)\] {
+    background: linear-gradient(145deg, var(--card) 0%, rgba(15, 23, 42, 0.95) 100%) !important;
+    backdrop-filter: blur(20px);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-3xl font-bold bg-gradient-to-r from-white via-red-200 to-red-400 bg-clip-text text-transparent mb-2">Trading Mistakes</h1>
+      <p class="text-slate-400 text-lg">Track and learn from your trading mistakes with precision</p>
+    </div>
+    <button id="addMistakeBtn" class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-600 via-pink-600 to-purple-600 text-white rounded-xl hover:from-red-700 hover:via-pink-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-2xl">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M12 4v16m8-8H4"/>
+      </svg>
+      Add Mistake
+    </button>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-card">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div>
+        <input type="text" class="form-input" id="q" placeholder="Search title, description, tags..." value="{{ request.args.get('q','') }}">
+      </div>
+      <div>
+        <select class="form-select" id="filter_category">
+          <option value="">All categories</option>
+          <option value="execution">Execution</option>
+          <option value="analysis">Analysis</option>
+          <option value="risk">Risk</option>
+          <option value="psychology">Psychology</option>
+          <option value="process">Process</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div>
+        <select class="form-select" id="filter_severity">
+          <option value="">All severity</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="critical">Critical</option>
+        </select>
+      </div>
+      <div>
+        <button id="searchBtn" class="w-full px-3 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors">
+          <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          Search
+        </button>
+      </div>
+      <div>
+        <button class="w-full px-3 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors" onclick="clearFilters()">
+          <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+          Clear
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mistakes Grid -->
+  <div id="mistakesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% if mistakes %}
+      {% for mistake in mistakes %}
+      <div class="mistake-card severity-{{ mistake.severity }} h-full flex flex-col">
+        <div class="flex justify-between items-start mb-4">
+          <div class="flex-1">
+            <h3 class="font-semibold text-lg mb-2">{{ mistake.title }}</h3>
+            <div class="flex flex-wrap gap-2 mb-2">
+              <span class="category-badge">{{ mistake.category|capitalize }}</span>
+              <span class="severity-badge severity-{{ mistake.severity }}">{{ mistake.severity|capitalize }}</span>
+              {% if mistake.attachments_count and mistake.attachments_count > 0 %}
+              <span class="attachment-indicator">
+                <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                </svg>
+                {{ mistake.attachments_count }}
+              </span>
+              {% endif %}
+            </div>
+          </div>
+          
+          <div class="flex gap-1">
+            {% if mistake.attachments_count and mistake.attachments_count > 0 %}
+            <button class="view-attachments px-2 py-1 text-xs bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors" data-id="{{ mistake.id }}" title="View Attachments">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+              </svg>
+            </button>
+            {% endif %}
+            <button class="edit-mistake px-2 py-1 text-xs bg-sky-600 text-white rounded hover:bg-sky-700 transition-colors" data-id="{{ mistake.id }}" title="Edit">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            <button class="delete-mistake px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors" data-id="{{ mistake.id }}" title="Delete">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex-1 mb-4">
+          <p class="text-sm muted mb-3 line-clamp-4">{{ mistake.description }}</p>
+
+          {% if mistake.related_trade %}
+          <div class="related-trade">
+            <div class="text-xs text-sky-300">
+              <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+              </svg>
+              <strong>Related Trade:</strong> {{ mistake.related_trade.symbol }} - {{ mistake.related_trade.date }} - 
+              {{ mistake.related_trade.trade_type|capitalize }} - 
+              <span class="{{ 'pnl-positive' if mistake.related_trade.pnl > 0 else 'pnl-negative' }}">₹{{ "%.2f"|format(mistake.related_trade.pnl) }}</span>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if mistake.tags %}
+          <div class="flex flex-wrap gap-1 mt-2 mb-3">
+            {% for t in mistake.tags %}
+              <span class="tag">{{ t }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="border-t border-slate-600 pt-3 flex justify-between items-center text-xs muted">
+          <div class="flex gap-4">
+            <div>
+              <div><strong>P&L:</strong> 
+                {% if mistake.pnl_impact is not none %}
+                  <span class="{{ 'pnl-negative' if mistake.pnl_impact < 0 else 'pnl-positive' }}">₹{{ "%.2f"|format(mistake.pnl_impact) }}</span>
+                {% else %}
+                  -
+                {% endif %}
+              </div>
+              <div><strong>Risk:</strong> 
+                {% if mistake.risk_at_time is not none %}
+                  ₹{{ "%.2f"|format(mistake.risk_at_time) }}
+                {% else %}
+                  -
+                {% endif %}
+              </div>
+            </div>
+            <div>
+              <div><strong>Recurrence:</strong> {{ mistake.recurrence_count or 0 }}</div>
+              <div><strong>Confidence:</strong> {{ mistake.confidence or '-' }}%</div>
+            </div>
+          </div>
+          <div class="text-right">
+            <div>{{ mistake.created_at[:10] if mistake.created_at }}</div>
+            {% if mistake.resolved_at %}
+              <div class="text-emerald-400">Resolved</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="col-span-full text-center py-16">
+        <div class="w-20 h-20 mx-auto mb-6 text-red-400 opacity-80 animate-bounce">
+          <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+          </svg>
+        </div>
+        <h3 class="text-2xl font-bold mb-3 bg-gradient-to-r from-white to-red-300 bg-clip-text text-transparent">No Mistakes Found</h3>
+        <p class="text-slate-400 text-lg mb-6 max-w-md mx-auto">Add your first trading mistake to start learning and improving your trading performance</p>
+        <button id="addFirstMistakeBtn" class="px-6 py-3 bg-gradient-to-r from-red-600 to-pink-600 text-white rounded-xl hover:from-red-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
+          <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M12 4v16m8-8H4"/>
+          </svg>
+          Add Your First Mistake
+        </button>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Mistake Modal -->
+<div id="mistakeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+  <div class="bg-[color:var(--card)] border border-slate-600 rounded-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between p-4 border-b border-slate-600">
+      <h3 class="text-lg font-semibold" id="modalTitle">Add Mistake</h3>
+      <button class="text-slate-400 hover:text-white" id="cancelMistakeBtn">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <form id="mistakeForm" class="p-4 space-y-4" enctype="multipart/form-data">
+      <input type="hidden" id="mistake_id" name="id">
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label for="title" class="block text-sm font-medium mb-1">Title <span class="text-red-400">*</span></label>
+          <input type="text" id="title" name="title" required class="form-input">
+        </div>
+
+        <div>
+          <label for="reporter_id" class="block text-sm font-medium mb-1">Reporter (optional)</label>
+          <input type="text" id="reporter_id" name="reporter_id" class="form-input" placeholder="username or id">
+        </div>
+
+        <div>
+          <label for="category" class="block text-sm font-medium mb-1">Category</label>
+          <select id="category" name="category" class="form-select">
+            <option value="execution">Execution</option>
+            <option value="analysis">Analysis</option>
+            <option value="risk">Risk</option>
+            <option value="psychology">Psychology</option>
+            <option value="process">Process</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="severity" class="block text-sm font-medium mb-1">Severity</label>
+          <select id="severity" name="severity" class="form-select">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="related_trade_id" class="block text-sm font-medium mb-1">Related Trade (optional)</label>
+          <select id="related_trade_id" name="related_trade_id" class="form-select">
+            <option value="">Select a trade...</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="pnl_impact" class="block text-sm font-medium mb-1">P&L Impact (₹)</label>
+          <input type="number" step="0.01" id="pnl_impact" name="pnl_impact" class="form-input">
+        </div>
+
+        <div>
+          <label for="risk_at_time" class="block text-sm font-medium mb-1">Risk at Time (₹)</label>
+          <input type="number" step="0.01" id="risk_at_time" name="risk_at_time" class="form-input">
+        </div>
+
+        <div>
+          <label for="confidence" class="block text-sm font-medium mb-1">Confidence (0-100)</label>
+          <input type="number" min="0" max="100" id="confidence" name="confidence" class="form-input">
+        </div>
+      </div>
+
+      <div>
+        <label for="description" class="block text-sm font-medium mb-1">Description <span class="text-red-400">*</span></label>
+        <textarea id="description" name="description" rows="4" required class="form-textarea"></textarea>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-2">Tags</label>
+        <div class="tag-input-container" id="tagContainer">
+          <div id="tagsArea" class="flex flex-wrap gap-1"></div>
+          <input id="tag_input" type="text" placeholder="Add tag and press Enter" class="tag-input">
+        </div>
+      </div>
+
+      <div>
+        <label for="attachments" class="block text-sm font-medium mb-1">Attachments (screenshots / logs)</label>
+        <input id="attachments" name="attachments" type="file" multiple class="form-input">
+        <div id="existingAttachments" class="mt-2 text-xs muted"></div>
+      </div>
+    </form>
+
+    <div class="flex justify-end gap-2 p-4 border-t border-slate-600">
+      <button type="button" id="cancelBtn" class="px-4 py-2 bg-slate-600 text-white rounded hover:bg-slate-700 transition-colors">Cancel</button>
+      <button type="submit" form="mistakeForm" id="saveBtn" class="px-4 py-2 bg-teal-600 text-white rounded hover:bg-teal-700 transition-colors">Save Mistake</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const URLS = {
+  list_mistakes: "{{ url_for('calculatentrade.api_get_mistakes') }}",
+  get_mistake: "{{ url_for('calculatentrade.api_get_mistake', mistake_id=0) }}",
+  add_mistake: "{{ url_for('calculatentrade.api_add_mistake') }}",
+  update_mistake: "{{ url_for('calculatentrade.api_update_mistake', mistake_id=0) }}",
+  delete_mistake: "{{ url_for('calculatentrade.api_delete_mistake', mistake_id=0) }}",
+  trades_for_mistakes: "{{ url_for('calculatentrade.api_get_trades_for_mistakes') }}"
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  const modal = document.getElementById("mistakeModal");
+  const form = document.getElementById("mistakeForm");
+  const modalTitle = document.getElementById("modalTitle");
+  const saveBtn = document.getElementById("saveBtn");
+  const cancelBtn = document.getElementById("cancelMistakeBtn");
+  const tagsArea = document.getElementById("tagsArea");
+  const tagInput = document.getElementById("tag_input");
+
+  let editingId = null;
+  let tags = [];
+  let tradesData = [];
+
+  const openModal = () => { 
+    modal.classList.remove("hidden"); 
+    modal.classList.add("flex");
+  };
+  
+  const closeModal = () => { 
+    modal.classList.add("hidden"); 
+    modal.classList.remove("flex");
+    resetForm(); 
+  };
+
+  // Load trades for dropdown
+  async function loadTrades() {
+    try {
+      const res = await fetch(URLS.trades_for_mistakes);
+      if (!res.ok) throw new Error('Failed to load trades');
+      const data = await res.json();
+      if (data.success) {
+        tradesData = data.trades;
+        populateTradesDropdown();
+      }
+    } catch (err) {
+      console.error('Failed to load trades:', err);
+    }
+  }
+
+  function populateTradesDropdown() {
+    const select = document.getElementById('related_trade_id');
+    while (select.children.length > 1) {
+      select.removeChild(select.lastChild);
+    }
+    
+    tradesData.forEach(trade => {
+      const option = document.createElement('option');
+      option.value = trade.id;
+      option.textContent = trade.identifier;
+      select.appendChild(option);
+    });
+  }
+
+  function resetForm() {
+    form.reset();
+    editingId = null;
+    tags = [];
+    renderTags();
+    document.getElementById("existingAttachments").innerHTML = "";
+    document.getElementById("mistake_id").value = "";
+    modalTitle.textContent = "Add Mistake";
+    saveBtn.textContent = "Save Mistake";
+  }
+
+  function renderTags() {
+    tagsArea.innerHTML = "";
+    tags.forEach((t, i) => {
+      const chip = document.createElement("div");
+      chip.className = "tag-chip";
+      chip.innerHTML = `<span>${t}</span> <button type="button" data-i="${i}" class="remove-tag-btn">&times;</button>`;
+      tagsArea.appendChild(chip);
+    });
+    
+    document.querySelectorAll(".remove-tag-btn").forEach(b => {
+      b.addEventListener("click", (e) => {
+        const i = Number(b.dataset.i);
+        tags.splice(i, 1);
+        renderTags();
+      });
+    });
+  }
+
+  // Add tag functionality
+  function addTag() {
+    const v = tagInput.value.trim();
+    if (!v) return;
+    if (!tags.includes(v)) tags.push(v);
+    tagInput.value = "";
+    renderTags();
+  }
+
+  tagInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { 
+      e.preventDefault(); 
+      addTag(); 
+    }
+  });
+
+  // Modal controls
+  document.getElementById("addMistakeBtn").addEventListener("click", () => {
+    resetForm();
+    loadTrades().then(() => openModal());
+  });
+
+  document.getElementById("addFirstMistakeBtn")?.addEventListener("click", () => {
+    document.getElementById("addMistakeBtn").click();
+  });
+
+  cancelBtn.addEventListener("click", closeModal);
+  document.getElementById("cancelBtn").addEventListener("click", closeModal);
+
+  // Load trades on page load
+  loadTrades();
+
+  // Edit buttons
+  document.querySelectorAll(".edit-mistake").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.id;
+      if (!id) { alert("Missing id"); return; }
+      const url = URLS.get_mistake.replace('0', id);
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Server returned ' + res.status);
+        const data = await res.json();
+        
+        editingId = id;
+        document.getElementById("mistake_id").value = data.id || id;
+        document.getElementById("title").value = data.title || "";
+        document.getElementById("description").value = data.description || "";
+        document.getElementById("reporter_id").value = data.reporter_id || "";
+        document.getElementById("related_trade_id").value = data.related_trade_id || "";
+        document.getElementById("category").value = data.category || "other";
+        document.getElementById("severity").value = data.severity || "medium";
+        document.getElementById("pnl_impact").value = data.pnl_impact ?? "";
+        document.getElementById("risk_at_time").value = data.risk_at_time ?? "";
+        document.getElementById("confidence").value = data.confidence ?? "";
+
+        tags = data.tags || [];
+        renderTags();
+
+        const attArea = document.getElementById("existingAttachments");
+        attArea.innerHTML = "";
+        if (data.attachments && data.attachments.length) {
+          data.attachments.forEach(a => {
+            const ael = document.createElement("div");
+            ael.className = "text-xs";
+            ael.innerHTML = `<a href="${a.url}" target="_blank" class="text-teal-400 hover:text-teal-300">${a.filename}</a> <span class="muted">(${a.size || '-'} bytes)</span>`;
+            attArea.appendChild(ael);
+          });
+        }
+
+        modalTitle.textContent = "Edit Mistake";
+        saveBtn.textContent = "Update Mistake";
+        loadTrades().then(() => openModal());
+      } catch (err) {
+        console.error(err);
+        alert("Failed to load mistake: " + (err.message || err));
+      }
+    });
+  });
+
+  // View attachments
+  document.querySelectorAll(".view-attachments").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.id;
+      if (!id) { alert("Missing id"); return; }
+      const url = URLS.get_mistake.replace('0', id);
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Server returned ' + res.status);
+        const data = await res.json();
+        
+        if (data.attachments && data.attachments.length) {
+          let attachmentHtml = '<div class="space-y-2">';
+          data.attachments.forEach(a => {
+            const isImage = a.mime_type && a.mime_type.startsWith('image/');
+            if (isImage) {
+              attachmentHtml += `
+                <div class="border border-slate-600 rounded p-2">
+                  <div class="text-sm font-medium">${a.filename}</div>
+                  <img src="${a.url}" alt="${a.filename}" class="max-w-full h-auto mt-2 rounded" style="max-height: 300px;">
+                  <div class="text-xs muted mt-1">${a.size || '-'} bytes</div>
+                </div>`;
+            } else {
+              attachmentHtml += `
+                <div class="border border-slate-600 rounded p-2">
+                  <a href="${a.url}" target="_blank" class="text-teal-400 hover:text-teal-300">${a.filename}</a>
+                  <div class="text-xs muted">${a.size || '-'} bytes</div>
+                </div>`;
+            }
+          });
+          attachmentHtml += '</div>';
+          
+          const modal = document.createElement('div');
+          modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+          modal.innerHTML = `
+            <div class="bg-[color:var(--card)] border border-slate-600 rounded-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto">
+              <div class="flex justify-between items-center p-4 border-b border-slate-600">
+                <h3 class="text-lg font-semibold">Attachments - ${data.title}</h3>
+                <button class="close-attachments text-slate-400 hover:text-white">&times;</button>
+              </div>
+              <div class="p-4">${attachmentHtml}</div>
+            </div>`;
+          
+          document.body.appendChild(modal);
+          
+          modal.querySelector('.close-attachments').addEventListener('click', () => {
+            document.body.removeChild(modal);
+          });
+          
+          modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+              document.body.removeChild(modal);
+            }
+          });
+        } else {
+          alert('No attachments found');
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Failed to load attachments: " + (err.message || err));
+      }
+    });
+  });
+
+  // Delete buttons
+  document.querySelectorAll(".delete-mistake").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.id;
+      if (!id) { alert("Missing id"); return; }
+      if (!confirm("Are you sure you want to delete this mistake?")) return;
+      const url = URLS.delete_mistake.replace('0', id);
+      try {
+        const res = await fetch(url, { method: "DELETE" });
+        if (!res.ok) {
+          const txt = await res.text().catch(()=>null);
+          throw new Error('Server returned ' + res.status + (txt ? (': ' + txt) : ''));
+        }
+        window.location.reload();
+      } catch (err) {
+        console.error(err);
+        alert("Delete failed: " + (err.message || err));
+      }
+    });
+  });
+
+  // Form submit
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const title = document.getElementById("title").value.trim();
+    const description = document.getElementById("description").value.trim();
+    if (!title) { alert("Title is required"); return; }
+    if (!description) { alert("Description is required"); return; }
+
+    const fd = new FormData();
+    fd.append('title', title);
+    fd.append('description', description);
+    fd.append('reporter_id', document.getElementById("reporter_id").value.trim() || "");
+    fd.append('related_trade_id', document.getElementById("related_trade_id").value || "");
+    fd.append('category', document.getElementById("category").value || "other");
+    fd.append('severity', document.getElementById("severity").value || "medium");
+    fd.append('pnl_impact', document.getElementById("pnl_impact").value || "");
+    fd.append('risk_at_time', document.getElementById("risk_at_time").value || "");
+    fd.append('confidence', document.getElementById("confidence").value || "");
+    fd.append('metadata', '{}');
+    fd.append('tags', JSON.stringify(tags));
+
+    const files = document.getElementById("attachments").files;
+    for (let i = 0; i < files.length; i++) {
+      fd.append('attachments', files[i]);
+    }
+
+    const isUpdate = Boolean(editingId);
+    const url = isUpdate ? URLS.update_mistake.replace('0', editingId) : URLS.add_mistake;
+    const method = isUpdate ? 'PUT' : 'POST';
+
+    try {
+      const res = await fetch(url, {
+        method,
+        body: fd
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(()=>null);
+        throw new Error('Server returned ' + res.status + (txt ? (': ' + txt) : ''));
+      }
+      closeModal();
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      alert("Save failed: " + (err.message || err));
+    }
+  });
+
+  // Search & filters
+  const qInput = document.getElementById("q");
+  const searchBtn = document.getElementById("searchBtn");
+  const catFilter = document.getElementById("filter_category");
+  const sevFilter = document.getElementById("filter_severity");
+
+  function buildListUrl() {
+    const params = new URLSearchParams();
+    if (qInput.value.trim()) params.set('q', qInput.value.trim());
+    if (catFilter.value) params.set('category', catFilter.value);
+    if (sevFilter.value) params.set('severity', sevFilter.value);
+    return URLS.list_mistakes + '?' + params.toString();
+  }
+
+  async function reloadList() {
+    const url = buildListUrl();
+    window.location.href = url;
+  }
+
+  searchBtn.addEventListener("click", (e) => { e.preventDefault(); reloadList(); });
+  qInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); reloadList(); } });
+  catFilter.addEventListener("change", reloadList);
+  sevFilter.addEventListener("change", reloadList);
+
+  // Clear filters
+  window.clearFilters = function() {
+    qInput.value = '';
+    catFilter.value = '';
+    sevFilter.value = '';
+    reloadList();
+  };
+});
+</script>
+{% endblock %}

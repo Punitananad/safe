@@ -1,0 +1,205 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Subscription Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Subscription Management Dashboard</h2>
+            
+            <!-- Stats Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <h4>{{ stats.total_active }}</h4>
+                            <p>Active Subscriptions</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <h4>{{ stats.expiring_soon }}</h4>
+                            <p>Expiring Soon (7 days)</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body">
+                            <h4>{{ stats.total_expired }}</h4>
+                            <p>Expired Subscriptions</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <h4>₹{{ "%.2f"|format(stats.total_revenue / 100) }}</h4>
+                            <p>Total Revenue</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Plan Breakdown -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Active Plans Breakdown</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-6">
+                                    <h4 class="text-primary">{{ stats.monthly_active }}</h4>
+                                    <p>Monthly Plans</p>
+                                </div>
+                                <div class="col-6">
+                                    <h4 class="text-success">{{ stats.yearly_active }}</h4>
+                                    <p>Yearly Plans</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Quick Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <button class="btn btn-primary mb-2" onclick="checkExpiredSubscriptions()">
+                                Check Expired Subscriptions
+                            </button><br>
+                            <a href="{{ url_for('subscription_admin.manage_users') }}" class="btn btn-info mb-2">
+                                Manage Users
+                            </a><br>
+                            <a href="{{ url_for('subscription_admin.manage_plans') }}" class="btn btn-secondary mb-2">
+                                Manage Plans
+                            </a><br>
+                            <a href="{{ url_for('subscription_admin.analytics') }}" class="btn btn-success">
+                                View Analytics
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Subscriptions -->
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Recent Subscriptions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>User Email</th>
+                                            <th>Plan</th>
+                                            <th>Status</th>
+                                            <th>Start Date</th>
+                                            <th>End Date</th>
+                                            <th>Amount</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for sub in recent_subs %}
+                                        <tr>
+                                            <td>{{ sub.user.email }}</td>
+                                            <td>{{ sub.plan.display_name }}</td>
+                                            <td>
+                                                <span class="badge badge-{% if sub.status == 'active' %}success{% elif sub.status == 'expired' %}danger{% else %}warning{% endif %}">
+                                                    {{ sub.status.title() }}
+                                                </span>
+                                            </td>
+                                            <td>{{ sub.start_date.strftime('%Y-%m-%d') if sub.start_date else 'N/A' }}</td>
+                                            <td>{{ sub.end_date.strftime('%Y-%m-%d') if sub.end_date else 'N/A' }}</td>
+                                            <td>₹{{ "%.2f"|format(sub.amount_paid / 100) }}</td>
+                                            <td>
+                                                <a href="{{ url_for('subscription_admin.user_detail', user_id=sub.user_id) }}" 
+                                                   class="btn btn-sm btn-info">View</a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expiring Subscriptions -->
+            {% if expiring_subs %}
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <h5>⚠️ Subscriptions Expiring Soon</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>User Email</th>
+                                            <th>Plan</th>
+                                            <th>End Date</th>
+                                            <th>Days Remaining</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for sub in expiring_subs %}
+                                        <tr>
+                                            <td>{{ sub.user.email }}</td>
+                                            <td>{{ sub.plan.display_name }}</td>
+                                            <td>{{ sub.end_date.strftime('%Y-%m-%d') if sub.end_date else 'N/A' }}</td>
+                                            <td>
+                                                <span class="badge badge-warning">
+                                                    {{ sub.days_remaining() }} days
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('subscription_admin.user_detail', user_id=sub.user_id) }}" 
+                                                   class="btn btn-sm btn-info">Manage</a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function checkExpiredSubscriptions() {
+    fetch('/admin/subscription/api/expire_check')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Checked subscriptions. ${data.expired_count} subscriptions expired.`);
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error checking subscriptions: ' + error);
+        });
+}
+</script>
+{% endblock %}

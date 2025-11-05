@@ -1,0 +1,255 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Manage Employees | CalculatenTrade{% endblock %}
+{% block page_title %}Manage Employees{% endblock %}
+
+{% block content %}
+<!-- Header Actions -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1">Employee Management</h2>
+        <p class="text-muted mb-0">Manage employee accounts and access permissions</p>
+    </div>
+    <div>
+        <a href="{{ url_for('admin.admin_create_employee') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Create Employee
+        </a>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-icon" style="background: linear-gradient(135deg, #f39c12, #e67e22);">
+                <i class="fas fa-user-tie"></i>
+            </div>
+            <div class="stats-number">{{ employees|length }}</div>
+            <div class="stats-label">Total Employees</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-icon" style="background: linear-gradient(135deg, #27ae60, #229954);">
+                <i class="fas fa-user-check"></i>
+            </div>
+            <div class="stats-number">{{ employees|selectattr('is_active')|list|length }}</div>
+            <div class="stats-label">Active Employees</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-icon" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+                <i class="fas fa-user-times"></i>
+            </div>
+            <div class="stats-number">{{ employees|rejectattr('is_active')|list|length }}</div>
+            <div class="stats-label">Inactive Employees</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-icon" style="background: linear-gradient(135deg, #3498db, #2980b9);">
+                <i class="fas fa-calendar-plus"></i>
+            </div>
+            <div class="stats-number">{{ employees|selectattr('created_at')|selectattr('created_at', 'ge', (moment().subtract(30, 'days')))|list|length or 0 }}</div>
+            <div class="stats-label">New This Month</div>
+        </div>
+    </div>
+</div>
+
+<!-- Employees Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-list me-2"></i>All Employees</h5>
+        <div class="d-flex gap-2">
+            <div class="input-group" style="width: 300px;">
+                <span class="input-group-text">
+                    <i class="fas fa-search"></i>
+                </span>
+                <input type="text" class="form-control" id="searchInput" placeholder="Search employees...">
+            </div>
+            <select class="form-select" id="statusFilter" style="width: 150px;">
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        {% if employees %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="employeesTable">
+                <thead class="table-light">
+                    <tr>
+                        <th><i class="fas fa-user me-2"></i>Employee Info</th>
+                        <th><i class="fas fa-id-badge me-2"></i>Username</th>
+                        <th><i class="fas fa-user-tag me-2"></i>Role</th>
+                        <th><i class="fas fa-toggle-on me-2"></i>Status</th>
+                        <th><i class="fas fa-calendar me-2"></i>Created</th>
+                        <th><i class="fas fa-cogs me-2"></i>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for employee in employees %}
+                    <tr data-status="{{ 'active' if employee.is_active else 'inactive' }}">
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="employee-avatar me-3">
+                                    {{ employee.full_name[0]|upper if employee.full_name else employee.username[0]|upper }}
+                                </div>
+                                <div>
+                                    <div class="fw-bold">{{ employee.full_name or 'N/A' }}</div>
+                                    <small class="text-muted">
+                                        <i class="fas fa-building me-1"></i>Employee
+                                    </small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="username-badge">
+                                <strong class="text-primary">{{ employee.username }}</strong>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">
+                                <i class="fas fa-user-tag me-1"></i>
+                                {{ employee.role.name|title if employee.role else 'Employee' }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if employee.is_active %}
+                            <span class="badge bg-success">
+                                <i class="fas fa-check me-1"></i>Active
+                            </span>
+                            {% else %}
+                            <span class="badge bg-danger">
+                                <i class="fas fa-times me-1"></i>Inactive
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="text-muted">
+                                {{ employee.created_at.strftime('%Y-%m-%d') if employee.created_at else 'N/A' }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <form method="POST" action="{{ url_for('admin.toggle_employee', employee_id=employee.id) }}" style="display: inline;">
+                                    {% if employee.is_active %}
+                                    <button type="submit" class="btn btn-outline-warning btn-sm" title="Deactivate">
+                                        <i class="fas fa-pause"></i>
+                                    </button>
+                                    {% else %}
+                                    <button type="submit" class="btn btn-outline-success btn-sm" title="Activate">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                    {% endif %}
+                                </form>
+                                
+                                <form method="POST" action="{{ url_for('admin.delete_employee', employee_id=employee.id) }}" style="display: inline;">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete"
+                                            onclick="return confirm('Delete employee {{ employee.username }}? This cannot be undone.')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-user-tie fa-4x text-muted mb-3"></i>
+            <h5 class="text-muted">No Employees Found</h5>
+            <p class="text-muted mb-4">Get started by creating your first employee account</p>
+            <a href="{{ url_for('admin.admin_create_employee') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Create First Employee
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .employee-avatar {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #f39c12, #e67e22);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 18px;
+    }
+    
+    .username-badge {
+        padding: 6px 12px;
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        border-radius: 8px;
+        border-left: 4px solid var(--warning-color);
+    }
+    
+    .btn-group .btn {
+        margin-right: 5px;
+    }
+    
+    .btn-group .btn:last-child {
+        margin-right: 0;
+    }
+    
+    .table tbody tr:hover {
+        background-color: rgba(243,156,18,0.05);
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-3px);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('keyup', function() {
+        const filter = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#employeesTable tbody tr');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(filter) ? '' : 'none';
+        });
+    });
+    
+    // Status filter
+    document.getElementById('statusFilter').addEventListener('change', function() {
+        const filter = this.value;
+        const rows = document.querySelectorAll('#employeesTable tbody tr');
+        
+        rows.forEach(row => {
+            if (!filter) {
+                row.style.display = '';
+            } else {
+                const status = row.getAttribute('data-status');
+                row.style.display = status === filter ? '' : 'none';
+            }
+        });
+    });
+    
+    // Confirmation dialogs
+    document.querySelectorAll('form button').forEach(button => {
+        if (button.title === 'Delete') {
+            button.addEventListener('click', function(e) {
+                if (!confirm('Are you sure you want to delete this employee? This action cannot be undone.')) {
+                    e.preventDefault();
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
