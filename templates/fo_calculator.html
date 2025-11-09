@@ -171,7 +171,7 @@
         <div class="mb-3">
           <label for="derivativeName">Derivative Name or Manual Entry</label>
           <input id="derivativeName" class="form-control" type="text" placeholder="e.g., NIFTY24DEC21000CE or enter manually" required />
-          <p class="muted-sm mt-2">💡 Enter derivative name or any custom symbol for manual trading</p>
+          <p class="muted-sm mt-2">💡 Enter derivative name or any custom symbol for manual trading | <span class="text-green-400">Live market prices available</span></p>
         </div>
 
         <div class="mb-3">
@@ -338,15 +338,17 @@
       quantity: totalQuantity,
       expected_return: expectedReturn,
       risk_percent: riskPercent,
-      capital_used,
-      target_price,
-      stop_loss_price,
+      capital_used: capital_used,
+      target_price: target_price,
+      stop_loss_price: stop_loss_price,
       total_reward: target_profit,
       total_risk: max_risk,
-      rr_ratio,
-      comment,
+      rr_ratio: rr_ratio,
+      comment: comment || derivativeName + ' (Manual Entry)',
       symbol: derivativeName,
-      lot_size: lotSize
+      derivative_name: derivativeName,
+      lot_size: lotSize,
+      num_lots: numLots
     };
 
     // Update results
@@ -392,18 +394,33 @@
     try {
       const response = await fetch('/save_fno_result', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
         body: JSON.stringify(resultData)
       });
-      if (response.ok) {
+      
+      // Check if response is HTML (redirect to login)
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('text/html')) {
+        alert('Please log in to save trades.');
+        window.location.href = '/login';
+        return;
+      }
+      
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
         alert('F&O trade saved successfully!');
         resetForm();
       } else {
-        alert('Failed to save. Try again.');
+        console.error('Save error:', result);
+        alert(result.error || result.message || 'Failed to save. Try again.');
       }
     } catch (error) {
       console.error('Error saving:', error);
-      alert('Error saving trade. Check console for details.');
+      alert('Please log in to save trades.');
     }
   }
 

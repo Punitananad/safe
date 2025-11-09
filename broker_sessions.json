@@ -1,0 +1,13 @@
+{
+  "kite": {},
+  "dhan": {
+    "1107798386": {
+      "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJkaGFuIiwicGFydG5lcklkIjoiIiwiZXhwIjoxNzYyNjkwOTk4LCJpYXQiOjE3NjI2MDQ1OTgsInRva2VuQ29uc3VtZXJUeXBlIjoiU0VMRiIsIndlYmhvb2tVcmwiOiIiLCJkaGFuQ2xpZW50SWQiOiIxMTA3Nzk4Mzg2In0.M4QLqT_cACFbs24_-5aCIZnAFKKi_xkerIPrlLMZJRfwtAvidD4yFqRQP3Zrs4Y43_-nb_Faynebv6bEK36M-w",
+      "dhan_client_id": "1107798386",
+      "mode": "direct",
+      "created_at": "2025-11-08T22:46:17.486097",
+      "expires_at": "2025-12-08T22:46:17.486106"
+    }
+  },
+  "angel": {}
+}

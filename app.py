@@ -3,16 +3,16 @@ import secrets
 import hashlib
 import time
 import logging
-import sqlite3
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 from datetime import datetime, timedelta
 from functools import wraps
 from typing import Optional, Tuple
 from difflib import get_close_matches
+import os
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
 from toast_utils import ToastManager, toast_success, toast_error, toast_warning, toast_info
+from token_store import save_token
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required, UserMixin
@@ -24,6 +24,13 @@ from google_auth_oauthlib.flow import Flow
 from dotenv import load_dotenv
 import requests
 import json
+
+# Import dhanhq SDK
+try:
+    from dhanhq import dhanhq
+except ImportError:
+    print("Warning: dhanhq SDK not installed. Install with: pip install dhanhq")
+    dhanhq = None
 
 import pytz
 from datetime import datetime, timedelta, timezone
@@ -37,7 +44,23 @@ from mentor import mentor_bp, init_mentor_db
 from subscription_admin import subscription_admin_bp
 from subscription_models import init_subscription_plans, get_user_active_subscription, create_user_subscription
 
+
+
+
+
 load_dotenv()
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ------------------------------------------------------------------------------
 # App & DB setup
@@ -57,49 +80,51 @@ app.jinja_env.cache = {}
 app.secret_key = os.getenv('FLASK_SECRET', 'dev-secret-change-this')
 
 # Database configuration
-from database_config import get_database_url, get_postgres_url
+from database_config import get_postgres_url, get_database_engine_options
 
-# Use PostgreSQL if DATABASE_TYPE is set to 'postgres'
-if os.getenv('DATABASE_TYPE') == 'postgres':
-    app.config["SQLALCHEMY_DATABASE_URI"] = get_postgres_url()
-    print("Using PostgreSQL database")
-else:
-    db_location = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance', 'calculatentrade.db')
-    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_location}"
-    print("Using SQLite database")
-
-
+app.config["SQLALCHEMY_DATABASE_URI"] = get_postgres_url()
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = get_database_engine_options()
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-# Session cookie configuration for local dev
+# Disable debug logging for cleaner output
+app.config["SQLALCHEMY_ECHO"] = False
+
+# Session cookie configuration for persistent sessions
 app.config.update(
     SESSION_COOKIE_SECURE=False,
     SESSION_COOKIE_SAMESITE='Lax',
-    PERMANENT_SESSION_LIFETIME=timedelta(days=30)  # 30 days for mentor sessions
+    SESSION_COOKIE_HTTPONLY=True,  # Prevent XSS attacks
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30),  # 30 days persistent session
+    SESSION_COOKIE_NAME='calculatentrade_session'  # Custom session name
 )
+
+
 
 # Apply ProxyFix for production deployment behind proxy/nginx
 if os.getenv('FLASK_ENV') == 'production':
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
     app.config.update(
         SESSION_COOKIE_SECURE=True,
-        SESSION_COOKIE_SAMESITE='None'
+        SESSION_COOKIE_SAMESITE='None',
+        SESSION_COOKIE_HTTPONLY=True
     )
 
 
 
 db.init_app(app)
 
+
+
 login_manager = LoginManager()
 login_manager.login_view = "login"   # route name of your login view
+login_manager.login_message = "Please log in to access this page."
+login_manager.login_message_category = "info"
+login_manager.session_protection = "strong"  # Protect against session hijacking
+login_manager.remember_cookie_duration = timedelta(days=30)  # Remember me cookie duration
 login_manager.init_app(app)
 
-@login_manager.user_loader
-def load_user(user_id):
-    try:
-        return db.session.get(User, int(user_id))
-    except Exception:
-        return None
+# User model will be defined below - move this after User model definition
+# @login_manager.user_loader will be defined after User model
 
 # Add hasattr to Jinja2 globals
 app.jinja_env.globals['hasattr'] = hasattr
@@ -111,6 +136,19 @@ app.jinja_env.globals['get_user_active_subscription'] = get_user_active_subscrip
 
 # Database initialization is handled by init_db.py
 # This ensures proper application context management
+
+# Multi-broker system integration will be done after app setup
+
+# Multi-broker system integration
+try:
+    from multi_broker_system import integrate_with_calculatentrade, multi_broker_bp
+    print("Multi-broker system imported successfully")
+except ImportError as e:
+    print(f"Multi-broker system not available: {e}")
+    multi_broker_bp = None
+except Exception as e:
+    print(f"Error importing multi-broker system: {e}")
+    multi_broker_bp = None
 
 def init_app_database():
     """Initialize database with proper application context - called by init_db.py"""
@@ -148,10 +186,50 @@ migrate = Migrate(app, db)
 # ------------------------------------------------------------------------------
 # Dhan API configuration
 # ------------------------------------------------------------------------------
-DHAN_ACCESS_TOKEN = os.environ.get("DHAN_ACCESS_TOKEN")
+from token_store import get_token
 DHAN_CLIENT_ID = os.environ.get("DHAN_CLIENT_ID")
-
 DHAN_BASE_URL = "https://api.dhan.co"
+
+# Environment sanity check
+print("DHAN_CLIENT_ID set:", bool(os.getenv("DHAN_CLIENT_ID")))
+print("DHAN_ACCESS_TOKEN set:", bool(os.getenv("DHAN_ACCESS_TOKEN")))
+print("\n=== TO TEST API ERRORS ===\n")
+print("Visit these URLs in your browser to see errors:")
+print("http://localhost:5000/get-price/SBIN")
+print("http://localhost:5000/debug-price/SBIN")
+print("http://localhost:5000/get-price/STATE%20BANK%20OF%20INDIA")
+print("\n========================\n")
+
+def get_dhan_headers():
+    """Get headers for Dhan API requests"""
+    access_token = get_token()  # Always get fresh token
+    if not access_token:
+        raise RuntimeError("Token missing/expired. Update via /update-token.")
+    return {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "access-token": access_token,  # raw JWT, no 'Bearer'
+        "client-id": DHAN_CLIENT_ID,
+    }
+
+def make_dhan_client():
+    """Create Dhan client instance"""
+    if not dhanhq:
+        raise RuntimeError("dhanhq SDK not available")
+    
+    access_token = get_token()  # Always get fresh token
+    if not access_token or not DHAN_CLIENT_ID:
+        raise RuntimeError("Dhan credentials not configured")
+    
+    # Try different initialization patterns
+    try:
+        return dhanhq(DHAN_CLIENT_ID, access_token)
+    except Exception as e1:
+        try:
+            return dhanhq(client_id=DHAN_CLIENT_ID, access_token=access_token)
+        except Exception as e2:
+            print(f"[API] Both initialization methods failed: {e1}, {e2}")
+            raise RuntimeError(f"Failed to create Dhan client: {e1}")
 
 # Timezone setup with error handling
 try:
@@ -162,15 +240,20 @@ except Exception as e:
     IST = pytz.UTC
 
 # ------------------------------------------------------------------------------
-# Mail (Gmail SMTP) configuration
+# Mail (Gmail SMTP) configuration - Dual Email Setup
 # ------------------------------------------------------------------------------
+from email_service import EmailService, email_service
+
+# Initialize dual email service
+email_service.init_app(app)
+
+# Keep original mail for backward compatibility
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = (os.environ.get('MAIL_SENDER_NAME', 'Support'),
-                                     os.environ.get('MAIL_USERNAME'))
+app.config['MAIL_USERNAME'] = 'calculatentrade@gmail.com'  # Default to user email
+app.config['MAIL_PASSWORD'] = 'bccpjnvzbbsqmkcf'
+app.config['MAIL_DEFAULT_SENDER'] = ('CalculatenTrade Alerts', 'calculatentrade@gmail.com')
 
 mail = Mail(app)
 
@@ -262,6 +345,36 @@ class User(UserMixin, db.Model):
             if now > expires_at:
                 return False
         return True
+
+# Now define the user_loader after User model is available
+@login_manager.user_loader
+def load_user(user_id):
+    try:
+        return db.session.get(User, int(user_id))
+    except Exception:
+        return None
+
+# Session cleanup function
+def cleanup_expired_sessions():
+    """Clean up expired sessions and inactive users"""
+    try:
+        # This would be called periodically to clean up old sessions
+        # For now, we rely on Flask-Login's built-in session management
+        pass
+    except Exception as e:
+        app.logger.error(f"Error cleaning up sessions: {e}")
+
+# Add before_request handler to refresh session
+@app.before_request
+def refresh_session():
+    """Refresh session data for authenticated users"""
+    if current_user.is_authenticated:
+        # Extend session if user is active
+        session.permanent = True
+        # Update last activity time
+        if "last_activity" not in session or \
+           (datetime.now(timezone.utc) - datetime.fromisoformat(session.get("last_activity", datetime.now(timezone.utc).isoformat()))).total_seconds() > 3600:  # Update every hour
+            session["last_activity"] = datetime.now(timezone.utc).isoformat()
 
 
 class ResetOTP(db.Model):
@@ -365,6 +478,9 @@ class FOTrade(BaseTrade):
     strike_price = db.Column(db.Float, nullable=True)
     expiry_date = db.Column(db.Date, nullable=True)
     option_type = db.Column(db.String(10), nullable=True)  # CE/PE
+    lot_size = db.Column(db.Integer, nullable=True)
+    num_lots = db.Column(db.Integer, nullable=True)
+    derivative_name = db.Column(db.String(100), nullable=True)
 
 class Payment(db.Model):
     __tablename__ = "payments"
@@ -415,29 +531,34 @@ class TradeSplit(db.Model):
 # ------------------------------------------------------------------------------
 # Dhan API Helper Functions
 # ------------------------------------------------------------------------------
-def get_dhan_headers():
-    """Get headers for Dhan API requests"""
-    return {
-        "access-token": DHAN_ACCESS_TOKEN,
-        "Content-Type": "application/json"
-    }
+
 
 def fetch_all_symbols():
-    """Fetch all available symbols from Dhan API"""
+    """Fetch all available symbols from PostgreSQL instruments table"""
     try:
-        # Connect to the local SQLite database for Dhan symbols (keep this)
-        DB_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance', 'dhan_master.db')
+        from sqlalchemy import text
         
-        conn = sqlite3.connect(DB_PATH)
+        # Check if instruments table exists in PostgreSQL
+        result = db.session.execute(
+            text("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_name = 'instruments'
+                )
+            """)
+        ).fetchone()
         
-        c = conn.cursor()
-        c.execute("""
-            SELECT SYMBOL_NAME, DISPLAY_NAME, SECURITY_ID
-            FROM instruments
-            WHERE EXCH_ID = 'NSE' AND SEGMENT = 'E'
-        """)
-        rows = c.fetchall()
-        conn.close()
+        if not result[0]:
+            print(f"[SYMBOLS] Instruments table not found in PostgreSQL")
+            return {}
+        
+        rows = db.session.execute(
+            text("""
+                SELECT symbol_name, display_name, security_id
+                FROM instruments
+                WHERE exch_id = 'NSE' AND segment = 'E'
+            """)
+        ).fetchall()
 
         symbol_map = {}
         for sym, disp, sec_id in rows:
@@ -463,14 +584,11 @@ def fetch_all_symbols():
                     if variation and variation not in symbol_map:
                         symbol_map[variation] = (sym, disp, str(sec_id))
         
-        print(f"[SYMBOLS] Loaded {len(symbol_map)} symbol mappings")
+        print(f"[SYMBOLS] Loaded {len(symbol_map)} symbol mappings from PostgreSQL")
         return symbol_map
     
-    except sqlite3.Error as e:
-        print(f"Database error: {e}")
-        return {}
     except Exception as e:
-        print(f"Unexpected error fetching symbols: {e}")
+        print(f"[SYMBOLS] Error fetching symbols: {e}")
         return {}
 import re
 
@@ -484,39 +602,29 @@ DERIV_TOKENS = (
 def is_equity_stock_symbol(sym: str) -> bool:
     """
     Heuristic filter to allow only plain equity stock symbols like HDFC, MRF, TCS.
-    Excludes anything with digits, separators, or common derivatives markers.
+    Excludes ETFs, derivatives, but allows legitimate equity stocks.
     """
     if not sym:
         return False
     s = sym.strip().upper()
 
-    # Quick rejects: contains separators or spaces
-    if any(ch in s for ch in (" ", "-", "_", "/", ".", "@", "#")):
-        return False
-
-    # Reject if contains any digits (often present in options expiries/strikes)
+    # Reject if contains digits (often present in options expiries/strikes)
     if any(ch.isdigit() for ch in s):
         return False
 
-    # Reject if ends with or contains common derivative tokens
-    # Keep strict: if token appears anywhere, exclude
-    for tok in DERIV_TOKENS:
-        if tok in s:
-            return False
-
-    # Accept only pure A–Z up to 15 chars (typical equity symbol lengths)
-    if not EQUITY_SYMBOL_RE.fullmatch(s):
+    # Reject common ETF and derivative patterns
+    if any(pattern in s for pattern in ["ETF", "GOLD", "SILVER", "NIFTY", "SENSEX", "INDEX"]):
         return False
 
+    # Reject if ends with common derivative tokens
+    if any(s.endswith(tok) for tok in DERIV_TOKENS):
+        return False
+
+    # Allow legitimate equity symbols (including those with spaces like "HDFC BANK")
     return True
 
 
-DB_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance', 'dhan_master.db')
-
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+# All database operations now use PostgreSQL exclusively
 
 @app.route('/search-equity-symbols', methods=['GET'])
 def search_equity_symbols():
@@ -525,54 +633,68 @@ def search_equity_symbols():
         return jsonify([])
 
     try:
-        conn = get_db()
-        c = conn.cursor()
+        from sqlalchemy import text
+        
+        # Check if instruments table exists
+        result = db.session.execute(
+            text("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_name = 'instruments'
+                )
+            """)
+        ).fetchone()
+        
+        if not result[0]:
+            return jsonify({"error": "Symbol database not found"}), 500
+        
         q_upper = search_query.upper()
-
-        # Get symbol matches: exact > startswith > substring
-        sql = """
-        SELECT
-            SYMBOL_NAME,
-            DISPLAY_NAME,
-            CASE
-                WHEN UPPER(SYMBOL_NAME) = ? THEN 300
-                WHEN UPPER(SYMBOL_NAME) LIKE ? THEN 200
-                WHEN UPPER(DISPLAY_NAME) LIKE ? THEN 100
-                WHEN UPPER(SYMBOL_NAME) LIKE ? THEN 80
-                WHEN UPPER(DISPLAY_NAME) LIKE ? THEN 50
-                ELSE 0
-            END AS score
-        FROM instruments
-        WHERE SEGMENT = 'E' AND EXCH_ID = 'NSE'
-          AND (
-            UPPER(SYMBOL_NAME) LIKE ?
-            OR UPPER(DISPLAY_NAME) LIKE ?
-          )
-        ORDER BY score DESC, LENGTH(SYMBOL_NAME) ASC, SYMBOL_NAME ASC
-        LIMIT 10
-        """
-
-        params = (
-            q_upper,                # exact match
-            q_upper + '%',          # startswith symbol
-            q_upper + '%',          # startswith name
-            '%' + q_upper + '%',    # substring symbol
-            '%' + q_upper + '%',    # substring name
-            '%' + q_upper + '%',    # filter symbol
-            '%' + q_upper + '%',    # filter name
-        )
-        rows = c.execute(sql, params).fetchall()
-        conn.close()
-
-        # Prepare result
-        result = [
+        search_pattern = f"%{q_upper}%"
+        
+        # Get symbol matches with scoring
+        rows = db.session.execute(
+            text("""
+            SELECT
+                symbol_name,
+                display_name,
+                CASE
+                    WHEN UPPER(symbol_name) = :q_upper THEN 300
+                    WHEN UPPER(symbol_name) LIKE :q_prefix THEN 200
+                    WHEN UPPER(display_name) LIKE :q_prefix THEN 100
+                    WHEN UPPER(symbol_name) LIKE :search_pattern THEN 80
+                    WHEN UPPER(display_name) LIKE :search_pattern THEN 50
+                    ELSE 0
+                END AS score
+            FROM instruments
+            WHERE segment = 'E' AND exch_id = 'NSE'
+              AND (
+                UPPER(symbol_name) LIKE :search_pattern
+                OR UPPER(display_name) LIKE :search_pattern
+              )
+            ORDER BY score DESC, LENGTH(symbol_name) ASC, symbol_name ASC
+            LIMIT 10
+            """),
             {
-                "symbol": str(r["SYMBOL_NAME"]).strip().upper(),
-                "name": str(r["DISPLAY_NAME"]).strip()
+                'q_upper': q_upper,
+                'q_prefix': f"{q_upper}%",
+                'search_pattern': search_pattern
             }
-            for r in rows
-            if r["SYMBOL_NAME"]  
-        ]
+        ).fetchall()
+
+        # Filter results to show only NSE equity stocks (no ETFs, derivatives, etc.)
+        result = []
+        for r in rows:
+            if r[0]:  # symbol_name
+                symbol = str(r[0]).strip().upper()
+                display_name = str(r[1]).strip()
+                
+                # Filter out non-equity instruments
+                if is_equity_stock_symbol(symbol):
+                    result.append({
+                        "symbol": symbol,
+                        "name": display_name
+                    })
+        
         return jsonify(result)
 
     except Exception as e:
@@ -583,42 +705,81 @@ def search_equity_symbols():
 def resolve_input(symbol_input):
     """Resolve to NSE cash-equity symbol and security_id robustly."""
     try:
-        DB_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance', 'dhan_master.db')
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
+        from sqlalchemy import text
+        
+        # Check if instruments table exists
+        result = db.session.execute(
+            text("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_name = 'instruments'
+                )
+            """)
+        ).fetchone()
+        
+        if not result[0]:
+            print(f"[RESOLVE] Instruments table not found in PostgreSQL")
+            return None
+        
         key = (symbol_input or "").strip().upper()
         print(f"[RESOLVE] Looking for: '{key}'")
 
-        # 1) Exact symbol match (strongest)
-        row = c.execute("""
-            SELECT SYMBOL_NAME, DISPLAY_NAME, SECURITY_ID, EXCH_ID, SEGMENT
-            FROM instruments
-            WHERE EXCH_ID='NSE' AND SEGMENT='E' AND UPPER(SYMBOL_NAME)=?
-            LIMIT 1
-        """, (key,)).fetchone()
-        if not row and " " in key:
-            # Try without spaces (HDFC BANK -> HDFCBANK)
-            key_nospace = key.replace(" ", "")
-            row = c.execute("""
-                SELECT SYMBOL_NAME, DISPLAY_NAME, SECURITY_ID, EXCH_ID, SEGMENT
-                FROM instruments
-                WHERE EXCH_ID='NSE' AND SEGMENT='E' AND UPPER(SYMBOL_NAME)=?
-                LIMIT 1
-            """, (key_nospace,)).fetchone()
+        # Handle common variations for STATE BANK OF INDIA
+        variations = []
+        
+        # Original input
+        variations.append(key)
+        
+        # Common abbreviations
+        if "STATE BANK OF INDIA" in key:
+            variations.extend(["SBIN", "SBI", "STATEBANK", "STATE BANK"])
+        elif "SBIN" in key:
+            variations.extend(["STATE BANK OF INDIA", "SBI"])
+        
+        # Remove spaces
+        variations.append(key.replace(" ", ""))
+        
+        # Remove common suffixes
+        if " LTD" in key:
+            variations.append(key.replace(" LTD", ""))
+        if " LIMITED" in key:
+            variations.append(key.replace(" LIMITED", ""))
+        if " BANK" in key and "LTD" not in key:
+            variations.append(key.replace(" BANK", " BANK LTD"))
 
-        # 2) Loose display-name match if symbol failed
+        # Try all variations
+        row = None
+        for variation in variations:
+            result = db.session.execute(
+                text("""
+                    SELECT symbol_name, display_name, security_id, exch_id, segment
+                    FROM instruments
+                    WHERE exch_id='NSE' AND segment='E' AND UPPER(symbol_name)=:variation
+                    LIMIT 1
+                """),
+                {'variation': variation}
+            ).fetchone()
+            if result:
+                row = result
+                break
+
+        # If still not found, try display name match
         if not row:
-            like_key = f"{key.split()[0]}%"  # prefix match helps (HDFC%)
-            row = c.execute("""
-                SELECT SYMBOL_NAME, DISPLAY_NAME, SECURITY_ID, EXCH_ID, SEGMENT
-                FROM instruments
-                WHERE EXCH_ID='NSE' AND SEGMENT='E'
-                  AND (UPPER(DISPLAY_NAME) LIKE ? OR UPPER(DISPLAY_NAME)=?)
-                ORDER BY LENGTH(DISPLAY_NAME) ASC
-                LIMIT 1
-            """, (like_key, key)).fetchone()
-
-        conn.close()
+            like_key = f"{key.split()[0]}%"  # prefix match helps (STATE%)
+            result = db.session.execute(
+                text("""
+                    SELECT symbol_name, display_name, security_id, exch_id, segment
+                    FROM instruments
+                    WHERE exch_id='NSE' AND segment='E'
+                      AND (UPPER(display_name) LIKE :like_key OR UPPER(display_name)=:key)
+                    ORDER BY LENGTH(display_name) ASC
+                    LIMIT 1
+                """),
+                {'like_key': like_key, 'key': key}
+            ).fetchone()
+            if result:
+                row = result
+        
         if not row:
             print(f"[RESOLVE] No match found for: {key}")
             return None
@@ -626,7 +787,7 @@ def resolve_input(symbol_input):
         sym, disp, sec_id, exch, segment = row
         result = {
             "security_id": int(sec_id),
-            "segment": "NSE_EQ",  # map SEGMENT='E' to Dhan segment key
+            "segment": "NSE_EQ",  # map segment='E' to Dhan segment key
             "symbol": sym,
             "display_name": disp,
             "exchange": exch
@@ -637,63 +798,76 @@ def resolve_input(symbol_input):
         print(f"[RESOLVE] Error: {e}")
         return None
 
-def _headers():
-    """Get headers for Dhan API requests with mandatory client-id"""
-    if not DHAN_ACCESS_TOKEN:
-        raise RuntimeError("DHAN_ACCESS_TOKEN not set")
-    if not DHAN_CLIENT_ID:
-        raise RuntimeError("DHAN_CLIENT_ID not set")
-    return {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "access-token": DHAN_ACCESS_TOKEN,
-        "client-id": DHAN_CLIENT_ID,
-    }
-
-def get_ltp_batch(payload):
-    """Get LTP using the faster /marketfeed/ltp endpoint"""
-    url = "https://api.dhan.co/v2/marketfeed/ltp"
+def get_ltp_nse_eq(security_id):
+    """Fetch LTP for NSE equity using correct Dhan API endpoint with robust error handling"""
+    url = f"{DHAN_BASE_URL}/v2/marketfeed/ltp"
     try:
-        h = _headers()
-        r = requests.post(url, headers=h, json=payload, timeout=10)
+        body = {"NSE_EQ": [int(security_id)]}
+        print(f"[API] Request body: {body}")
+        
+        r = requests.post(url, headers=get_dhan_headers(), json=body, timeout=10)
+        print(f"[API] Response status: {r.status_code}")
+        print(f"[API] Response text: {r.text}")
+        
         if r.status_code != 200:
-            return {"error": f"API {r.status_code}: {r.text}"}
-        return r.json() or {}
+            return {"error": f"LTP HTTP {r.status_code}", "resp": r.text}
+        
+        data = r.json()
+        print(f"[API] Full LTP response: {json.dumps(data, indent=2)}")
+        
+        # Handle different response formats
+        if isinstance(data, list):
+            # If response is a list, look for our security_id
+            for item in data:
+                if str(item.get('securityId')) == str(security_id):
+                    ltp = item.get('last_price')
+                    if ltp is not None:
+                        return {"last_price": ltp, "raw": data}
+        
+        elif isinstance(data, dict):
+            # Check for success status
+            if data.get('status') == 'success':
+                # Check nested data structure
+                nse_eq_data = data.get("data", {}).get("NSE_EQ", {})
+                if nse_eq_data:
+                    security_data = nse_eq_data.get(str(security_id))
+                    if security_data:
+                        ltp = security_data.get("last_price")
+                        if ltp is not None:
+                            return {"last_price": ltp, "raw": data}
+            
+            # Alternative structure: direct data field
+            nse_eq_data = data.get("NSE_EQ", {})
+            if nse_eq_data:
+                security_data = nse_eq_data.get(str(security_id))
+                if security_data:
+                    ltp = security_data.get("last_price")
+                    if ltp is not None:
+                        return {"last_price": ltp, "raw": data}
+            
+            # Try direct access to common fields
+            ltp = data.get('last_price')
+            if ltp is not None:
+                return {"last_price": ltp, "raw": data}
+                
+            # Check if there's a list in the response
+            data_list = data.get('data', [])
+            if isinstance(data_list, list):
+                for item in data_list:
+                    if str(item.get('securityId')) == str(security_id):
+                        ltp = item.get('last_price')
+                        if ltp is not None:
+                            return {"last_price": ltp, "raw": data}
+        
+        print(f"[API ERROR] Unexpected JSON schema for security ID {security_id}")
+        print(f"[API ERROR] Full response: {json.dumps(data, indent=2)}")
+        return {"error": f"Unexpected JSON schema for security ID {security_id}", "resp": data}
+        
     except Exception as e:
-        return {"error": f"LTP exception: {e}"}
-
-def get_market_depth(security_id, segment_hint):
-    """Fetch real-time market depth from Dhan API"""
-    url = "https://api.dhan.co/v2/marketfeed/quote"
-    try:
-        h = _headers()
-        payload = {segment_hint: [int(security_id)]}
-        print(f"[API] quote payload={payload}")
-        r = requests.post(url, headers=h, json=payload, timeout=10)
-        print(f"[API] status={r.status_code}, body={r.text[:500]}")
-        if r.status_code != 200:
-            return {"error": f"API {r.status_code}: {r.text}"}
-        data = r.json() or {}
-        buckets = (data.get("data") or {})
-        snap = None
-        found_segment = None
-        for seg_key, seg_map in buckets.items():
-            snap = (seg_map or {}).get(str(security_id)) or (seg_map or {}).get(int(security_id))
-            if snap:
-                found_segment = seg_key
-                break
-        if not snap:
-            return {"error": f"No data for security ID {security_id} (hint={segment_hint})"}
-        return {
-            "last_price": snap.get("last_price"),
-            "best_bid": snap.get("best_bid_price"),
-            "best_ask": snap.get("best_ask_price"),
-            "volume": snap.get("volume") or snap.get("volume_traded_today"),
-            "segment_used": found_segment,
-            "raw": snap
-        }
-    except Exception as e:
-        return {"error": f"API Exception: {e}"}
+        error_msg = f"Exception: {e}"
+        print(f"[API ERROR] {error_msg}")
+        print(f"[API ERROR] Response text: {r.text if 'r' in locals() else 'No response'}")
+        return {"error": error_msg, "resp": r.text if 'r' in locals() else None}
 
 def is_market_open():
     """Check if market is currently open"""
@@ -714,41 +888,54 @@ def is_market_open():
     
     return market_open <= now <= market_close
 
+def get_market_depth(sec_id):
+    """Get market depth for a security ID"""
+    try:
+        ltp_data = get_ltp_nse_eq(sec_id)
+        if 'error' in ltp_data:
+            return None
+        return ltp_data
+    except Exception as e:
+        print(f"[MARKET_DEPTH ERROR] {sec_id}: {str(e)}")
+        return None
+
 def get_live_price(symbol):
-    """Get live price for a symbol from Dhan API"""
+    """Get live price for a symbol from Dhan API with better error handling"""
     try:
         resolved = resolve_input(symbol)
         if not resolved:
             return {"error": f"Symbol {symbol} not found"}
+            
         sec_id = resolved['security_id']
-        segment = resolved['segment']  # e.g., "NSE_EQ"
+        segment = resolved['segment']
+        
         print(f"[PRICE] {symbol} -> id={sec_id}, segment={segment}")
-
-        # Fast path: LTP API
-        ltp_res = get_ltp_batch({segment: [int(sec_id)]})
-        if 'error' in ltp_res:
-            return ltp_res
-        ltp = ((ltp_res.get("data") or {}).get(segment) or {}).get(str(sec_id), {}).get("last_price")
-        if ltp is None:
-            # Fallback to Quote API
-            md = get_market_depth(sec_id, segment)
-            if 'error' in md:
-                return md
-            ltp = md.get('last_price')
-
-        if ltp is None:
-            return {"error": f"No price data for {symbol} ({segment})"}
-
-        return {
-            "symbol": symbol,
-            "price": ltp,
-            "change": 0,
-            "change_percent": 0,
-            "segment": segment,
-            "last_updated": datetime.now().strftime("%H:%M:%S")
-        }
+        
+        # Only handle NSE_EQ for now
+        if segment != "NSE_EQ":
+            return {"error": f"Only NSE_EQ supported, got {segment}"}
+        
+        ltp_data = get_ltp_nse_eq(sec_id)
+        
+        if 'error' not in ltp_data:
+            return {
+                "symbol": symbol,
+                "price": ltp_data['last_price'],
+                "change": 0,
+                "change_percent": 0,
+                "segment": "NSE_EQ",
+                "last_updated": datetime.now().strftime("%H:%M:%S")
+            }
+        
+        # Return more detailed error information
+        error_msg = ltp_data.get('error', 'Unknown error')
+        print(f"[PRICE ERROR] {symbol}: {error_msg}")
+        print(f"[PRICE ERROR] Full LTP data: {ltp_data}")
+        return {"error": f"No price data available for {symbol}: {error_msg}"}
+        
     except Exception as e:
-        return {"error": f"Price fetch failed: {e}"}
+        print(f"[PRICE ERROR] Exception for {symbol}: {str(e)}")
+        return {"error": f"Price fetch failed: {str(e)}"}
 
 @app.route('/get-price/<symbol>', methods=['GET'])
 def get_price_route(symbol):
@@ -760,11 +947,17 @@ def get_price_route(symbol):
         print(f"Original: {symbol}")
         print(f"Decoded: {decoded_symbol}")
         
+        # Check if API credentials are configured
+        access_token = get_token()
+        if not access_token or not DHAN_CLIENT_ID:
+            return jsonify({"error": "Dhan API credentials not configured"}), 500
+        
         price_data = get_live_price(decoded_symbol)
         print(f"Final result: {price_data}")
         print(f"=== END REQUEST ===\n")
         
         if 'error' in price_data:
+            print(f"[ROUTE ERROR] Price error for {decoded_symbol}: {price_data['error']}")
             return jsonify(price_data), 400
         
         return jsonify(price_data)
@@ -772,6 +965,85 @@ def get_price_route(symbol):
         error_msg = f"Route exception: {str(e)}"
         print(f"[ERROR] {error_msg}")
         return jsonify({"error": error_msg}), 500
+
+@app.route('/debug-price/<symbol>', methods=['GET'])
+def debug_price_route(symbol):
+    """Debug endpoint to see raw API response"""
+    try:
+        import urllib.parse
+        decoded_symbol = urllib.parse.unquote(symbol)
+        print(f"\n=== DEBUG PRICE REQUEST ===")
+        print(f"Symbol: {decoded_symbol}")
+        
+        # Check if API credentials are configured
+        access_token = get_token()
+        if not access_token or not DHAN_CLIENT_ID:
+            return jsonify({"error": "Dhan API credentials not configured"}), 500
+        
+        resolved = resolve_input(decoded_symbol)
+        if not resolved:
+            return jsonify({"error": f"Symbol {decoded_symbol} not found"}), 404
+            
+        sec_id = resolved['security_id']
+        print(f"Security ID: {sec_id}")
+        
+        # Test the API directly
+        url = f"{DHAN_BASE_URL}/v2/marketfeed/ltp"
+        body = {"NSE_EQ": [int(sec_id)]}
+        headers = get_dhan_headers()
+        
+        print(f"Request URL: {url}")
+        print(f"Request headers: {headers}")
+        print(f"Request body: {body}")
+        
+        r = requests.post(url, headers=headers, json=body, timeout=10)
+        
+        response_data = {
+            "status_code": r.status_code,
+            "headers": dict(r.headers),
+            "response_text": r.text,
+            "response_json": r.json() if r.text else None
+        }
+        
+        print(f"Response: {json.dumps(response_data, indent=2)}")
+        print(f"=== END DEBUG REQUEST ===\n")
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        error_msg = f"Debug route exception: {str(e)}"
+        print(f"[DEBUG ERROR] {error_msg}")
+        return jsonify({"error": error_msg}), 500
+
+
+
+@app.route('/get-market-depth/<symbol>', methods=['GET'])
+def get_market_depth_route(symbol):
+    """API endpoint to get market depth for a symbol"""
+    try:
+        resolved = resolve_input(symbol)
+        if not resolved:
+            return jsonify({"error": f"Symbol {symbol} not found"}), 404
+            
+        sec_id = resolved['security_id']
+        segment = resolved['segment']
+        
+        if segment != "NSE_EQ":
+            return jsonify({"error": f"Only NSE_EQ supported, got {segment}"}), 400
+        
+        ltp_data = get_ltp_nse_eq(sec_id)
+        
+        if 'error' in ltp_data:
+            return jsonify(ltp_data), 400
+        
+        return jsonify({
+            "symbol": symbol,
+            "security_id": sec_id,
+            "segment": segment,
+            "data": ltp_data
+        })
+    except Exception as e:
+        return jsonify({"error": f"Market depth fetch failed: {str(e)}"}), 500
 
 # ------------------------------------------------------------------------------
 # Calculator Configuration
@@ -807,7 +1079,7 @@ CALCULATOR_CONFIG = {
     },
     'fo': {
         'leverage': 1.0,  # No leverage for F&O
-        'model': IntradayTrade,
+        'model': FOTrade,
         'template': 'fo_calculator.html',
         'saved_template': 'saved_fno.html',
         'detail_template': 'detail_fno.html'
@@ -852,23 +1124,50 @@ def calculate_trade_metrics(avg_price, quantity, expected_return, risk_percent, 
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if "email" not in session:
-            toast_error(template_key='session_expired')
+        # Check if user is authenticated via Flask-Login (handles persistent sessions)
+        if not current_user.is_authenticated:
+            # Check if session exists but user is not authenticated (session expired)
+            if "email" in session:
+                session.clear()  # Clear expired session
+                toast_error("Your session has expired. Please log in again.")
+            else:
+                toast_error("Please log in to access this page.")
             return redirect(url_for("login"))
+        
+        # Refresh session data if needed
+        if "email" not in session and current_user.is_authenticated:
+            session.permanent = True
+            session["email"] = current_user.email
+            session["user_id"] = current_user.id
+            session["login_time"] = datetime.now(timezone.utc).isoformat()
+        
         return f(*args, **kwargs)
     return decorated_function
 
 def subscription_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if "email" not in session:
-            toast_error(template_key='session_expired')
+        # Check if user is authenticated via Flask-Login (handles persistent sessions)
+        if not current_user.is_authenticated:
+            # Check if session exists but user is not authenticated (session expired)
+            if "email" in session:
+                session.clear()  # Clear expired session
+                toast_error("Your session has expired. Please log in again.")
+            else:
+                toast_error("Please log in to access this page.")
             return redirect(url_for("login"))
+        
+        # Refresh session data if needed
+        if "email" not in session and current_user.is_authenticated:
+            session.permanent = True
+            session["email"] = current_user.email
+            session["user_id"] = current_user.id
+            session["login_time"] = datetime.now(timezone.utc).isoformat()
         
         # Check subscription using new system
         active_sub = get_user_active_subscription(current_user.id)
         if not active_sub:
-            toast_warning(template_key='subscription_required')
+            toast_warning("Active subscription required to access this feature.")
             return redirect(url_for("subscription"))
         
         return f(*args, **kwargs)
@@ -885,27 +1184,33 @@ def password_policy_ok(pw: str) -> bool:
     return has_u and has_l and has_d and has_s
 
 
-def send_email(to: str, subject: str, html: str, body: str = None) -> None:
+def send_email(to: str, subject: str, html: str, body: str = None, email_type: str = 'user') -> None:
+    """Send email using dual email configuration
+    
+    Args:
+        to: Recipient email
+        subject: Email subject
+        html: HTML content
+        body: Plain text body (optional)
+        email_type: 'user' for user emails, 'admin' for admin emails
+    """
     try:
-        # Check if email credentials are properly configured
-        mail_username = app.config.get('MAIL_USERNAME')
-        mail_password = app.config.get('MAIL_PASSWORD')
-        
-        if not mail_username or not mail_password or mail_username == 'your-actual-gmail@gmail.com' or mail_password == 'your-actual-app-password':
-            print(f"[EMAIL] Email credentials not configured properly, skipping email to: {to}")
-            return  # Skip sending email if credentials are not configured
-        
-        print(f"[EMAIL] Attempting to send email to: {to}")
-        print(f"[EMAIL] MAIL_USERNAME configured: {mail_username}")
-        print(f"[EMAIL] MAIL_PASSWORD configured: {'Yes' if mail_password else 'No'}")
-        
-        msg = Message(subject=subject, recipients=[to], html=html, body=body)
-        mail.send(msg)
-        print(f"[EMAIL] Successfully sent email to: {to}")
+        if email_type == 'admin':
+            email_service.send_admin_email(to, subject, html, body)
+        else:
+            email_service.send_user_email(to, subject, html, body)
     except Exception as e:
-        print(f"[EMAIL] Failed to send email to {to}: {str(e)}")
+        print(f"[EMAIL] Failed to send {email_type} email to {to}: {str(e)}")
         # Don't raise the exception, just log it for development
         print(f"[EMAIL] Continuing without sending email...")
+
+def send_user_email(to: str, subject: str, html: str, body: str = None) -> None:
+    """Send email to users for verification and password recovery"""
+    send_email(to, subject, html, body, 'user')
+
+def send_admin_email(to: str, subject: str, html: str, body: str = None) -> None:
+    """Send email to admin for notifications"""
+    send_email(to, subject, html, body, 'admin')
 
 # ----- OTP utils (Reset Password) -----
 def issue_reset_otp(email: str) -> None:
@@ -918,7 +1223,7 @@ def issue_reset_otp(email: str) -> None:
     otp = f"{secrets.randbelow(1_000_000):06d}"
     salt = os.urandom(16)
     digest = hashlib.sha256(salt + otp.encode()).hexdigest()
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)  # Extended to 10 minutes
 
     rec = ResetOTP(
         email=email,
@@ -931,15 +1236,35 @@ def issue_reset_otp(email: str) -> None:
     db.session.add(rec)
     db.session.commit()
 
-    subject = "Your password reset code"
+    subject = "🔐 Password Reset Code - CalculatenTrade"
     html = f"""
-      <p>Use this code to reset your password:</p>
-      <h2 style="letter-spacing:2px">{otp}</h2>
-      <p>This code will expire in 5 minutes (at {expires_at.strftime('%H:%M UTC')}).</p>
-      <p>If you did not request this, you can ignore this email.</p>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #2c3e50; margin-bottom: 10px;">CalculatenTrade</h1>
+            <p style="color: #7f8c8d; font-size: 16px;">Password Reset Request</p>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin-bottom: 20px;">
+            <p style="color: #2c3e50; font-size: 16px; margin-bottom: 15px;">Hello,</p>
+            <p style="color: #2c3e50; font-size: 16px; margin-bottom: 20px;">You requested to reset your password. Use this verification code:</p>
+            
+            <div style="text-align: center; margin: 25px 0;">
+                <div style="background: #3498db; color: white; font-size: 32px; font-weight: bold; padding: 15px 25px; border-radius: 8px; letter-spacing: 3px; display: inline-block;">
+                    {otp}
+                </div>
+            </div>
+            
+            <p style="color: #e74c3c; font-size: 14px; margin-bottom: 15px;">⏰ This code will expire in 10 minutes</p>
+            <p style="color: #7f8c8d; font-size: 14px;">If you didn't request this password reset, please ignore this email and your password will remain unchanged.</p>
+        </div>
+        
+        <div style="text-align: center; color: #95a5a6; font-size: 12px;">
+            <p>© 2024 CalculatenTrade. All rights reserved.</p>
+        </div>
+    </div>
     """
     try:
-        send_email(to=email, subject=subject, html=html)
+        send_user_email(to=email, subject=subject, html=html)
         print(f"[RESET-OTP][EMAIL] Sent code to {email}")
     except Exception as e:
         print("[RESET-OTP][EMAIL][ERROR]", e)
@@ -973,7 +1298,7 @@ def issue_signup_otp(email: str) -> None:
     otp = f"{secrets.randbelow(1_000_000):06d}"
     salt = os.urandom(16)
     digest = hashlib.sha256(salt + otp.encode()).hexdigest()
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)  # Extended to 10 minutes
 
     rec = EmailVerifyOTP(
         email=email,
@@ -986,15 +1311,43 @@ def issue_signup_otp(email: str) -> None:
     db.session.add(rec)
     db.session.commit()
 
-    subject = "Verify your email"
+    subject = "✅ Verify Your Email - Welcome to CalculatenTrade!"
     html = f"""
-      <p>Welcome! Please verify your email using this code:</p>
-      <h2 style="letter-spacing:2px">{otp}</h2>
-      <p>This code expires in 5 minutes (at {expires_at.strftime('%H:%M UTC')}).</p>
-      <p>If you didn't sign up, ignore this message.</p>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #27ae60; margin-bottom: 10px;">Welcome to CalculatenTrade!</h1>
+            <p style="color: #7f8c8d; font-size: 16px;">Email Verification Required</p>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin-bottom: 20px;">
+            <p style="color: #2c3e50; font-size: 16px; margin-bottom: 15px;">Hello and welcome!</p>
+            <p style="color: #2c3e50; font-size: 16px; margin-bottom: 20px;">Thank you for registering with CalculatenTrade. To complete your registration, please verify your email address using this code:</p>
+            
+            <div style="text-align: center; margin: 25px 0;">
+                <div style="background: #27ae60; color: white; font-size: 32px; font-weight: bold; padding: 15px 25px; border-radius: 8px; letter-spacing: 3px; display: inline-block;">
+                    {otp}
+                </div>
+            </div>
+            
+            <p style="color: #e74c3c; font-size: 14px; margin-bottom: 15px;">⏰ This code will expire in 10 minutes</p>
+            <p style="color: #7f8c8d; font-size: 14px;">If you didn't create an account with us, please ignore this email.</p>
+        </div>
+        
+        <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="color: #27ae60; margin-bottom: 10px;">🚀 What's Next?</h3>
+            <p style="color: #2c3e50; font-size: 14px; margin-bottom: 5px;">• Access powerful trading calculators</p>
+            <p style="color: #2c3e50; font-size: 14px; margin-bottom: 5px;">• Manage your trading positions</p>
+            <p style="color: #2c3e50; font-size: 14px; margin-bottom: 5px;">• Track your trading performance</p>
+            <p style="color: #2c3e50; font-size: 14px;">• Get real-time market insights</p>
+        </div>
+        
+        <div style="text-align: center; color: #95a5a6; font-size: 12px;">
+            <p>© 2024 CalculatenTrade. All rights reserved.</p>
+        </div>
+    </div>
     """
     try:
-        send_email(to=email, subject=subject, html=html)
+        send_user_email(to=email, subject=subject, html=html)
         print(f"[SIGNUP-OTP][EMAIL] Sent verify code to {email}")
     except Exception as e:
         print("[SIGNUP-OTP][EMAIL][ERROR]", e)
@@ -1022,6 +1375,13 @@ def verify_signup_otp(email: str, otp_input: str) -> Tuple[bool, str, Optional[E
 # ------------------------------------------------------------------------------
 @app.route("/")
 def home():
+    # Check if user is logged in and refresh session
+    if current_user.is_authenticated and "email" not in session:
+        session.permanent = True
+        session["email"] = current_user.email
+        session["user_id"] = current_user.id
+        session["login_time"] = datetime.now(timezone.utc).isoformat()
+    
     return render_template("home.html")
 
 @app.route("/employee-portal")
@@ -1063,22 +1423,23 @@ def register():
             if User.query.filter_by(email=email).first():
                 msg = "User already exists with this email."
                 if is_ajax(): return jsonify({"ok": False, "error": msg, "errorCode": "EMAIL_EXISTS"}), 200
-                toast_error(template_key='email_exists')
+                flash("An account with this email already exists. Please sign in instead.", "error")
                 return redirect(url_for("register"))
 
-            user = User(email=email, verified=True)  # Auto-verify for development
+            # Create user but keep unverified
+            user = User(email=email, verified=False)
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
 
-            # Skip email verification for development
-            # issue_signup_otp(email)
+            # Send email verification OTP
+            issue_signup_otp(email)
 
             if is_ajax():
-                return jsonify({"ok": True, "redirect": "/login"}), 200
+                return jsonify({"ok": True, "redirect": f"/verify-email?email={email}"}), 200
 
-            toast_success(template_key='register_success')
-            return redirect(url_for("login"))
+            flash("Registration successful! Please check your email for verification code.", "success")
+            return redirect(url_for("verify_email_route", email=email))
 
         except Exception as e:
             print('\n\nerror ==>', e, '\n\n')
@@ -1086,7 +1447,7 @@ def register():
             print("[REGISTER][ERROR]", e)
             msg = "Registration failed. Please try again."
             if is_ajax(): return jsonify({"ok": False, "error": msg}), 200
-            toast_error(template_key='register_failed')
+            flash("Registration failed. Please try again.", "error")
             return redirect(url_for("register"))
 
     return render_template("register.html")
@@ -1115,13 +1476,13 @@ def verify_email_route():
                 db.session.add(rec)
             db.session.commit()
 
-            toast_success("Email verified successfully! You can now log in.")
+            flash("Email verified successfully! You can now log in.", "success")
             return redirect(url_for("login"))
 
         except Exception as e:
             db.session.rollback()
             print("[VERIFY-EMAIL][ERROR]", e)
-            toast_error(template_key='verification_failed')
+            flash("Email verification failed. Please try again.", "error")
             return render_template("verify_email.html", email=email)
     return render_template("verify_email.html", email=email)
 
@@ -1146,29 +1507,38 @@ def login():
 
         try:
             user = User.query.filter_by(email=email).first()
-            # Skip email verification check for development
-            # if user and not user.verified:
-            #     flash("Please verify your email first. A code has been sent.", "error")
-            #     issue_signup_otp(email)
-            #     return redirect(url_for("verify_email_route", email=email))
+            
+            # Check if user doesn't exist
+            if not user:
+                flash("No account found with this email. Please register first.", "error")
+                return render_template("login.html")
+            
+            # Check if user exists and email is verified
+            if user and not user.verified:
+                flash("Please verify your email first. A new verification code has been sent.", "warning")
+                issue_signup_otp(email)
+                return redirect(url_for("verify_email_route", email=email))
 
             if user and user.google_id and not user.password_hash:
-                toast_info("This account uses Google sign-in. Please use 'Continue with Google' button.")
+                flash("This account uses Google sign-in. Please use 'Continue with Google' button.", "info")
                 return render_template("login.html")
 
             if user and user.check_password(password):
-                # mark user as authenticated for flask-login
-                login_user(user, remember=False)          # set remember=True if you want persistent login cookie
-                # keep session entry if other parts of your app rely on it
+                # mark user as authenticated for flask-login with persistent session
+                login_user(user, remember=True)  # Enable persistent login cookie
+                # Make session permanent for 30 days
+                session.permanent = True
                 session["email"] = user.email
-                toast_success(template_key='login_success')
+                session["user_id"] = user.id
+                session["login_time"] = datetime.now(timezone.utc).isoformat()
+                flash("Successfully logged in!", "success")
                 # respect 'next' param so protected pages redirect correctly after login
                 next_page = request.args.get("next")
                 return redirect(next_page or url_for("home"))
 
-            toast_error(template_key='login_failed')
+            flash("Invalid email or password. Please try again.", "error")
         except Exception as e:
-            toast_error("Login error. Please try again.")
+            flash("Login error. Please try again.", "error")
             print("[LOGIN][ERROR]", e)
 
     return render_template("login.html")
@@ -1176,8 +1546,11 @@ def login():
 @app.route("/logout")
 def logout():
     logout_user()
-    session.pop("email", None)
-    toast_success(template_key='logout_success')
+    # Clear all session data
+    session.clear()
+    # Make session non-permanent
+    session.permanent = False
+    toast_success("Successfully logged out!")
     return redirect(url_for("login"))
 
 # Subscription routes
@@ -1227,21 +1600,22 @@ def apply_coupon():
         
         # Check if coupon exists and is active
         from sqlalchemy import text
-        coupon_result = db.session.execute(
-            text("SELECT id, code, discount_percent, active, mentor_id, max_uses, uses FROM coupon WHERE UPPER(TRIM(code)) = :code"),
-            {"code": coupon_code}
-        ).fetchone()
+        try:
+            coupon_result = db.session.execute(
+                text("SELECT id, code, discount_percent, active, mentor_id FROM coupon WHERE UPPER(TRIM(code)) = :code"),
+                {"code": coupon_code}
+            ).fetchone()
+        except Exception as e:
+            print(f"Database error checking coupon: {e}")
+            return jsonify({"success": False, "error": "Database error checking coupon"}), 500
         
         if not coupon_result:
             return jsonify({"success": False, "error": "Invalid coupon code"}), 400
         
-        coupon_id, code, discount_percent, active, mentor_id, max_uses, uses = coupon_result
+        coupon_id, code, discount_percent, active, mentor_id = coupon_result
         
         if not active:
             return jsonify({"success": False, "error": "Coupon code has expired"}), 400
-        
-        if max_uses and uses >= max_uses:
-            return jsonify({"success": False, "error": "Coupon usage limit reached"}), 400
         
         # Check if user has already used this coupon (single-use validation)
         existing_usage = CouponUsage.query.filter_by(
@@ -1296,21 +1670,22 @@ def create_order():
         if coupon_code:
             # Validate coupon server-side
             from sqlalchemy import text
-            coupon_result = db.session.execute(
-                text("SELECT id, code, discount_percent, active, mentor_id, max_uses, uses FROM coupon WHERE UPPER(TRIM(code)) = :code"),
-                {"code": coupon_code}
-            ).fetchone()
+            try:
+                coupon_result = db.session.execute(
+                    text("SELECT id, code, discount_percent, active, mentor_id FROM coupon WHERE UPPER(TRIM(code)) = :code"),
+                    {"code": coupon_code}
+                ).fetchone()
+            except Exception as e:
+                print(f"Database error checking coupon: {e}")
+                return jsonify({"error": "Database error checking coupon"}), 500
             
             if not coupon_result:
                 return jsonify({"error": "Invalid coupon code"}), 400
             
-            coupon_id, code, discount_percent, active, mentor_id, max_uses, uses = coupon_result
+            coupon_id, code, discount_percent, active, mentor_id = coupon_result
             
             if not active:
                 return jsonify({"error": "Coupon code has expired"}), 400
-            
-            if max_uses and uses >= max_uses:
-                return jsonify({"error": "Coupon usage limit reached"}), 400
             
             # Check if user has already used this coupon
             existing_usage = CouponUsage.query.filter_by(
@@ -1480,37 +1855,35 @@ def verify_payment():
         if payment.coupon_code:
             # Get coupon details for mentor attribution
             from sqlalchemy import text
-            coupon_result = db.session.execute(
-                text("SELECT id, mentor_id, mentor_commission_pct FROM coupon WHERE UPPER(TRIM(code)) = :code"),
-                {"code": payment.coupon_code}
-            ).fetchone()
-            
-            if coupon_result:
-                coupon_id, mentor_id, commission_pct = coupon_result
+            try:
+                coupon_result = db.session.execute(
+                    text("SELECT id, mentor_id FROM coupon WHERE UPPER(TRIM(code)) = :code"),
+                    {"code": payment.coupon_code}
+                ).fetchone()
                 
-                # Calculate commission if mentor assigned
-                commission_amount = 0
-                if mentor_id and commission_pct:
-                    commission_amount = int((payment.amount * commission_pct) / 100)
-                
-                # Atomically increment usage count
-                db.session.execute(
-                    text("UPDATE coupon SET uses = uses + 1 WHERE id = :coupon_id"),
-                    {"coupon_id": coupon_id}
-                )
-                
-                # Create usage record
-                coupon_usage = CouponUsage(
-                    user_id=current_user.id,
-                    coupon_id=coupon_id,
-                    coupon_code=payment.coupon_code,
-                    mentor_id=mentor_id,
-                    payment_id=payment.id,
-                    discount_amount=payment.discount_amount,
-                    commission_amount=commission_amount,
-                    order_id=order_id
-                )
-                db.session.add(coupon_usage)
+                if coupon_result:
+                    coupon_id, mentor_id = coupon_result
+                    
+                    # Calculate commission if mentor assigned (use default 40%)
+                    commission_amount = 0
+                    if mentor_id:
+                        commission_amount = int((payment.amount * 40) / 100)  # Default 40% commission
+                    
+                    # Create usage record
+                    coupon_usage = CouponUsage(
+                        user_id=current_user.id,
+                        coupon_id=coupon_id,
+                        coupon_code=payment.coupon_code,
+                        mentor_id=mentor_id,
+                        payment_id=payment.id,
+                        discount_amount=payment.discount_amount,
+                        commission_amount=commission_amount,
+                        order_id=order_id
+                    )
+                    db.session.add(coupon_usage)
+            except Exception as e:
+                print(f"Error processing coupon usage: {e}")
+                # Continue without failing the payment
         
         # Create subscription using new system
         subscription = create_user_subscription(
@@ -1709,6 +2082,65 @@ def settings():
     
     return render_template('settings.html', settings=user_settings)
 
+@app.route('/submit_suggestion', methods=['POST'])
+@login_required
+def submit_suggestion():
+    """Handle suggestion submissions from settings page"""
+    try:
+        suggestion_type = request.form.get('suggestion_type', 'other')
+        suggestion_text = request.form.get('suggestion_text', '').strip()
+        
+        if not suggestion_text:
+            flash('Please enter your suggestion.', 'error')
+            return redirect(url_for('settings'))
+        
+        # Send email to connect@calculatentrade.com
+        subject = f"New {suggestion_type.replace('_', ' ').title()} - CalculatenTrade"
+        html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #2c3e50; margin-bottom: 10px;">New Suggestion Received</h1>
+                <p style="color: #7f8c8d; font-size: 16px;">CalculatenTrade Platform</p>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin-bottom: 20px;">
+                <h3 style="color: #2c3e50; margin-bottom: 15px;">Suggestion Details</h3>
+                <p style="color: #2c3e50; margin-bottom: 10px;"><strong>From:</strong> {current_user.email}</p>
+                <p style="color: #2c3e50; margin-bottom: 10px;"><strong>Type:</strong> {suggestion_type.replace('_', ' ').title()}</p>
+                <p style="color: #2c3e50; margin-bottom: 10px;"><strong>Date:</strong> {datetime.now().strftime('%B %d, %Y at %I:%M %p')}</p>
+                
+                <div style="background: white; padding: 20px; border-radius: 5px; margin-top: 15px;">
+                    <h4 style="color: #2c3e50; margin-bottom: 10px;">Message:</h4>
+                    <p style="color: #2c3e50; line-height: 1.6;">{suggestion_text}</p>
+                </div>
+            </div>
+            
+            <div style="text-align: center; color: #95a5a6; font-size: 12px;">
+                <p>© 2024 CalculatenTrade. All rights reserved.</p>
+            </div>
+        </div>
+        """
+        
+        # Send to connect@calculatentrade.com
+        send_admin_email(
+            to='connect@calculatentrade.com',
+            subject=subject,
+            html=html
+        )
+        
+        return redirect(url_for('feedback_success'))
+        
+    except Exception as e:
+        print(f"Error submitting suggestion: {e}")
+        flash('There was an error submitting your suggestion. Please try again.', 'error')
+        return redirect(url_for('settings'))
+
+@app.route('/feedback-success')
+@login_required
+def feedback_success():
+    """Show feedback success page"""
+    return render_template('feedback_success.html')
+
 
 # Delete Account OTP Model
 class DeleteAccountOTP(db.Model):
@@ -1754,17 +2186,46 @@ def issue_delete_account_otp(email: str) -> None:
     db.session.add(rec)
     db.session.commit()
 
-    subject = "Account Deletion Verification"
+    subject = "⚠️ Account Deletion Verification - CalculatenTrade"
     html = f"""
-      <p><strong>IMPORTANT:</strong> You have requested to delete your account.</p>
-      <p>Use this code to confirm account deletion:</p>
-      <h2 style="letter-spacing:2px; color: red;">{otp}</h2>
-      <p>This code will expire in 10 minutes.</p>
-      <p><strong>WARNING:</strong> This action cannot be undone. All your data will be permanently deleted.</p>
-      <p>If you did not request this, please ignore this email and change your password immediately.</p>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #e74c3c; margin-bottom: 10px;">⚠️ Account Deletion Request</h1>
+            <p style="color: #7f8c8d; font-size: 16px;">CalculatenTrade</p>
+        </div>
+        
+        <div style="background: #fff5f5; border: 2px solid #e74c3c; padding: 25px; border-radius: 8px; margin-bottom: 20px;">
+            <p style="color: #2c3e50; font-size: 16px; margin-bottom: 15px;"><strong>IMPORTANT:</strong> You have requested to delete your account.</p>
+            <p style="color: #2c3e50; font-size: 16px; margin-bottom: 20px;">Use this verification code to confirm account deletion:</p>
+            
+            <div style="text-align: center; margin: 25px 0;">
+                <div style="background: #e74c3c; color: white; font-size: 32px; font-weight: bold; padding: 15px 25px; border-radius: 8px; letter-spacing: 3px; display: inline-block;">
+                    {otp}
+                </div>
+            </div>
+            
+            <p style="color: #e74c3c; font-size: 14px; margin-bottom: 15px;">⏰ This code will expire in 10 minutes</p>
+            
+            <div style="background: #f8d7da; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                <p style="color: #721c24; font-size: 14px; margin: 0;"><strong>WARNING:</strong> This action cannot be undone. All your data will be permanently deleted including:</p>
+                <ul style="color: #721c24; font-size: 14px; margin: 10px 0;">
+                    <li>Trading calculations and positions</li>
+                    <li>Journal entries and strategies</li>
+                    <li>Account settings and preferences</li>
+                    <li>Subscription history</li>
+                </ul>
+            </div>
+            
+            <p style="color: #7f8c8d; font-size: 14px;">If you did not request this account deletion, please ignore this email and consider changing your password immediately for security.</p>
+        </div>
+        
+        <div style="text-align: center; color: #95a5a6; font-size: 12px;">
+            <p>© 2024 CalculatenTrade. All rights reserved.</p>
+        </div>
+    </div>
     """
     try:
-        send_email(to=email, subject=subject, html=html)
+        send_user_email(to=email, subject=subject, html=html)
         print(f"[DELETE-ACCOUNT-OTP][EMAIL] Sent code to {email}")
     except Exception as e:
         print("[DELETE-ACCOUNT-OTP][EMAIL][ERROR]", e)
@@ -1915,7 +2376,13 @@ def delete_account():
             except Exception as e:
                 print(f"Error deleting AI plan templates: {e}")
             
-            # Delete subscription history first
+            # Delete coupon usage first (references payments)
+            try:
+                CouponUsage.query.filter_by(user_id=user_id).delete()
+            except Exception as e:
+                print(f"Error deleting coupon usage: {e}")
+            
+            # Delete subscription history
             try:
                 from subscription_models import SubscriptionHistory
                 SubscriptionHistory.query.filter_by(user_id=user_id).delete()
@@ -1929,7 +2396,7 @@ def delete_account():
             except Exception as e:
                 print(f"Error deleting user subscriptions: {e}")
             
-            # Delete payments
+            # Delete payments (after coupon usage is deleted)
             try:
                 Payment.query.filter_by(user_id=user_id).delete()
             except Exception as e:
@@ -2043,8 +2510,11 @@ def oauth_callback():
                 user.verified = True
                 db.session.commit()
             
-            login_user(user, remember=False)
+            login_user(user, remember=True)  # Enable persistent login for Google OAuth
+            session.permanent = True
             session["email"] = user.email
+            session["user_id"] = user.id
+            session["login_time"] = datetime.now(timezone.utc).isoformat()
             session.pop('oauth_state', None)  # Clean up
             
             app.logger.info(f"User {email} logged in via Google")
@@ -2064,8 +2534,11 @@ def oauth_callback():
             db.session.add(new_user)
             db.session.commit()
             
-            login_user(new_user, remember=False)
+            login_user(new_user, remember=True)  # Enable persistent login for new Google users
+            session.permanent = True
             session["email"] = new_user.email
+            session["user_id"] = new_user.id
+            session["login_time"] = datetime.now(timezone.utc).isoformat()
             session.pop('oauth_state', None)  # Clean up
             
             app.logger.info(f"New user {email} created via Google")
@@ -2096,7 +2569,7 @@ def forgot_password():
         except Exception as e:
             print("[FORGOT][ERROR]", e)
 
-        flash("If that email exists, a reset code has been sent.", "info")
+        flash("If that email exists, a reset code has been sent to your inbox.", "info")
         return redirect(url_for("verify_otp_route", email=email))
     return render_template("forgot_password.html")
 
@@ -2136,12 +2609,12 @@ def verify_otp_route():
                 db.session.add(rec)
             db.session.commit()
 
-            flash("Password reset successful. Please log in.", "success")
+            flash("Password reset successful! You can now log in with your new password.", "success")
             return redirect(url_for("login"))
 
         except Exception as e:
             db.session.rollback()
-            flash("Could not reset password. Please try again.", "error")
+            flash("Password reset failed. Please try again.", "error")
             print("[VERIFY-OTP][ERROR]", e)
             return render_template("verify_otp.html", email=email)
 
@@ -2245,7 +2718,9 @@ def save_universal_result(calc_type):
             trade_data.update({
                 "strike_price": float(data.get("strike_price", 0)) if data.get("strike_price") else None,
                 "expiry_date": datetime.strptime(data.get("expiry_date"), "%Y-%m-%d").date() if data.get("expiry_date") else None,
-                "option_type": data.get("option_type")
+                "option_type": data.get("option_type"),
+                "lot_size": int(data.get("lot_size", 25)) if data.get("lot_size") else 25,
+                "derivative_name": data.get("derivative_name") or data.get("symbol")
             })
         
         trade = model(**trade_data)
@@ -2798,35 +3273,9 @@ def search_stocks():
     
     return jsonify({"error": "Symbol not found"})
 
-@app.route("/get-price/<symbol>")
-def get_price(symbol):
-    """Get live price for a symbol"""
-    if not DHAN_ACCESS_TOKEN:
-        return jsonify({"error": "DHAN API not configured"}), 500
-        
-    price_data = get_live_price(symbol)
-    if 'error' in price_data:
-        return jsonify({"error": price_data['error']}), 400
-    return jsonify(price_data)
 
-@app.route("/get-market-depth/<symbol>")
-def get_market_depth_route(symbol):
-    # First resolve the symbol to get security ID
-    resolved = resolve_input(symbol)
-    if not resolved:
-        return jsonify({"error": "Symbol not found"})
-        
-    if isinstance(resolved, tuple):
-        _, _, sec_id = resolved
-    elif isinstance(resolved, list) and len(resolved) > 0:
-        sec_id = resolved[0]['sec_id']
-    else:
-        return jsonify({"error": "Symbol not found"})
-    
-    depth_data = get_market_depth(sec_id)
-    if depth_data:
-        return jsonify(depth_data)
-    return jsonify({"error": "Could not fetch market depth"})
+
+
 
 # ------------------------------------------------------------------------------
 # Stock Analysis Route (from dhan.py)
@@ -2946,7 +3395,10 @@ def fetch_intraday_ohlc(sec_id: str, day: _date):
     end_str  = end_ist.strftime("%Y-%m-%d %H:%M:%S")
 
     url_i = f"{DHAN_BASE_URL}/v2/charts/intraday"
-    headers = {"Content-Type": "application/json", "access-token": DHAN_ACCESS_TOKEN}
+    access_token = get_token()
+    if not access_token:
+        raise RuntimeError("Token missing/expired. Update via /update-token.")
+    headers = {"Content-Type": "application/json", "access-token": access_token}
     if DHAN_CLIENT_ID:
         headers["client-id"] = DHAN_CLIENT_ID
 
@@ -3436,7 +3888,7 @@ def add_fno_to_journal():
         if not trade_id:
             return jsonify({'success': False, 'error': 'Trade ID is required'}), 400
         
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = FOTrade.query.get_or_404(trade_id)
         
         journal_trade = Trade(
             symbol=trade.symbol or 'UNKNOWN',
@@ -3478,7 +3930,7 @@ def add_mtf_to_journal():
         if not trade_id:
             return jsonify({'success': False, 'error': 'Trade ID is required'}), 400
         
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = MTFTrade.query.get_or_404(trade_id)
         
         journal_trade = Trade(
             symbol=trade.symbol or 'UNKNOWN',
@@ -3520,7 +3972,7 @@ def add_swing_to_journal():
         if not trade_id:
             return jsonify({'success': False, 'error': 'Trade ID is required'}), 400
         
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = SwingTrade.query.get_or_404(trade_id)
         
         journal_trade = Trade(
             symbol=trade.symbol or 'UNKNOWN',
@@ -3562,7 +4014,7 @@ def add_delivery_to_journal():
         if not trade_id:
             return jsonify({'success': False, 'error': 'Trade ID is required'}), 400
         
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = DeliveryTrade.query.get_or_404(trade_id)
         
         journal_trade = Trade(
             symbol=trade.symbol or 'UNKNOWN',
@@ -3881,11 +4333,7 @@ def delivery_calculator():
 @subscription_required
 def saved_fno():
     try:
-        # F&O trades are identified by having lot_size field set
-        trades = IntradayTrade.query.filter(
-            IntradayTrade.lot_size.isnot(None),
-            IntradayTrade.leverage.is_(None)  # Exclude MTF trades that might have lot_size
-        ).order_by(IntradayTrade.id.desc()).all()
+        trades = FOTrade.query.filter_by(user_id=current_user.id).order_by(FOTrade.id.desc()).all()
         normalized_trades = [normalize_trade(trade) for trade in trades]
         return render_template('saved_fno.html', trades=normalized_trades)
     except Exception as e:
@@ -3896,7 +4344,7 @@ def saved_fno():
 @subscription_required
 def saved_mtf():
     try:
-        trades = IntradayTrade.query.filter(IntradayTrade.leverage.isnot(None)).order_by(IntradayTrade.id.desc()).all()
+        trades = MTFTrade.query.filter_by(user_id=current_user.id).order_by(MTFTrade.id.desc()).all()
         normalized_trades = [normalize_trade(trade) for trade in trades]
         return render_template('saved_mtf.html', trades=normalized_trades)
     except:
@@ -3906,7 +4354,7 @@ def saved_mtf():
 @subscription_required
 def saved_swing():
     try:
-        trades = IntradayTrade.query.filter(IntradayTrade.leverage.is_(None), IntradayTrade.lot_size.is_(None)).order_by(IntradayTrade.id.desc()).all()
+        trades = SwingTrade.query.filter_by(user_id=current_user.id).order_by(SwingTrade.id.desc()).all()
         normalized_trades = [normalize_trade(trade) for trade in trades]
         return render_template('saved_swing.html', trades=normalized_trades)
     except:
@@ -3916,7 +4364,7 @@ def saved_swing():
 @subscription_required
 def saved_delivery():
     try:
-        trades = IntradayTrade.query.filter(IntradayTrade.leverage.is_(None), IntradayTrade.lot_size.is_(None)).order_by(IntradayTrade.id.desc()).all()
+        trades = DeliveryTrade.query.filter_by(user_id=current_user.id).order_by(DeliveryTrade.id.desc()).all()
         normalized_trades = [normalize_trade(trade) for trade in trades]
         return render_template('saved_delivery.html', trades=normalized_trades)
     except:
@@ -3926,10 +4374,19 @@ def saved_delivery():
 @app.route('/fno/detail/<int:trade_id>', methods=['GET', 'POST'])
 @login_required
 def fno_detail(trade_id):
-    trade = IntradayTrade.query.get_or_404(trade_id)
+    trade = FOTrade.query.get_or_404(trade_id)
     
-    # Resolve symbol/derivative name
-    symbol = getattr(trade, 'derivative_name', None) or trade.symbol or 'UNKNOWN'
+    # Resolve symbol/derivative name - prioritize derivative_name
+    symbol = getattr(trade, 'derivative_name', None) or trade.symbol
+    if not symbol:
+        # Extract from comment if available
+        if trade.comment:
+            for word in trade.comment.split():
+                if word.isupper() and 2 <= len(word) <= 20:
+                    symbol = word
+                    break
+        if not symbol:
+            symbol = 'F&O Trade'
     
     trade_data = {
         'id': trade.id,
@@ -3992,7 +4449,7 @@ def fno_detail(trade_id):
 @app.route('/mtf/detail/<int:trade_id>')
 @login_required
 def mtf_detail(trade_id):
-    trade = IntradayTrade.query.get_or_404(trade_id)
+    trade = MTFTrade.query.get_or_404(trade_id)
     symbol = trade.symbol or 'UNKNOWN'
     trade_data = {
         'id': trade.id,
@@ -4018,7 +4475,7 @@ def mtf_detail(trade_id):
 @app.route('/swing/detail/<int:trade_id>')
 @login_required
 def swing_detail(trade_id):
-    trade = IntradayTrade.query.get_or_404(trade_id)
+    trade = SwingTrade.query.get_or_404(trade_id)
     symbol = trade.symbol or 'UNKNOWN'
     trade_data = {
         'id': trade.id,
@@ -4044,7 +4501,7 @@ def swing_detail(trade_id):
 @app.route('/delivery/detail/<int:trade_id>')
 @login_required
 def delivery_detail(trade_id):
-    trade = IntradayTrade.query.get_or_404(trade_id)
+    trade = DeliveryTrade.query.get_or_404(trade_id)
     symbol = trade.symbol or 'UNKNOWN'
     trade_data = {
         'id': trade.id,
@@ -4071,6 +4528,72 @@ def delivery_detail(trade_id):
 @app.route('/save_fno_result', methods=['POST'])
 @login_required
 def save_fno_result():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data received'}), 400
+        
+        # Validate required fields
+        required_fields = ['avg_price', 'quantity', 'expected_return', 'risk_percent', 'capital_used', 'target_price', 'stop_loss_price', 'total_reward', 'total_risk', 'rr_ratio']
+        for field in required_fields:
+            if data.get(field) is None:
+                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+        
+        trade_data = {
+            'user_id': current_user.id,
+            'trade_type': data.get('trade_type', 'buy'),
+            'avg_price': float(data.get('avg_price')),
+            'quantity': int(data.get('quantity')),
+            'expected_return': float(data.get('expected_return')),
+            'risk_percent': float(data.get('risk_percent')),
+            'capital_used': float(data.get('capital_used')),
+            'target_price': float(data.get('target_price')),
+            'stop_loss_price': float(data.get('stop_loss_price')),
+            'total_reward': float(data.get('total_reward')),
+            'total_risk': float(data.get('total_risk')),
+            'rr_ratio': float(data.get('rr_ratio')),
+            'symbol': data.get('symbol'),
+            'comment': data.get('comment'),
+            'timestamp': datetime.now(timezone.utc)
+        }
+        
+        # Add F&O specific fields
+        if data.get('strike_price'):
+            trade_data['strike_price'] = float(data.get('strike_price'))
+        if data.get('expiry_date'):
+            trade_data['expiry_date'] = datetime.strptime(data.get('expiry_date'), '%Y-%m-%d').date()
+        if data.get('option_type'):
+            trade_data['option_type'] = data.get('option_type')
+        
+        # Always add lot_size and derivative_name for F&O
+        trade_data['lot_size'] = int(data.get('lot_size', 25))
+        trade_data['derivative_name'] = data.get('derivative_name') or data.get('symbol')
+        
+        # Add num_lots if provided
+        if data.get('num_lots'):
+            trade_data['num_lots'] = int(data.get('num_lots'))
+            
+        trade = FOTrade(**trade_data)
+        db.session.add(trade)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'F&O trade saved successfully', 
+            'trade_id': trade.id
+        }), 200
+        
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': f'Invalid data format: {str(e)}'}), 400
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error saving F&O trade: {str(e)}')
+        return jsonify({'success': False, 'error': 'Failed to save trade', 'details': str(e)}), 500
+
+@app.route('/save_mtf_result', methods=['POST'])
+@login_required
+def save_mtf_result():
     data = request.get_json()
     if not data:
         return jsonify({'error': 'No data received'}), 400
@@ -4090,54 +4613,11 @@ def save_fno_result():
             'total_risk': float(data.get('total_risk')),
             'rr_ratio': float(data.get('rr_ratio')),
             'symbol': data.get('symbol'),
-            'comment': data.get('comment')
+            'comment': data.get('comment'),
+            'timestamp': datetime.now(timezone.utc)
         }
-        
-        # Only add lot_size if the column exists
-        if hasattr(IntradayTrade, 'lot_size'):
-            trade_data['lot_size'] = int(data.get('lot_size', 25))
             
-        # Add derivative name for F&O trades
-        if hasattr(IntradayTrade, 'derivative_name'):
-            trade_data['derivative_name'] = data.get('symbol')  # symbol contains derivative name
-            
-        trade = IntradayTrade(**trade_data)
-        db.session.add(trade)
-        db.session.commit()
-        return jsonify({'message': 'Saved successfully', 'trade_id': trade.id}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': 'Failed to save trade', 'details': str(e)}), 500
-
-@app.route('/save_mtf_result', methods=['POST'])
-@login_required
-def save_mtf_result():
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': 'No data received'}), 400
-    
-    try:
-        trade_data = {
-            'trade_type': data.get('trade_type', 'buy'),
-            'avg_price': float(data.get('avg_price')),
-            'quantity': int(data.get('quantity')),
-            'expected_return': float(data.get('expected_return')),
-            'risk_percent': float(data.get('risk_percent')),
-            'capital_used': float(data.get('capital_used')),
-            'target_price': float(data.get('target_price')),
-            'stop_loss_price': float(data.get('stop_loss_price')),
-            'total_reward': float(data.get('total_reward')),
-            'total_risk': float(data.get('total_risk')),
-            'rr_ratio': float(data.get('rr_ratio')),
-            'symbol': data.get('symbol'),
-            'comment': data.get('comment')
-        }
-        
-        # Add leverage for MTF trades
-        trade_data['leverage'] = float(data.get('leverage', 1))
-        trade_data['user_id'] = current_user.id
-            
-        trade = IntradayTrade(**trade_data)
+        trade = MTFTrade(**trade_data)
         db.session.add(trade)
         db.session.commit()
         return jsonify({'message': 'Saved successfully', 'trade_id': trade.id}), 200
@@ -4153,7 +4633,7 @@ def save_swing_result():
         return jsonify({'error': 'No data received'}), 400
     
     try:
-        trade = IntradayTrade(
+        trade = SwingTrade(
             user_id=current_user.id,
             trade_type=data.get('trade_type', 'buy'),
             avg_price=float(data.get('avg_price')),
@@ -4167,7 +4647,8 @@ def save_swing_result():
             total_risk=float(data.get('total_risk')),
             rr_ratio=float(data.get('rr_ratio')),
             symbol=data.get('symbol'),
-            comment=data.get('comment')
+            comment=data.get('comment'),
+            timestamp=datetime.now(timezone.utc)
         )
         db.session.add(trade)
         db.session.commit()
@@ -4184,7 +4665,7 @@ def save_delivery_result():
         return jsonify({'error': 'No data received'}), 400
     
     try:
-        trade = IntradayTrade(
+        trade = DeliveryTrade(
             user_id=current_user.id,
             trade_type=data.get('trade_type', 'buy'),
             avg_price=float(data.get('avg_price')),
@@ -4198,7 +4679,8 @@ def save_delivery_result():
             total_risk=float(data.get('total_risk')),
             rr_ratio=float(data.get('rr_ratio')),
             symbol=data.get('symbol'),
-            comment=data.get('comment')
+            comment=data.get('comment'),
+            timestamp=datetime.now(timezone.utc)
         )
         db.session.add(trade)
         db.session.commit()
@@ -4212,7 +4694,7 @@ def save_delivery_result():
 @login_required
 def delete_swing_trade(trade_id):
     try:
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = SwingTrade.query.get_or_404(trade_id)
         db.session.delete(trade)
         db.session.commit()
         return redirect(url_for('saved_swing'))
@@ -4227,7 +4709,7 @@ def save_swing_position_update():
         data = request.get_json()
         trade_id = data.get('trade_id')
         
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = SwingTrade.query.get_or_404(trade_id)
         
         trade.avg_price = float(data.get('avg_price', trade.avg_price))
         trade.quantity = int(data.get('quantity', trade.quantity))
@@ -4283,7 +4765,7 @@ def close_swing_position():
         data = request.get_json()
         trade_id = data.get('trade_id')
         
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = SwingTrade.query.get_or_404(trade_id)
         trade.status = 'closed'
         db.session.commit()
         
@@ -4303,7 +4785,7 @@ def reopen_swing_position():
         data = request.get_json()
         trade_id = data.get('trade_id')
         
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = SwingTrade.query.get_or_404(trade_id)
         trade.status = 'open'
         db.session.commit()
         
@@ -4324,14 +4806,14 @@ def save_mtf_position_update():
         data = request.get_json()
         trade_id = data.get('trade_id')
         
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = MTFTrade.query.get_or_404(trade_id)
         
         trade.avg_price = float(data.get('avg_price', trade.avg_price))
         trade.quantity = int(data.get('quantity', trade.quantity))
         trade.stop_loss_price = float(data.get('stop_loss_price', trade.stop_loss_price))
         trade.target_price = float(data.get('target_price', trade.target_price))
         
-        leverage = trade.leverage or 1
+        leverage = 4.0  # MTF default leverage
         capital_used = (trade.avg_price * trade.quantity) / leverage
         
         if trade.trade_type == 'buy':
@@ -4380,7 +4862,7 @@ def close_mtf_position():
         data = request.get_json()
         trade_id = data.get('trade_id')
         
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = MTFTrade.query.get_or_404(trade_id)
         trade.status = 'closed'
         db.session.commit()
         
@@ -4400,7 +4882,7 @@ def reopen_mtf_position():
         data = request.get_json()
         trade_id = data.get('trade_id')
         
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = MTFTrade.query.get_or_404(trade_id)
         trade.status = 'open'
         db.session.commit()
         
@@ -4418,7 +4900,7 @@ def reopen_mtf_position():
 @login_required
 def delete_delivery_trade(trade_id):
     try:
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = DeliveryTrade.query.get_or_404(trade_id)
         db.session.delete(trade)
         db.session.commit()
         return redirect(url_for('saved_delivery'))
@@ -4433,7 +4915,7 @@ def save_delivery_position_update():
         data = request.get_json()
         trade_id = data.get('trade_id')
         
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = DeliveryTrade.query.get_or_404(trade_id)
         
         trade.avg_price = float(data.get('avg_price', trade.avg_price))
         trade.quantity = int(data.get('quantity', trade.quantity))
@@ -4488,7 +4970,7 @@ def close_delivery_position():
         data = request.get_json()
         trade_id = data.get('trade_id')
         
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = DeliveryTrade.query.get_or_404(trade_id)
         trade.status = 'closed'
         db.session.commit()
         
@@ -4508,7 +4990,7 @@ def reopen_delivery_position():
         data = request.get_json()
         trade_id = data.get('trade_id')
         
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = DeliveryTrade.query.get_or_404(trade_id)
         trade.status = 'open'
         db.session.commit()
         
@@ -4527,13 +5009,15 @@ def reopen_delivery_position():
 def debug_trades_calc(calculator):
     try:
         if calculator == 'intraday':
-            trades = IntradayTrade.query.order_by(IntradayTrade.id.desc()).all()
+            trades = IntradayTrade.query.filter_by(user_id=current_user.id).order_by(IntradayTrade.id.desc()).all()
         elif calculator == 'fno':
-            trades = IntradayTrade.query.filter(IntradayTrade.lot_size.isnot(None)).order_by(IntradayTrade.id.desc()).all()
+            trades = FOTrade.query.filter_by(user_id=current_user.id).order_by(FOTrade.id.desc()).all()
         elif calculator == 'mtf':
-            trades = IntradayTrade.query.filter(IntradayTrade.leverage.isnot(None)).order_by(IntradayTrade.id.desc()).all()
-        elif calculator in ['swing', 'delivery']:
-            trades = IntradayTrade.query.filter(IntradayTrade.leverage.is_(None), IntradayTrade.lot_size.is_(None)).order_by(IntradayTrade.id.desc()).all()
+            trades = MTFTrade.query.filter_by(user_id=current_user.id).order_by(MTFTrade.id.desc()).all()
+        elif calculator == 'swing':
+            trades = SwingTrade.query.filter_by(user_id=current_user.id).order_by(SwingTrade.id.desc()).all()
+        elif calculator == 'delivery':
+            trades = DeliveryTrade.query.filter_by(user_id=current_user.id).order_by(DeliveryTrade.id.desc()).all()
         else:
             trades = []
         normalized_trades = [normalize_trade(trade) for trade in trades]
@@ -4550,7 +5034,7 @@ def debug_trades():
 @login_required
 def delete_mtf_trade(trade_id):
     try:
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = MTFTrade.query.get_or_404(trade_id)
         db.session.delete(trade)
         db.session.commit()
         return redirect(url_for('saved_mtf'))
@@ -4562,7 +5046,7 @@ def delete_mtf_trade(trade_id):
 @login_required
 def delete_fno_trade(trade_id):
     try:
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = FOTrade.query.get_or_404(trade_id)
         db.session.delete(trade)
         db.session.commit()
         return redirect(url_for('saved_fno'))
@@ -4577,7 +5061,7 @@ def save_fno_position_update():
         data = request.get_json()
         trade_id = data.get('trade_id')
         
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = FOTrade.query.get_or_404(trade_id)
         
         trade.avg_price = float(data.get('avg_price', trade.avg_price))
         trade.quantity = int(data.get('quantity', trade.quantity))
@@ -4633,7 +5117,7 @@ def close_fno_position():
         data = request.get_json()
         trade_id = data.get('trade_id')
         
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = FOTrade.query.get_or_404(trade_id)
         trade.status = 'closed'
         db.session.commit()
         
@@ -4653,7 +5137,7 @@ def reopen_fno_position():
         data = request.get_json()
         trade_id = data.get('trade_id')
         
-        trade = IntradayTrade.query.get_or_404(trade_id)
+        trade = FOTrade.query.get_or_404(trade_id)
         trade.status = 'open'
         db.session.commit()
         
@@ -4697,6 +5181,82 @@ def favicon_svg():
 def site_webmanifest():
     return send_from_directory("static/favicons", "site.webmanifest", mimetype="application/manifest+json")
 
+@app.route("/api/session/status")
+def session_status():
+    """Check current session status"""
+    try:
+        if current_user.is_authenticated:
+            return jsonify({
+                "authenticated": True,
+                "user_id": current_user.id,
+                "email": current_user.email,
+                "session_permanent": session.permanent,
+                "login_time": session.get("login_time"),
+                "last_activity": session.get("last_activity"),
+                "expires_in_days": 30 if session.permanent else 0
+            })
+        else:
+            return jsonify({
+                "authenticated": False,
+                "message": "No active session"
+            })
+    except Exception as e:
+        return jsonify({
+            "authenticated": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/session/extend", methods=["POST"])
+@login_required
+def extend_session():
+    """Extend current session"""
+    try:
+        session.permanent = True
+        session["last_activity"] = datetime.now(timezone.utc).isoformat()
+        return jsonify({
+            "success": True,
+            "message": "Session extended successfully",
+            "expires_in_days": 30
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# Register blueprints
+app.register_blueprint(calculatentrade_bp)
+app.register_blueprint(admin_bp)
+app.register_blueprint(employee_dashboard_bp)
+app.register_blueprint(mentor_bp)
+app.register_blueprint(subscription_admin_bp)
+
+# Register multi-broker blueprint if available
+if multi_broker_bp:
+    app.register_blueprint(multi_broker_bp)
+    print("Multi-broker blueprint registered successfully")
+    
+    # Initialize multi-broker system
+    try:
+        integrate_with_calculatentrade(app)
+        print("Multi-broker system integrated successfully")
+    except Exception as e:
+        print(f"Error integrating multi-broker system: {e}")
+else:
+    print("Multi-broker blueprint not available - skipping registration")
+
+if __name__ == '__main__':
+    with app.app_context():
+        try:
+            db.create_all()
+            print("Database tables created successfully")
+            init_subscription_plans()
+            print("Subscription plans initialized")
+        except Exception as e:
+            print(f"Error initializing: {e}")
+    
+    app.run(debug=True, host='0.0.0.0', port=5000)
+
 @app.route("/test-email")
 @login_required
 def test_email():
@@ -4712,46 +5272,227 @@ def test_email():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route("/test-dhan-api")
-@login_required
-def test_dhan_api():
-    """Test DHAN API configuration"""
-    if not DHAN_ACCESS_TOKEN:
-        return jsonify({"success": False, "error": "DHAN_ACCESS_TOKEN not configured"})
-    
-    price_data = get_live_price("RELIANCE")
-    if 'error' in price_data:
-        return jsonify({"success": False, "error": price_data['error']})
-    
-    return jsonify({"success": True, "message": f"API working! RELIANCE price: {price_data['price']}"})
+
 
 @app.route("/test-toast")
 def test_toast():
     """Test page for toast notifications"""
     return render_template("toast_test.html")
 
+@app.route("/update-token", methods=["POST"])
+def update_token():
+    """Admin route to update Dhan API token without restart"""
+    body = request.get_json(silent=True) or {}
+    tok = body.get("access_token")
+    if not tok: return jsonify({"error": "missing access_token"}), 400
+    save_token(tok, 86400)
+    return jsonify({"message": "Token updated successfully"})
+
+@app.route("/_token-source", methods=["GET"])
+def token_source():
+    """Debug endpoint to show token source"""
+    import os, json
+    src = "json" if os.path.exists("dhan_token.json") else ("env" if os.getenv("DHAN_ACCESS_TOKEN") else "none")
+    payload = json.load(open("dhan_token.json")) if os.path.exists("dhan_token.json") else {}
+    return {"source": src, "expires_at": payload.get("expires_at")}
+
 # ------------------------------------------------------------------------------
 # Register Blueprints (after all models are defined)
 # ------------------------------------------------------------------------------
+from broker_routes import broker_bp
+from broker_check import check_broker_connection
+from multi_broker_system import multi_broker_bp, integrate_with_calculatentrade, get_broker_session_status
+
+# Integrate multi-broker system
+integrate_with_calculatentrade(app)
+
+# Multi-broker connection page
+@app.route('/multi_broker_connect')
+@login_required
+def multi_broker_connect():
+    """Multi-broker connection page with real API integration"""
+    from multi_broker_system import USER_SESSIONS
+    
+    # Check for existing connections
+    user_id = request.args.get('user_id', current_user.email if current_user else 'USER_ID')
+    connected_brokers = []
+    
+    for broker in ['kite', 'dhan', 'angel']:
+        # Check both old and new broker systems
+        status = check_broker_connection(broker, user_id)
+        multi_status = get_broker_session_status(broker, user_id)
+        
+        if status['connected'] or multi_status['connected']:
+            connected_brokers.append({
+                'broker': broker,
+                'user_id': user_id,
+                'session_id': status.get('session_id') or multi_status.get('session_data', {}).get('session_id'),
+                'system': 'multi' if multi_status['connected'] else 'legacy'
+            })
+    
+    return render_template('multi_broker_connect.html', 
+                         connected_brokers=connected_brokers,
+                         user_id=user_id,
+                         has_connected_brokers=len(connected_brokers) > 0)
+
+# Saved sessions page route
+@app.route('/saved_sessions')
+@login_required
+def saved_sessions_page():
+    """Redirect to saved sessions page"""
+    return redirect('/api/multi_broker/saved_sessions')
+
+# Multi-broker connection check route
+@app.route('/api/broker/check-all', methods=['GET'])
+@login_required
+def api_check_all_brokers():
+    user_id = request.args.get('user_id', current_user.email)
+    brokers = ['kite', 'dhan', 'angel']
+    
+    connected_brokers = []
+    for broker in brokers:
+        # Check both old and new broker systems
+        status = check_broker_connection(broker, user_id)
+        multi_status = get_broker_session_status(broker, user_id)
+        
+        if status['connected'] or multi_status['connected']:
+            connected_brokers.append({
+                'broker': broker,
+                'user_id': user_id,
+                'session_id': status.get('session_id') or multi_status.get('session_data', {}).get('session_id'),
+                'system': 'multi' if multi_status['connected'] else 'legacy'
+            })
+    
+    if connected_brokers:
+        return jsonify({
+            'has_connected': True,
+            'connected_brokers': connected_brokers,
+            'count': len(connected_brokers)
+        })
+    else:
+        return jsonify({
+            'has_connected': False,
+            'message': 'No brokers connected',
+            'connect_url': f'/multi_broker_connect?user_id={user_id}'
+        })
+
+# Single broker connection check route
+@app.route('/api/broker/check', methods=['GET'])
+@login_required
+def api_check_broker():
+    broker = request.args.get('broker', 'dhan')
+    user_id = request.args.get('user_id', current_user.email)
+    
+    # Check both systems
+    legacy_status = check_broker_connection(broker, user_id)
+    multi_status = get_broker_session_status(broker, user_id)
+    
+    if multi_status['connected']:
+        return jsonify({
+            'connected': True,
+            'broker': broker,
+            'user_id': user_id,
+            'system': 'multi',
+            'session_data': multi_status['session_data']
+        })
+    else:
+        return jsonify(legacy_status)
+
+# Get all trading data for connected broker
+@app.route('/api/broker/get-all-data', methods=['GET'])
+@login_required
+def get_all_trading_data():
+    broker = request.args.get('broker')
+    user_id = request.args.get('user_id', current_user.email)
+    
+    if not broker:
+        return jsonify({'error': 'Broker parameter required'}), 400
+    
+    # Check if broker is connected
+    multi_status = get_broker_session_status(broker, user_id)
+    if not multi_status['connected']:
+        # Return empty data instead of 401 for better UX
+        return jsonify({
+            'success': False,
+            'broker': broker,
+            'user_id': user_id,
+            'data': {'orders': [], 'trades': [], 'positions': []},
+            'message': f'{broker.upper()} not connected',
+            'connect_url': f'/multi_broker_connect?user_id={user_id}'
+        })
+    
+    try:
+        import requests
+        base_url = request.url_root.rstrip('/')
+        
+        # Fetch all data types
+        data = {}
+        for data_type in ['orders', 'trades', 'positions']:
+            try:
+                url = f"{base_url}/api/multi_broker/{broker}/{data_type}?user_id={user_id}"
+                response = requests.get(url)
+                if response.status_code == 200:
+                    result = response.json()
+                    data[data_type] = result.get('data', [])
+                else:
+                    data[data_type] = []
+            except Exception as e:
+                data[data_type] = []
+        
+        return jsonify({
+            'success': True,
+            'broker': broker,
+            'user_id': user_id,
+            'data': data
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 app.register_blueprint(calculatentrade_bp)
 app.register_blueprint(admin_bp, url_prefix='/admin')
 app.register_blueprint(employee_dashboard_bp, url_prefix='/employee')
 app.register_blueprint(mentor_bp, url_prefix='/mentor')
 app.register_blueprint(subscription_admin_bp, url_prefix='/admin/subscription')
+app.register_blueprint(broker_bp)  # Enhanced broker connectivity
+
+# Multi-broker system integration
+try:
+    from multi_broker_system import integrate_with_calculatentrade
+    integrate_with_calculatentrade(app)
+    print("Multi-broker system integrated successfully")
+except ImportError as e:
+    print(f"Multi-broker system not available: {e}")
+except Exception as e:
+    print(f"Error integrating multi-broker system: {e}")
+# multi_broker_bp is registered via integrate_with_calculatentrade()
+
+# ------------------------------------------------------------------------------
+# Cleanup expired sessions on startup
+# ------------------------------------------------------------------------------
+def cleanup_expired_sessions():
+    """Clean up expired broker sessions on app startup"""
+    try:
+        from broker_session_model import cleanup_expired
+        expired_count = cleanup_expired()
+        print(f"Cleaned up {expired_count} expired broker sessions")
+    except Exception as e:
+        print(f"Session cleanup warning: {e}")
+
+# Initialize broker session model and cleanup
+with app.app_context():
+    # Initialize broker session model
+    try:
+        from broker_session_model import init_broker_session_model
+        init_broker_session_model(db)
+        print("Broker session model initialized")
+    except Exception as e:
+        print(f"Broker session model initialization warning: {e}")
+    
+    # Cleanup expired sessions
+    cleanup_expired_sessions()
 
 # ------------------------------------------------------------------------------
 # Main
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    # Initialize database when running directly
-    init_app_database()
-    
-    # Initialize timezone
-    try:
-        IST = pytz.timezone("Asia/Kolkata")
-        print("Timezone initialized successfully")
-    except Exception as e:
-        print(f"Warning: Timezone initialization failed: {e}")
-        IST = pytz.UTC
-    
-    app.run(host="0.0.0.0", port="5000", debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)

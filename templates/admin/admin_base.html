@@ -440,6 +440,12 @@
           </a>
         </div>
         <div class="menu-item">
+          <a href="{{ url_for('admin.users') }}" class="menu-link {{ 'active' if request.endpoint == 'admin.users' }}">
+            <i class="fas fa-users"></i>
+            <span>Users</span>
+          </a>
+        </div>
+        <div class="menu-item">
           <a href="{{ url_for('admin.coupons') }}" class="menu-link {{ 'active' if 'coupon' in request.endpoint }}">
             <i class="fas fa-ticket-alt"></i>
             <span>Coupons</span>

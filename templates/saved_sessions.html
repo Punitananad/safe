@@ -1,0 +1,80 @@
+{% extends "base_new_journal.html" %}
+
+{% block title %}Saved Broker Sessions{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-white mb-2">Saved Broker Sessions</h1>
+    <p class="text-gray-400">Manage your broker connections and quick login</p>
+  </div>
+
+  {% if sessions %}
+  <div class="grid gap-4">
+    {% for session in sessions %}
+    <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold
+                      {% if session.broker == 'kite' %}bg-orange-500
+                      {% elif session.broker == 'dhan' %}bg-blue-500
+                      {% elif session.broker == 'angel' %}bg-red-500
+                      {% endif %}">
+            {{ session.broker[0].upper() }}
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-white">{{ session.broker.title() }}</h3>
+            <p class="text-sm text-gray-400">User: {{ session.user_id }}</p>
+            <p class="text-sm text-gray-400">Client: {{ session.client_code }}</p>
+          </div>
+        </div>
+        
+        <div class="flex items-center gap-3">
+          <div class="text-right">
+            <div class="text-sm {% if session.is_active %}text-green-400{% else %}text-red-400{% endif %}">
+              {% if session.is_active %}Active{% else %}Expired{% endif %}
+            </div>
+            <div class="text-xs text-gray-500">
+              Expires: {{ session.expires_at.strftime('%Y-%m-%d %H:%M') }}
+            </div>
+          </div>
+          
+          {% if session.is_active %}
+          <a href="/api/multi_broker/{{ session.broker }}/quick_login?user_id={{ session.user_id }}" 
+             class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm">
+            Quick Login
+          </a>
+          {% endif %}
+          
+          <a href="/api/multi_broker/disconnect/{{ session.broker }}/{{ session.user_id }}" 
+             class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm"
+             onclick="return confirm('Disconnect from {{ session.broker.title() }}?')">
+            Disconnect
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-12">
+    <div class="text-gray-400 mb-4">
+      <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6-4v16H3V4h18z"/>
+      </svg>
+    </div>
+    <h3 class="text-xl font-semibold text-white mb-2">No Saved Sessions</h3>
+    <p class="text-gray-400 mb-6">Connect to a broker to save your session</p>
+    <a href="/real_broker_connect" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg">
+      Connect to Broker
+    </a>
+  </div>
+  {% endif %}
+
+  <div class="mt-8 text-center">
+    <a href="/real_broker_connect" class="text-blue-400 hover:text-blue-300">
+      ← Back to Broker Connect
+    </a>
+  </div>
+</div>
+{% endblock %}

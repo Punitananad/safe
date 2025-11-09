@@ -2,8 +2,9 @@ from datetime import datetime, timezone, timedelta
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 
-# Import the existing db instance
+# Import the existing db instance and User model
 from journal import db
+# User model will be imported dynamically to avoid circular imports
 
 class SubscriptionPlan(db.Model):
     """Subscription plans available"""
@@ -48,10 +49,10 @@ class UserSubscription(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
-    # Relationships
-    user = db.relationship('User', backref=db.backref('subscriptions', lazy=True))
+    # Relationships - using string references to avoid circular imports
     plan = db.relationship('SubscriptionPlan', backref=db.backref('subscriptions', lazy=True))
-    payment = db.relationship('Payment', backref=db.backref('subscription', uselist=False))
+    # User relationship will be established dynamically
+    # payment relationship will be established when Payment model is available
     
     def is_active(self):
         """Check if subscription is currently active"""
@@ -111,9 +112,9 @@ class SubscriptionHistory(db.Model):
     
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
-    # Relationships
-    user = db.relationship('User', backref=db.backref('subscription_history', lazy=True))
+    # Relationships - using string references to avoid circular imports
     subscription = db.relationship('UserSubscription', backref=db.backref('history', lazy=True))
+    # User relationship will be established dynamically
 
 class SubscriptionMetrics(db.Model):
     """Daily subscription metrics for analytics"""
@@ -138,6 +139,21 @@ class SubscriptionMetrics(db.Model):
     yearly_plan_count = db.Column(db.Integer, default=0)
     
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+def establish_user_relationships():
+    """Establish User model relationships after all models are loaded"""
+    try:
+        from flask import current_app
+        # Get User model from the registry
+        User = current_app.extensions['sqlalchemy'].Model.registry._class_registry.get('User')
+        if User:
+            # Add relationships to User model if they don't exist
+            if not hasattr(User, 'subscriptions'):
+                User.subscriptions = db.relationship('UserSubscription', backref='user', lazy=True)
+            if not hasattr(User, 'subscription_history'):
+                User.subscription_history = db.relationship('SubscriptionHistory', backref='user', lazy=True)
+    except Exception as e:
+        print(f"Warning: Could not establish User relationships: {e}")
 
 def init_subscription_plans():
     """Initialize default subscription plans"""

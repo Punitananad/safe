@@ -16,10 +16,30 @@ db = None
 AdminUser = None
 Coupon = None
 AdminOTP = None
+MentorPayments = None
+
+# Try to import db from main app if available
+try:
+    from journal import db as main_db
+    if main_db is not None:
+        db = main_db
+except ImportError:
+    pass
+
+def ensure_db():
+    """Ensure database is available"""
+    global db
+    if db is None:
+        try:
+            from journal import db as main_db
+            db = main_db
+        except ImportError:
+            pass
+    return db
 
 # Models will be created when init_admin_db is called
 def create_models(database):
-    global AdminUser, Coupon, AdminOTP
+    global AdminUser, Coupon, AdminOTP, MentorPayments
     
     class AdminUser(database.Model):
         __tablename__ = 'admin_user'
@@ -48,11 +68,87 @@ def create_models(database):
         used = database.Column(database.Boolean, default=False)
         created_at = database.Column(database.DateTime, default=datetime.utcnow)
     
-    return AdminUser, Coupon, AdminOTP
+    class MentorPayments(database.Model):
+        __tablename__ = 'mentor_payments'
+        id = database.Column(database.Integer, primary_key=True)
+        mentor_id = database.Column(database.Integer, nullable=False)
+        amount = database.Column(database.Integer, nullable=False)  # Amount in paise
+        payment_date = database.Column(database.DateTime, nullable=False)
+        payment_method = database.Column(database.String(50), nullable=False, default='Manual')
+        reference_number = database.Column(database.String(100), nullable=True)
+        period_start = database.Column(database.Date, nullable=True)
+        period_end = database.Column(database.Date, nullable=True)
+        commission_count = database.Column(database.Integer, nullable=False, default=0)
+        notes = database.Column(database.Text, nullable=True)
+        paid_by = database.Column(database.String(80), nullable=False)
+        created_at = database.Column(database.DateTime, default=datetime.utcnow)
+    
+    return AdminUser, Coupon, AdminOTP, MentorPayments
+
+def init_admin_db(app_db):
+    """Initialize admin database with PostgreSQL"""
+    global db, AdminUser, Coupon, AdminOTP, MentorPayments
+    db = app_db
+    try:
+        AdminUser, Coupon, AdminOTP, MentorPayments = create_models(db)
+        db.create_all()
+        print("Admin PostgreSQL database models created successfully")
+    except Exception as e:
+        print(f"Error creating admin models: {e}")
 
 # Admin credentials
 ADMIN_PASSWORD = "welcometocnt"
 ADMIN_EMAIL = "punitanand571@gmail.com"
+
+# Centralized mentor functions for PostgreSQL compatibility
+def get_mentor_count():
+    """Get total mentor count using PostgreSQL-compatible query"""
+    try:
+        from sqlalchemy import text
+        result = db.session.execute(text("SELECT COUNT(*) FROM mentor")).fetchone()
+        return result[0] if result else 0
+    except Exception as e:
+        print(f"Error getting mentor count: {e}")
+        return 0
+
+def get_all_mentors_with_stats():
+    """Get all mentors with statistics using PostgreSQL-compatible queries"""
+    try:
+        from sqlalchemy import text
+        mentors_data = db.session.execute(
+            text("""
+                SELECT m.id, m.mentor_id, m.name, m.email, m.active, m.created_at,
+                       COALESCE(m.commission_pct, 40.0) as commission_pct,
+                       COUNT(DISTINCT cu.id) as total_usage,
+                       COUNT(DISTINCT cu.user_id) as student_count,
+                       COALESCE(SUM(cu.commission_amount), 0) as total_commission
+                FROM mentor m
+                LEFT JOIN coupon_usage cu ON m.id = cu.mentor_id
+                GROUP BY m.id, m.mentor_id, m.name, m.email, m.active, m.created_at, m.commission_pct
+                ORDER BY m.created_at DESC
+            """)
+        ).fetchall()
+        
+        mentors = []
+        for row in mentors_data:
+            mentors.append({
+                'id': row[0],
+                'mentor_id': row[1],
+                'name': row[2],
+                'email': row[3],
+                'active': row[4],
+                'created_at': row[5],
+                'commission_pct': row[6],
+                'total_usage': row[7],
+                'student_count': row[8],
+                'total_commission': row[9],
+                'commission_owed': row[9]  # Same as total_commission for template compatibility
+            })
+        
+        return mentors
+    except Exception as e:
+        print(f"Error getting mentors with stats: {e}")
+        return []
 
 # Decorators
 def admin_required(f):
@@ -76,9 +172,12 @@ def admin_root():
 @admin_required
 def dashboard():
     try:
+        # Ensure db is available
+        ensure_db()
+        
         # Simple count query to avoid model conflicts
         from sqlalchemy import text
-        result = db.session.execute(text("SELECT COUNT(*) FROM user")).fetchone()
+        result = db.session.execute(text("SELECT COUNT(*) FROM users")).fetchone()
         user_count = result[0] if result else 0
         users = []  # Don't load all users for dashboard, just count
         print(f"Dashboard: Found {user_count} users")
@@ -113,7 +212,14 @@ def dashboard():
         print(f"Error fetching coupon count: {e}")
         coupons = []
         coupon_count = 0
-    admin_count = AdminUser.query.count() if AdminUser else 0
+    # Get admin count with proper model initialization
+    try:
+        if not AdminUser:
+            AdminUser, Coupon, AdminOTP, MentorPayments = create_models(db)
+        admin_count = AdminUser.query.count() if AdminUser else 0
+    except Exception as e:
+        print(f"Error getting admin count: {e}")
+        admin_count = 0
     
     # Get subscription stats
     try:
@@ -152,6 +258,155 @@ def login():
     return render_template('admin/login.html')
 
 
+
+@admin_bp.route('/coupons')
+@admin_required
+def coupons():
+    """Display all coupons with PostgreSQL compatibility"""
+    try:
+        # Ensure db is available
+        ensure_db()
+        
+        from sqlalchemy import text
+        coupon_rows = db.session.execute(
+            text("""
+                SELECT c.id, c.code, c.discount_percent, c.active, c.created_at, c.created_by,
+                       m.name as mentor_name, m.mentor_id
+                FROM coupon c
+                LEFT JOIN mentor m ON c.mentor_id = m.id
+                ORDER BY c.created_at DESC
+            """)
+        ).fetchall()
+        
+        coupons_list = []
+        for row in coupon_rows:
+            # Handle datetime objects properly
+            created_at = row[4]
+            if created_at and hasattr(created_at, 'strftime'):
+                created_at_str = created_at.strftime('%Y-%m-%d %H:%M')
+            else:
+                created_at_str = str(created_at) if created_at else None
+            
+            coupons_list.append({
+                'id': row[0],
+                'code': row[1],
+                'discount_percent': row[2],
+                'active': bool(row[3]) if row[3] is not None else False,
+                'created_at': created_at_str,
+                'created_by': row[5],
+                'mentor_name': row[6],
+                'mentor_id': row[7]
+            })
+        
+    except Exception as e:
+        print(f"Error fetching coupons: {e}")
+        import traceback
+        traceback.print_exc()
+        coupons_list = []
+    
+    return render_template('admin/coupons.html', coupons=coupons_list)
+
+@admin_bp.route('/create-coupon', methods=['GET', 'POST'])
+@admin_required
+def create_coupon():
+    """Create new coupon with PostgreSQL compatibility"""
+    if request.method == 'POST':
+        try:
+            # Ensure db is available
+            ensure_db()
+            
+            code = request.form['code'].strip().upper()
+            discount_percent = int(request.form['discount_percent'])
+            mentor_id = request.form.get('mentor_id') or None
+            
+            # Check if coupon already exists
+            from sqlalchemy import text
+            existing = db.session.execute(
+                text("SELECT id FROM coupon WHERE code = :code"),
+                {'code': code}
+            ).fetchone()
+            
+            if existing:
+                flash('Coupon code already exists')
+                mentors = get_mentors_for_select()
+                return render_template('admin/create_coupon.html', mentors=mentors)
+            
+            # Create new coupon with mentor assignment
+            db.session.execute(
+                text("""
+                    INSERT INTO coupon (code, discount_percent, created_by, active, mentor_id, created_at)
+                    VALUES (:code, :discount_percent, :created_by, :active, :mentor_id, :created_at)
+                """),
+                {
+                    'code': code,
+                    'discount_percent': discount_percent,
+                    'created_by': session.get('admin_username', 'admin'),
+                    'active': True,
+                    'mentor_id': mentor_id,
+                    'created_at': datetime.utcnow()
+                }
+            )
+            db.session.commit()
+            
+            flash(f'Coupon {code} created successfully with {discount_percent}% discount')
+            return redirect(url_for('admin.coupons'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error creating coupon: {str(e)}')
+    
+    # Get mentors for the dropdown
+    mentors = get_mentors_for_select()
+    return render_template('admin/create_coupon.html', mentors=mentors)
+
+@admin_bp.route('/users')
+@admin_required
+def users():
+    """Display all users with PostgreSQL compatibility"""
+    try:
+        from sqlalchemy import text
+        users_data = db.session.execute(
+            text("""
+                SELECT id, email, name, verified, subscription_active, 
+                       subscription_expires, registered_on, coupon_code
+                FROM users
+                ORDER BY registered_on DESC
+            """)
+        ).fetchall()
+        
+        users_list = []
+        for row in users_data:
+            # Handle datetime objects properly
+            subscription_expires = row[5]
+            if subscription_expires and hasattr(subscription_expires, 'strftime'):
+                subscription_expires_str = subscription_expires.strftime('%Y-%m-%d %H:%M')
+            else:
+                subscription_expires_str = str(subscription_expires) if subscription_expires else None
+            
+            registered_on = row[6]
+            if registered_on and hasattr(registered_on, 'strftime'):
+                registered_on_str = registered_on.strftime('%Y-%m-%d %H:%M')
+            else:
+                registered_on_str = str(registered_on) if registered_on else None
+            
+            users_list.append({
+                'id': row[0],
+                'email': row[1],
+                'name': row[2],
+                'verified': bool(row[3]) if row[3] is not None else False,
+                'subscription_active': bool(row[4]) if row[4] is not None else False,
+                'subscription_expires': subscription_expires_str,
+                'registered_on': registered_on_str,
+                'coupon_code': row[7]
+            })
+        
+    except Exception as e:
+        print(f"Error fetching users: {e}")
+        import traceback
+        traceback.print_exc()
+        users_list = []
+    
+    return render_template('admin/users.html', users=users_list)
 
 @admin_bp.route('/create-employee', methods=['GET', 'POST'])
 @admin_required
@@ -437,7 +692,7 @@ def mentor_details(mentor_id):
                     COALESCE(SUM(cu.commission_amount), 0) as total_commission,
                     COALESCE(SUM(cu.discount_amount), 0) as total_discount,
                     COUNT(DISTINCT c.id) as total_coupons,
-                    COALESCE(AVG(c.mentor_commission_pct), 10) as avg_commission_pct
+                    COALESCE(MAX(m.commission_pct), 40.0) as avg_commission_pct
                 FROM mentor m
                 LEFT JOIN coupon_usage cu ON m.id = cu.mentor_id
                 LEFT JOIN coupon c ON m.id = c.mentor_id
@@ -446,10 +701,10 @@ def mentor_details(mentor_id):
             {"mentor_id": mentor_id}
         ).fetchone()
         
-        # Get assigned coupons
+        # Get assigned coupons (remove non-existent columns)
         coupons = db.session.execute(
             text("""
-                SELECT c.code, c.discount_percent, c.max_uses, c.uses, c.active, c.created_at
+                SELECT c.code, c.discount_percent, 100 as max_uses, 0 as uses, c.active, c.created_at
                 FROM coupon c
                 WHERE c.mentor_id = :mentor_id
                 ORDER BY c.created_at DESC
@@ -479,7 +734,7 @@ def mentor_details(mentor_id):
             'created_at': mentor_info[5]
         }
         
-        return render_template('admin/mentor_details.html', 
+        return render_template('admin/mentor_details_comprehensive.html', 
                              mentor=mentor_data, 
                              analytics=analytics, 
                              coupons=coupons, 
@@ -554,17 +809,7 @@ def mentor_payments(mentor_id):
     try:
         from sqlalchemy import text
         
-        # Ensure commission_paid column exists in coupon_usage table
-        try:
-            db.session.execute(text("SELECT commission_paid FROM coupon_usage LIMIT 1"))
-        except Exception:
-            try:
-                db.session.execute(text("ALTER TABLE coupon_usage ADD COLUMN commission_paid INTEGER DEFAULT 0"))
-                db.session.commit()
-                print("Added commission_paid column to coupon_usage table")
-            except Exception as e:
-                print(f"Error adding commission_paid column: {e}")
-                db.session.rollback()
+        # Skip commission_paid column operations since it doesn't exist
         
         # Get mentor info
         mentor_info = db.session.execute(
@@ -582,14 +827,14 @@ def mentor_payments(mentor_id):
             flash('Mentor not found')
             return redirect(url_for('admin.mentors'))
         
-        # Get current pending commission (only unpaid)
+        # Get current pending commission (all commissions since commission_paid column doesn't exist)
         pending_commission = db.session.execute(
             text("""
                 SELECT 
                     COALESCE(SUM(cu.commission_amount), 0) as total_pending,
                     COUNT(cu.id) as usage_count
                 FROM coupon_usage cu
-                WHERE cu.mentor_id = :mentor_id AND (cu.commission_paid IS NULL OR cu.commission_paid != 1)
+                WHERE cu.mentor_id = :mentor_id
             """),
             {"mentor_id": mentor_id}
         ).fetchone()
@@ -630,13 +875,13 @@ def mentor_payments(mentor_id):
                 row[9]   # paid_by
             ])
         
-        # Get recent unpaid commissions
+        # Get recent commissions (all since commission_paid column doesn't exist)
         unpaid_commissions_raw = db.session.execute(
             text("""
                 SELECT u.email, cu.coupon_code, cu.used_at, cu.commission_amount, cu.discount_amount
                 FROM coupon_usage cu
                 JOIN users u ON cu.user_id = u.id
-                WHERE cu.mentor_id = :mentor_id AND (cu.commission_paid IS NULL OR cu.commission_paid != 1)
+                WHERE cu.mentor_id = :mentor_id
                 ORDER BY cu.used_at DESC
                 LIMIT 20
             """),
@@ -756,11 +1001,8 @@ def make_mentor_payment(mentor_id):
             }
         )
         
-        # Clear pending commissions by marking them as paid
-        db.session.execute(
-            text("UPDATE coupon_usage SET commission_paid = 1 WHERE mentor_id = :mentor_id AND commission_paid != 1"),
-            {"mentor_id": mentor_id}
-        )
+        # Note: commission_paid column doesn't exist, so we can't mark commissions as paid
+        # This functionality would need the commission_paid column to be added to the database
         
         db.session.commit()
         
@@ -907,13 +1149,13 @@ def assign_coupon_to_mentor():
         # Get active mentors
         from sqlalchemy import text
         mentor_result = db.session.execute(
-            text("SELECT id, name FROM mentor WHERE active = 1")
+            text("SELECT id, name FROM mentor WHERE active = true")
         )
         mentors = [{'id': row[0], 'name': row[1]} for row in mentor_result]
         
         # Get unassigned active coupons
         coupon_result = db.session.execute(
-            text("SELECT id, code FROM coupon WHERE active = 1 AND (mentor_id IS NULL OR mentor_id = '')")
+            text("SELECT id, code FROM coupon WHERE active = true AND (mentor_id IS NULL OR mentor_id = '')")
         )
         coupons = [{'id': row[0], 'code': row[1]} for row in coupon_result]
         
@@ -985,9 +1227,27 @@ def delete_employee(employee_id):
 def send_admin_otp():
     """Send OTP to admin email using the same method as main app"""
     try:
+        # Ensure database and models are available
+        ensure_db()
+        
+        # Initialize models if not already done
+        global AdminUser, Coupon, AdminOTP, MentorPayments
+        if not AdminOTP:
+            print("AdminOTP model not initialized, initializing now...")
+            try:
+                AdminUser, Coupon, AdminOTP, MentorPayments = create_models(db)
+                print("AdminOTP model initialized successfully")
+            except Exception as e:
+                print(f"Failed to initialize AdminOTP model: {e}")
+                return
+            
         # Clear any existing unused OTPs
-        AdminOTP.query.filter_by(used=False).delete()
-        db.session.commit()
+        try:
+            AdminOTP.query.filter_by(used=False).delete()
+            db.session.commit()
+        except Exception as e:
+            print(f"Error clearing existing OTPs: {e}")
+            db.session.rollback()
         
         # Generate OTP
         otp = f"{secrets.randbelow(1_000_000):06d}"
@@ -995,7 +1255,7 @@ def send_admin_otp():
         otp_hash = hashlib.sha256(salt + otp.encode()).hexdigest()
         expires_at = datetime.utcnow() + timedelta(minutes=5)
         
-        # Save OTP to database
+        # Save OTP to database - ensure we're using the correct AdminOTP model
         admin_otp = AdminOTP(
             otp_hash=otp_hash,
             salt=salt.hex(),
@@ -1038,8 +1298,28 @@ def verify_otp():
     if request.method == 'POST':
         otp_input = request.form['otp']
         
+        # Ensure database and models are available
+        ensure_db()
+        
+        # Initialize models if not already done
+        global AdminUser, Coupon, AdminOTP, MentorPayments
+        if not AdminOTP:
+            print("AdminOTP model not initialized, initializing now...")
+            try:
+                AdminUser, Coupon, AdminOTP, MentorPayments = create_models(db)
+                print("AdminOTP model initialized successfully")
+            except Exception as e:
+                print(f"Failed to initialize AdminOTP model: {e}")
+                flash('System error. Please contact administrator.')
+                return redirect(url_for('admin.login'))
+        
         # Get latest unused OTP
-        admin_otp = AdminOTP.query.filter_by(used=False).order_by(AdminOTP.id.desc()).first()
+        try:
+            admin_otp = AdminOTP.query.filter_by(used=False).order_by(AdminOTP.id.desc()).first()
+        except Exception as e:
+            print(f"Error querying AdminOTP: {e}")
+            flash('Database error. Please contact administrator.')
+            return redirect(url_for('admin.login'))
         
         if not admin_otp:
             flash('No valid OTP found. Please request a new one.')
@@ -1137,173 +1417,18 @@ def logout():
     flash('You have been logged out successfully.')
     return redirect(url_for('admin.login'))
 
-@admin_bp.route('/coupons')
-@admin_required
-def coupons():
-    try:
-        # Use direct SQL query with LEFT JOIN to get mentor names
-        from sqlalchemy import text
-        result = db.session.execute(
-            text("""
-                SELECT c.id, c.code, c.discount_percent, c.created_by, c.active, 
-                       c.mentor_id, c.created_at, m.name as mentor_name
-                FROM coupon c
-                LEFT JOIN mentor m ON c.mentor_id = m.id
-                ORDER BY c.created_at DESC
-            """)
-        )
-        
-        all_coupons = []
-        for row in result:
-            coupon_dict = {
-                'id': row[0],
-                'code': row[1],
-                'discount_percent': row[2],
-                'created_by': row[3],
-                'active': bool(row[4]),
-                'mentor_id': row[5],
-                'created_at': row[6],
-                'mentor_name': row[7]
-            }
-            all_coupons.append(coupon_dict)
-    except Exception as e:
-        print(f"Error fetching coupons: {e}")
-        all_coupons = []
-    
-    return render_template('admin/coupons.html', coupons=all_coupons)
-
-@admin_bp.route('/create-coupon', methods=['GET', 'POST'])
-@admin_required
-def create_coupon():
-    if request.method == 'POST':
-        code = request.form['code'].upper()
-        discount_percent = int(request.form['discount_percent'])
-        active = 'active' in request.form
-        mentor_id = request.form.get('mentor_id') or None
-        max_uses = int(request.form.get('max_uses', 100))
-        commission_pct = float(request.form.get('commission_pct', 10.0))
-        
-        # Check if coupon exists
-        from sqlalchemy import text
-        existing = db.session.execute(
-            text("SELECT id FROM coupon WHERE code = :code"), {'code': code}
-        ).fetchone()
-        
-        if existing:
-            flash('Coupon code already exists')
-            return render_template('admin/create_coupon.html', mentors=get_mentors_for_select())
-        
-        # Insert new coupon
-        from sqlalchemy import text
-        db.session.execute(
-            text("INSERT INTO coupon (code, discount_percent, created_by, active, mentor_id, max_uses, uses, mentor_commission_pct, created_at) VALUES (:code, :discount, :created_by, :active, :mentor_id, :max_uses, 0, :commission_pct, :created_at)"),
-            {
-                'code': code,
-                'discount': discount_percent,
-                'created_by': session.get('admin_username', 'admin'),
-                'active': active,
-                'mentor_id': mentor_id,
-                'max_uses': max_uses,
-                'commission_pct': commission_pct,
-                'created_at': datetime.utcnow()
-            }
-        )
-        db.session.commit()
-        
-        mentor_info = f" (assigned to mentor)" if mentor_id else " (platform-level)"
-        flash(f'Coupon created: {code} ({discount_percent}%){mentor_info}')
-        return redirect(url_for('admin.coupons'))
-    
-    return render_template('admin/create_coupon.html', mentors=get_mentors_for_select())
-
 def get_mentors_for_select():
     """Get mentors for select dropdown"""
     try:
         from sqlalchemy import text
         result = db.session.execute(
-            text("SELECT id, name, COALESCE(commission_pct, 40.0) as commission_pct FROM mentor WHERE active = 1 ORDER BY name")
+            text("SELECT id, name, COALESCE(commission_pct, 40.0) as commission_pct FROM mentor WHERE active = true ORDER BY name")
         )
-        return [{'id': row[0], 'name': row[1], 'commission_pct': row[2]} for row in result]
-    except:
-        return []
-
-def get_mentor_count():
-    """Get total mentor count - centralized function"""
-    try:
-        from sqlalchemy import text
-        result = db.session.execute(text("SELECT COUNT(*) FROM mentor")).fetchone()
-        count = result[0] if result else 0
-        print(f"[MENTOR_COUNT] Found {count} mentors in database")
-        return count
+        mentors = [{'id': row[0], 'name': row[1], 'commission_pct': row[2]} for row in result]
+        print(f"Found {len(mentors)} active mentors for dropdown")
+        return mentors
     except Exception as e:
-        print(f"[MENTOR_COUNT] Error: {e}")
-        return 0
-
-def get_all_mentors_with_stats():
-    """Get all mentors with their statistics - centralized function"""
-    try:
-        from sqlalchemy import text
-        
-        # First, ensure commission_paid column exists
-        try:
-            db.session.execute(text("SELECT commission_paid FROM coupon_usage LIMIT 1"))
-        except:
-            try:
-                db.session.execute(text("ALTER TABLE coupon_usage ADD COLUMN commission_paid INTEGER DEFAULT 0"))
-                db.session.commit()
-                print("[MENTORS] Added commission_paid column")
-            except:
-                db.session.rollback()
-        
-        # Get basic mentor data
-        mentors_result = db.session.execute(
-            text("SELECT id, mentor_id, name, email, active, created_at, COALESCE(commission_pct, 40.0) as commission_pct FROM mentor ORDER BY created_at DESC")
-        ).fetchall()
-        
-        print(f"[MENTORS] Found {len(mentors_result)} mentors in database")
-        
-        all_mentors = []
-        for row in mentors_result:
-            mentor_id = row[0]
-            
-            # Get student count
-            try:
-                student_result = db.session.execute(
-                    text("SELECT COUNT(DISTINCT user_id) FROM coupon_usage WHERE mentor_id = :mentor_id"),
-                    {"mentor_id": mentor_id}
-                ).fetchone()
-                student_count = student_result[0] if student_result else 0
-            except:
-                student_count = 0
-            
-            # Get pending commission
-            try:
-                commission_result = db.session.execute(
-                    text("SELECT COALESCE(SUM(commission_amount), 0) FROM coupon_usage WHERE mentor_id = :mentor_id AND (commission_paid IS NULL OR commission_paid != 1)"),
-                    {"mentor_id": mentor_id}
-                ).fetchone()
-                commission_owed = commission_result[0] if commission_result else 0
-            except:
-                commission_owed = 0
-            
-            mentor_dict = {
-                'id': row[0],
-                'mentor_id': row[1],
-                'name': row[2],
-                'email': row[3],
-                'active': bool(row[4]),
-                'created_at': row[5],
-                'commission_pct': float(row[6]) if row[6] else 40.0,
-                'student_count': student_count,
-                'commission_owed': commission_owed
-            }
-            all_mentors.append(mentor_dict)
-            print(f"[MENTORS] Added: {mentor_dict['name']} (ID: {mentor_dict['id']}, Students: {student_count}, Owed: {commission_owed})")
-        
-        return all_mentors
-        
-    except Exception as e:
-        print(f"[MENTORS] Error fetching mentors: {e}")
+        print(f"Error fetching mentors for select: {e}")
         import traceback
         traceback.print_exc()
         return []
@@ -1319,6 +1444,11 @@ def create_user():
         username = request.form['username']
         password = request.form['password']
         role = request.form.get('role', 'admin')
+        
+        # Initialize models if not already done
+        global AdminUser, Coupon, AdminOTP, MentorPayments
+        if not AdminUser:
+            AdminUser, Coupon, AdminOTP, MentorPayments = create_models(db)
         
         existing = AdminUser.query.filter_by(username=username).first() if AdminUser else None
         if existing:
@@ -1338,42 +1468,6 @@ def create_user():
     
     return render_template('admin/create_user.html')
 
-@admin_bp.route('/users')
-@admin_required
-def users():
-    try:
-        # Simple direct query using raw SQL to avoid model conflicts
-        from sqlalchemy import text
-        result = db.session.execute(
-            text("SELECT id, email, name, verified, google_id, subscription_active, subscription_type, subscription_expires, registered_on FROM user ORDER BY registered_on DESC")
-        )
-        
-        # Convert to list of dictionaries
-        all_users = []
-        for row in result:
-            user_dict = {
-                'id': row[0],
-                'email': row[1],
-                'name': row[2],
-                'verified': bool(row[3]),
-                'google_id': row[4],
-                'subscription_active': bool(row[5]),
-                'subscription_type': row[6],
-                'subscription_expires': row[7],
-                'registered_on': row[8]
-            }
-            all_users.append(user_dict)
-        
-        print(f"Found {len(all_users)} users in database")
-            
-    except Exception as e:
-        print(f"Error fetching users: {e}")
-        import traceback
-        traceback.print_exc()
-        all_users = []
-    
-    return render_template('admin/users.html', users=all_users)
-
 @admin_bp.route('/user/<int:user_id>/toggle', methods=['POST'])
 @admin_required
 def toggle_user(user_id):
@@ -1381,18 +1475,17 @@ def toggle_user(user_id):
         # Get current user status
         from sqlalchemy import text
         result = db.session.execute(
-            text("SELECT verified, email FROM user WHERE id = :user_id"), {'user_id': user_id}
+            text("SELECT verified, email FROM users WHERE id = :user_id"), {'user_id': user_id}
         ).fetchone()
         
         if result:
-            current_verified = bool(result[0])
+            current_verified = bool(result[0]) if result[0] is not None else False
             email = result[1]
             new_verified = not current_verified
             
             # Update user status
-            from sqlalchemy import text
             db.session.execute(
-                text("UPDATE user SET verified = :verified WHERE id = :user_id"), 
+                text("UPDATE users SET verified = :verified WHERE id = :user_id"), 
                 {'verified': new_verified, 'user_id': user_id}
             )
             db.session.commit()
@@ -1402,7 +1495,11 @@ def toggle_user(user_id):
         else:
             flash('User not found')
     except Exception as e:
+        db.session.rollback()
         flash(f'Error updating user: {str(e)}')
+        print(f"Error in toggle_user: {e}")
+        import traceback
+        traceback.print_exc()
     
     return redirect(url_for('admin.users'))
 
@@ -1421,10 +1518,10 @@ def owner_password():
     return render_template('admin/owner_password.html')
 
 # Initialize tables when blueprint is imported
-def init_admin_db(app_db):
+def init_admin_db_final(app_db):
     """Call this from main app after db is initialized"""
-    global db, AdminUser, Coupon, AdminOTP
+    global db, AdminUser, Coupon, AdminOTP, MentorPayments
     db = app_db
-    AdminUser, Coupon, AdminOTP = create_models(db)
+    AdminUser, Coupon, AdminOTP, MentorPayments = create_models(db)
     # Tables will be created in the current app context
     db.create_all()

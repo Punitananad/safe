@@ -4,129 +4,344 @@
 
 {% block extra_css %}
 <style>
-  .broker-card {
-    background: var(--card);
-    border: 1px solid #334155;
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-    transition: all 0.3s ease;
+  :root {
+    --gradient-primary: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 50%, #8b5cf6 100%);
+    --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    --glass-bg: rgba(15, 23, 42, 0.8);
+    --glass-border: rgba(148, 163, 184, 0.2);
   }
+
+  .broker-card {
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9));
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .broker-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--gradient-primary);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
   .broker-card:hover {
-    border-color: var(--accent);
-    box-shadow: 0 8px 25px rgba(14, 165, 164, 0.15);
+    border-color: rgba(14, 165, 164, 0.4);
+    box-shadow: 0 12px 40px rgba(14, 165, 164, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+  
+  .broker-card:hover::before {
+    opacity: 1;
   }
   .status-badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
     font-size: 0.875rem;
-    font-weight: 500;
-    transition: all 0.2s ease;
+    font-weight: 600;
+    letter-spacing: 0.025em;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(8px);
+    position: relative;
+    overflow: hidden;
   }
+  
+  .status-badge::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  .status-badge:hover::before {
+    left: 100%;
+  }
+  
   .status-connected {
-    background: rgba(34, 197, 94, 0.1);
-    color: #22c55e;
-    border: 1px solid rgba(34, 197, 94, 0.3);
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.15));
+    color: #10b981;
+    border: 1px solid rgba(34, 197, 94, 0.4);
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
   }
+  
+  .status-connected svg {
+    animation: pulse 2s infinite;
+  }
+  
   .status-disconnected {
-    background: rgba(148, 163, 184, 0.1);
+    background: linear-gradient(135deg, rgba(148, 163, 184, 0.15), rgba(100, 116, 139, 0.1));
     color: #94a3b8;
     border: 1px solid rgba(148, 163, 184, 0.3);
   }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
   .btn-primary {
-    background: linear-gradient(135deg, var(--accent), #0369a1);
+    background: var(--gradient-primary);
     border: none;
     color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 500;
-    transition: all 0.3s ease;
+    padding: 0.875rem 2rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    letter-spacing: 0.025em;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
   }
+  
+  .btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+  
   .btn-primary:hover {
-    background: linear-gradient(135deg, #0d9488, #0284c7);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(14, 165, 164, 0.3);
+    background: linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #7c3aed 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+  }
+  
+  .btn-primary:hover::before {
+    left: 100%;
+  }
+  
+  .btn-primary:active {
+    transform: translateY(0);
   }
   .btn-success {
-    background: linear-gradient(135deg, #22c55e, #16a34a);
+    background: var(--gradient-success);
     border: none;
     color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 500;
-    transition: all 0.3s ease;
+    padding: 0.875rem 2rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    letter-spacing: 0.025em;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
   }
+  
+  .btn-success::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+  
   .btn-success:hover {
-    background: linear-gradient(135deg, #16a34a, #15803d);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+  }
+  
+  .btn-success:hover::before {
+    left: 100%;
   }
   .btn-info {
     background: linear-gradient(135deg, #3b82f6, #2563eb);
     border: none;
     color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 500;
-    transition: all 0.3s ease;
+    padding: 0.875rem 2rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    letter-spacing: 0.025em;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
   }
+  
+  .btn-info::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+  
   .btn-info:hover {
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+  }
+  
+  .btn-info:hover::before {
+    left: 100%;
   }
   .btn-warning {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
+    background: var(--gradient-warning);
     border: none;
     color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 500;
-    transition: all 0.3s ease;
+    padding: 0.875rem 2rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    letter-spacing: 0.025em;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
   }
+  
+  .btn-warning::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+  
   .btn-warning:hover {
     background: linear-gradient(135deg, #d97706, #b45309);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+  }
+  
+  .btn-warning:hover::before {
+    left: 100%;
   }
   .btn-outline-secondary {
-    background: transparent;
-    border: 1px solid #64748b;
-    color: #94a3b8;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 500;
-    transition: all 0.3s ease;
+    background: rgba(15, 23, 42, 0.3);
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    color: #cbd5e1;
+    padding: 0.875rem 2rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    letter-spacing: 0.025em;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(8px);
+    position: relative;
+    overflow: hidden;
   }
+  
+  .btn-outline-secondary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
+  
   .btn-outline-secondary:hover {
-    background: rgba(100, 116, 139, 0.1);
-    border-color: #94a3b8;
-    color: #e2e8f0;
+    background: rgba(148, 163, 184, 0.15);
+    border-color: rgba(148, 163, 184, 0.6);
+    color: #f1f5f9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(148, 163, 184, 0.2);
+  }
+  
+  .btn-outline-secondary:hover::before {
+    left: 100%;
   }
   .form-control, .form-select {
-    background: rgba(15, 23, 42, 0.5);
-    border: 1px solid #334155;
-    color: #e2e8f0;
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-  }
-  .form-control:focus, .form-select:focus {
-    background: rgba(15, 23, 42, 0.8);
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(14, 165, 164, 0.1);
-    outline: none;
-  }
-  .form-control::placeholder {
-    color: #64748b;
-  }
-  .form-label {
-    color: #cbd5e1;
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    color: #f1f5f9;
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
     font-weight: 500;
-    margin-bottom: 0.5rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .form-control:focus, .form-select:focus {
+    background: rgba(30, 41, 59, 0.95);
+    border-color: rgba(14, 165, 164, 0.6);
+    box-shadow: 0 0 0 3px rgba(14, 165, 164, 0.2);
+    outline: none;
+    transform: translateY(-1px);
+  }
+  
+  .form-control::placeholder {
+    color: #94a3b8;
+    font-weight: 400;
+    opacity: 1;
+  }
+  
+  .form-control:focus::placeholder {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  
+  .form-select option {
+    background: #1e293b;
+    color: #f1f5f9;
+    padding: 0.75rem;
+    border: none;
+  }
+  
+  .form-select option:hover {
+    background: #334155;
+  }
+  
+  .form-select option:checked {
+    background: #0ea5e9;
+    color: white;
+  }
+  
+  .form-label {
+    color: #e2e8f0;
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+    letter-spacing: 0.025em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .form-label::before {
+    content: '';
+    width: 3px;
+    height: 16px;
+    background: var(--gradient-primary);
+    border-radius: 2px;
   }
   .alert {
     padding: 1rem;
@@ -167,25 +382,104 @@
     border: 1px solid #1e293b;
   }
   .section-title {
-    color: #f1f5f9;
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
+    color: #f8fafc;
+    font-size: 1.375rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    letter-spacing: -0.025em;
+    position: relative;
   }
+  
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0.3), transparent);
+    margin-left: 1rem;
+  }
+  
   .section-title svg {
-    color: var(--accent);
+    color: #0ea5e9;
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(59, 130, 246, 0.1));
+    padding: 0.5rem;
+    border-radius: 10px;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(14, 165, 233, 0.2);
+  }
+  
+  .page-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    position: relative;
+  }
+  
+  .page-header h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #f8fafc, #cbd5e1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.025em;
+  }
+  
+  .page-header p {
+    font-size: 1.125rem;
+    color: #94a3b8;
+    font-weight: 400;
+  }
+  
+  .floating-elements {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  
+  .floating-elements::before,
+  .floating-elements::after {
+    content: '';
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(14, 165, 233, 0.1), transparent);
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .floating-elements::before {
+    top: 10%;
+    left: 10%;
+    animation-delay: 0s;
+  }
+  
+  .floating-elements::after {
+    bottom: 10%;
+    right: 10%;
+    animation-delay: 3s;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(180deg); }
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto">
-  <div class="mb-8">
-    <h1 class="text-3xl font-bold text-white mb-2">Multi-Broker Connect</h1>
-    <p class="text-slate-400">Connect and manage your trading accounts across multiple brokers</p>
+<div class="max-w-7xl mx-auto relative">
+  <div class="floating-elements"></div>
+  
+  <div class="page-header">
+    <h1>Multi-Broker Connect</h1>
+    <p>Connect and manage your trading accounts across multiple brokers with enterprise-grade security</p>
   </div>
 
   <!-- Broker Selection -->
@@ -212,7 +506,12 @@
         </select>
       </div>
       <div>
-        <button class="btn btn-outline-secondary w-full" onclick="clearRemembered()">Clear All</button>
+        <button class="btn btn-outline-secondary w-full" onclick="clearRemembered()">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1-1H8a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+          Clear All
+        </button>
       </div>
       <div>
         <div id="connection_status">
@@ -238,11 +537,11 @@
     <div id="kite_fields" class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
         <label class="form-label">API Key</label>
-        <input id="kite_api_key" class="form-control" placeholder="Enter Kite API Key" value="your_kite_api_key" />
+        <input id="kite_api_key" class="form-control" placeholder="Enter Kite API Key" />
       </div>
       <div>
         <label class="form-label">API Secret</label>
-        <input id="kite_api_secret" class="form-control" placeholder="Enter Kite API Secret" value="your_kite_api_secret" />
+        <input id="kite_api_secret" class="form-control" placeholder="Enter Kite API Secret" />
       </div>
     </div>
     <div id="dhan_fields" class="grid grid-cols-1 md:grid-cols-2 gap-4" style="display:none;">
@@ -272,6 +571,12 @@
         </svg>
         Register Credentials
       </button>
+      <button class="btn btn-info" onclick="integrateExistingToken()" id="integrate_btn" style="display:none;">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+        </svg>
+        Use Existing Token
+      </button>
       <span id="register_msg" class="text-slate-400"></span>
     </div>
   </div>
@@ -284,29 +589,25 @@
       </svg>
       Login / Connect
     </h3>
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
       <div>
-        <label for="login_user_id" class="form-label">User ID</label>
-        <input id="login_user_id" class="form-control" placeholder="Enter User ID" value="NES881" />
+        <label for="login_user_id" class="form-label" id="login_user_label">User ID</label>
+        <input id="login_user_id" class="form-control" placeholder="Enter User ID" />
+      </div>
+      <div>
+        <label class="form-label flex items-center gap-2">
+          <input type="checkbox" id="remember_session" class="form-check-input" checked />
+          Remember Session
+        </label>
       </div>
       <div class="flex gap-2">
-        <button class="btn btn-success" onclick="login()">
+        <button class="btn btn-success" id="connect_btn" onclick="login()">
           <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
           </svg>
           Connect
         </button>
-      </div>
-      <div class="flex gap-2">
-        <button class="btn btn-info" onclick="checkStatus()">
-          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-          </svg>
-          Check Status
-        </button>
-      </div>
-      <div class="flex gap-2">
-        <button class="btn btn-warning" onclick="disconnect()">
+        <button class="btn btn-warning" id="disconnect_btn" onclick="disconnect()" style="display:none;">
           <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
           </svg>
@@ -324,7 +625,7 @@
       </svg>
       Broker Data
     </h3>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <button class="btn btn-primary" onclick="fetchBrokerData('orders')">
         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
@@ -342,12 +643,6 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
         </svg>
         Fetch Positions
-      </button>
-      <button class="btn btn-outline-secondary" onclick="fetchPortfolio()">
-        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0H8m8 0v2a2 2 0 01-2 2H10a2 2 0 01-2-2V6"/>
-        </svg>
-        Portfolio
       </button>
     </div>
   </div>
@@ -368,22 +663,31 @@
 
 {% block extra_js %}
 <script>
-    // URL Configuration
+    // Enhanced URL Configuration
     const URLS = {
-      register_base: "{{ url_for('calculatentrade.register_app_broker', broker='__BR__') }}",
-      broker_status: "{{ url_for('calculatentrade.broker_status') }}",
-      disconnect: "{{ url_for('calculatentrade.disconnect_broker') }}",
-      portfolio: "{{ url_for('calculatentrade.get_portfolio') }}",
-      api_orders: "{{ url_for('calculatentrade.api_broker_orders') }}",
-      api_trades: "{{ url_for('calculatentrade.api_broker_trades') }}",
-      api_positions: "{{ url_for('calculatentrade.api_broker_positions') }}",
-      trades_page: "{{ url_for('calculatentrade.get_trades') }}"
+      init: '/calculatentrade_journal/api/broker/init',
+      register: '/calculatentrade_journal/api/broker/register',
+      status: '/calculatentrade_journal/api/broker/status',
+      connect: '/calculatentrade_journal/api/broker/connect',
+      disconnect: '/calculatentrade_journal/api/broker/disconnect',
+      orders: '/calculatentrade_journal/api/broker/orders',
+      trades: '/calculatentrade_journal/api/broker/trades',
+      positions: '/calculatentrade_journal/api/broker/positions',
+      remembered: '/calculatentrade_journal/api/broker/remembered_accounts',
+      integrate_token: '/calculatentrade_journal/api/broker/integrate_token'
     };
 
-    // Global Variables
+    // Enhanced Global Variables
     let broker = 'kite';
+    let currentSession = null;
+    let autoReconnectTimer = null;
+    let connectionCheckInterval = null;
     const out = document.getElementById('out');
     const messageArea = document.getElementById('message_area');
+    
+    // Session persistence
+    const SESSION_STORAGE_KEY = 'broker_sessions';
+    const CREDENTIALS_STORAGE_KEY = 'broker_credentials';
 
     // UI Helper Functions
     function showMessage(msg, type = 'info') {
@@ -391,8 +695,21 @@
                         type === 'success' ? 'alert-success' : 
                         type === 'warning' ? 'alert-warning' : 'alert-info';
       
-      messageArea.innerHTML = `<div class="alert ${alertClass}">${msg}</div>`;
-      out.textContent = msg;
+      // Format message for better readability
+      const formattedMsg = msg.replace(/\n/g, '<br>');
+      
+      messageArea.innerHTML = `<div class="alert ${alertClass}">${formattedMsg}</div>`;
+      
+      // Don't overwrite output area with just the message - let data display there
+      
+      // Auto-hide success messages after 5 seconds
+      if (type === 'success') {
+        setTimeout(() => {
+          if (messageArea.innerHTML.includes(formattedMsg)) {
+            messageArea.innerHTML = '';
+          }
+        }, 5000);
+      }
     }
 
     function markConnected(brokerName, userId) {
@@ -403,6 +720,10 @@
         </svg>
         Connected: ${brokerName.toUpperCase()} (${userId})
       </span>`;
+      
+      // Show disconnect button, hide connect button
+      document.getElementById('connect_btn').style.display = 'none';
+      document.getElementById('disconnect_btn').style.display = 'inline-flex';
     }
 
     function markDisconnected() {
@@ -414,6 +735,10 @@
         Not Connected
       </span>`;
       hideDataControls();
+      
+      // Show connect button, hide disconnect button
+      document.getElementById('connect_btn').style.display = 'inline-flex';
+      document.getElementById('disconnect_btn').style.display = 'none';
     }
 
     function showDataControls() {
@@ -433,15 +758,90 @@
       document.getElementById('dhan_fields').style.display = broker === 'dhan' ? 'block' : 'none';
       document.getElementById('angel_fields').style.display = broker === 'angel' ? 'block' : 'none';
       
+      // Show/hide integrate button for Dhan
+      const integrateBtn = document.getElementById('integrate_btn');
+      if (broker === 'dhan') {
+        integrateBtn.style.display = 'inline-flex';
+      } else {
+        integrateBtn.style.display = 'none';
+      }
+      
+      // Update login label based on broker
+      const loginLabel = document.getElementById('login_user_label');
+      const loginInput = document.getElementById('login_user_id');
+      
+      if (broker === 'dhan') {
+        loginLabel.textContent = 'Client ID';
+        loginInput.placeholder = 'Enter Dhan Client ID';
+      } else {
+        loginLabel.textContent = 'User ID';
+        loginInput.placeholder = 'Enter User ID';
+      }
+      
       showMessage(`Selected ${broker.toUpperCase()} broker`, 'info');
     }
 
-    // Load saved connections
+    // Enhanced session management
+    function saveSessionToStorage(sessionData) {
+      try {
+        const sessions = JSON.parse(localStorage.getItem(SESSION_STORAGE_KEY) || '{}');
+        const key = `${broker}_${sessionData.user_id}`;
+        sessions[key] = {
+          ...sessionData,
+          saved_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        };
+        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessions));
+      } catch (e) {
+        console.error('Save session error:', e);
+      }
+    }
+    
+    function loadSessionFromStorage(broker, userId) {
+      try {
+        const sessions = JSON.parse(localStorage.getItem(SESSION_STORAGE_KEY) || '{}');
+        const key = `${broker}_${userId}`;
+        const session = sessions[key];
+        
+        if (session && new Date(session.expires_at) > new Date()) {
+          return session;
+        }
+        
+        // Clean expired session
+        if (session) {
+          delete sessions[key];
+          localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessions));
+        }
+        
+        return null;
+      } catch (e) {
+        console.error('Load session error:', e);
+        return null;
+      }
+    }
+    
+    function clearSessionFromStorage(broker, userId) {
+      try {
+        const sessions = JSON.parse(localStorage.getItem(SESSION_STORAGE_KEY) || '{}');
+        const key = `${broker}_${userId}`;
+        delete sessions[key];
+        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessions));
+      } catch (e) {
+        console.error('Clear session error:', e);
+      }
+    }
+    
+    // Load saved connections with enhanced error handling
     async function loadSaved() {
       try {
-        const res = await fetch('/calculatentrade_journal/api/broker/remembered_accounts', {
+        const res = await fetch(URLS.remembered, {
           credentials: 'include'
         });
+        
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        
         const data = await res.json();
         
         if (data.ok && data.accounts) {
@@ -451,7 +851,7 @@
           data.accounts.forEach(acc => {
             const option = document.createElement('option');
             option.value = `${acc.broker}||${acc.user_id}`;
-            option.textContent = `${acc.broker.toUpperCase()} — ${acc.user_id}`;
+            option.textContent = `${acc.broker.toUpperCase()} — ${acc.user_id} (${new Date(acc.saved_at).toLocaleDateString()})`;
             select.appendChild(option);
           });
           
@@ -460,31 +860,31 @@
           }
         }
         
-        // Check localStorage for current broker
-        const uid = document.getElementById('login_user_id').value || 'user1';
-        const storageKey = `broker_${broker}_${uid}`;
-        const stored = localStorage.getItem(storageKey);
+        // Check for existing session
+        const uid = document.getElementById('login_user_id').value || '';
+        const storedSession = loadSessionFromStorage(broker, uid);
         
-        if (stored) {
-          try {
-            const data = JSON.parse(stored);
-            if (data.connected) {
-              await checkStatus();
-            }
-          } catch (e) {
-            localStorage.removeItem(storageKey);
-          }
+        if (storedSession && storedSession.connected) {
+          currentSession = storedSession;
+          await checkStatus();
         }
+        
       } catch (e) {
         console.error('Load saved error:', e);
-        showMessage('Could not load saved accounts', 'warning');
+        showMessage('Could not load saved accounts: ' + e.message, 'warning');
       }
     }
 
-    // Register credentials
+    // Enhanced credential registration with validation
     async function register() {
-      const payload = { user_id: document.getElementById('login_user_id').value || 'NES881' };
+      const uid = document.getElementById('login_user_id').value.trim() || '';
+      const payload = { 
+        broker: broker,
+        user_id: uid,
+        remember_session: document.getElementById('remember_session').checked
+      };
       
+      // Validate and collect credentials based on broker type
       if (broker === 'kite') {
         const apiKey = document.getElementById('kite_api_key').value.trim();
         const apiSecret = document.getElementById('kite_api_secret').value.trim();
@@ -494,19 +894,45 @@
           return false;
         }
         
+        if (apiKey.length < 10 || apiSecret.length < 10) {
+          showMessage('API key and secret seem too short. Please verify.', 'error');
+          return false;
+        }
+        
         payload.api_key = apiKey;
         payload.api_secret = apiSecret;
+        
       } else if (broker === 'dhan') {
-        payload.client_id = document.getElementById('dhan_client_id').value.trim() || 'demo_client';
-        payload.access_token = document.getElementById('dhan_access_token').value.trim() || 'demo_token';
-      } else {
-        payload.api_key = document.getElementById('angel_api_key').value.trim() || 'demo_key';
-        payload.api_secret = document.getElementById('angel_api_secret').value.trim() || 'demo_secret';
+        const clientId = document.getElementById('dhan_client_id').value.trim();
+        const accessToken = document.getElementById('dhan_access_token').value.trim();
+        
+        if (!clientId || !accessToken) {
+          showMessage('Please enter valid Dhan Client ID and Access Token', 'error');
+          return false;
+        }
+        
+        payload.client_id = clientId;
+        payload.access_token = accessToken;
+        
+      } else if (broker === 'angel') {
+        const apiKey = document.getElementById('angel_api_key').value.trim();
+        const apiSecret = document.getElementById('angel_api_secret').value.trim();
+        
+        if (!apiKey || !apiSecret) {
+          showMessage('Please enter valid Angel API key and secret', 'error');
+          return false;
+        }
+        
+        payload.api_key = apiKey;
+        payload.api_secret = apiSecret;
       }
 
       try {
-        const url = URLS.register_base.replace('__BR__', broker);
-        const res = await fetch(url, { 
+        showMessage('Validating and registering credentials...', 'info');
+        document.getElementById('register_msg').textContent = 'Registering...';
+        document.getElementById('register_msg').style.color = '#94a3b8';
+        
+        const res = await fetch(URLS.register, { 
           method: 'POST', 
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -516,135 +942,275 @@
         const result = await res.json();
         
         if (res.ok && result.ok) {
-          document.getElementById('register_msg').textContent = 'Registered successfully!';
-          showMessage('Credentials registered and saved successfully', 'success');
+          document.getElementById('register_msg').textContent = '✓ Registered!';
+          document.getElementById('register_msg').style.color = '#22c55e';
+          showMessage(result.message || 'Credentials registered and encrypted successfully', 'success');
+          
+          // Save to localStorage for quick access
+          const credKey = `${broker}_${uid}_creds`;
+          localStorage.setItem(credKey, JSON.stringify({
+            registered: true,
+            registered_at: new Date().toISOString()
+          }));
+          
+          await loadSaved(); // Refresh remembered accounts
           return true;
         } else {
-          throw new Error(result.message || `Registration failed: ${res.status}`);
+          // Handle detailed error messages from backend
+          const errorMsg = result.message || `Registration failed with status ${res.status}`;
+          
+          // Show validation errors if available
+          if (result.errors && Array.isArray(result.errors)) {
+            const errorList = result.errors.map(err => `• ${err}`).join('\n');
+            showMessage(`Registration failed:\n${errorList}`, 'error');
+          } else {
+            showMessage(errorMsg, 'error');
+          }
+          
+          document.getElementById('register_msg').textContent = '✗ Failed!';
+          document.getElementById('register_msg').style.color = '#ef4444';
+          return false;
         }
       } catch (e) {
-        showMessage('Registration error: ' + e.message, 'error');
-        document.getElementById('register_msg').textContent = 'Registration failed!';
+        const errorMsg = e.message.includes('fetch') ? 
+          'Network error. Please check your connection and try again.' : 
+          e.message;
+        
+        showMessage('Registration error: ' + errorMsg, 'error');
+        document.getElementById('register_msg').textContent = '✗ Network Error!';
+        document.getElementById('register_msg').style.color = '#ef4444';
         return false;
       }
     }
 
-    // Login/Connect
+    // Enhanced login/connect with session management
     async function login() {
-      const uid = document.getElementById('login_user_id').value.trim() || 'NES881';
+      const uid = document.getElementById('login_user_id').value.trim() || '';
       document.getElementById('login_user_id').value = uid;
       
-      showMessage('Preparing to connect to broker...', 'info');
+      showMessage('Initiating broker connection...', 'info');
       
       try {
-        // Check if credentials are already registered
-        const statusRes = await fetch(`/calculatentrade_journal/api/broker/status?broker=${broker}&user_id=${uid}`, {
+        // First check if already connected
+        const statusRes = await fetch(`${URLS.status}?broker=${broker}&user_id=${uid}`, {
           credentials: 'include'
         });
-        const statusData = await statusRes.json();
         
-        if (statusData.connected) {
-          showMessage(`${broker.toUpperCase()} is already connected for user ${uid}`, 'success');
-          markConnected(broker, uid);
-          showDataControls();
-          return;
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          
+          if (statusData.connected) {
+            showMessage(`${broker.toUpperCase()} is already connected for user ${uid}`, 'success');
+            markConnected(broker, uid);
+            showDataControls();
+            
+            // Save session info
+            currentSession = {
+              broker: broker,
+              user_id: uid,
+              connected: true,
+              session_id: statusData.session_id
+            };
+            
+            saveSessionToStorage(currentSession);
+            startConnectionMonitoring();
+            return;
+          }
         }
         
-        // Register credentials first
-        const registered = await register();
-        if (!registered) {
-          showMessage('Please register valid credentials first', 'error');
-          return;
-        }
+        // Auto-connect after successful registration
+        showMessage('Connecting to broker...', 'info');
         
-        if (broker === 'kite') {
-          // For Kite, redirect to actual login URL
-          showMessage('Redirecting to Kite login... Please complete the authentication process.', 'info');
-          window.location.href = `/calculatentrade_journal/kite/login?user_id=${encodeURIComponent(uid)}`;
-          return;
-        }
+        // Attempt connection
+        showMessage('Connecting to broker...', 'info');
         
-        if (broker === 'dhan') {
-          // For Dhan, redirect to login URL
-          showMessage('Redirecting to Dhan login...', 'info');
-          window.location.href = `/calculatentrade_journal/dhan/login?user_id=${encodeURIComponent(uid)}`;
-          return;
-        }
+        const connectRes = await fetch(URLS.connect, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            broker: broker,
+            user_id: uid,
+            remember_session: document.getElementById('remember_session').checked
+          })
+        });
         
-        if (broker === 'angel') {
-          // For Angel, redirect to login URL
-          showMessage('Redirecting to Angel login...', 'info');
-          window.location.href = `/calculatentrade_journal/angel/login?user_id=${encodeURIComponent(uid)}`;
-          return;
+        const connectData = await connectRes.json();
+        
+        if (connectRes.ok && connectData.ok) {
+          if (connectData.requires_redirect) {
+            showMessage(connectData.message || 'Redirecting to broker login... Please complete authentication.', 'info');
+            // Store pending connection info
+            sessionStorage.setItem('pending_connection', JSON.stringify({
+              broker: broker,
+              user_id: uid,
+              timestamp: Date.now()
+            }));
+            window.location.href = connectData.redirect_url;
+            return;
+          }
+          
+          if (connectData.connected) {
+            markConnected(broker, uid);
+            showDataControls();
+            showMessage(connectData.message || `Successfully connected to ${broker.toUpperCase()}!`, 'success');
+            
+            // Save session
+            currentSession = {
+              broker: broker,
+              user_id: uid,
+              connected: true,
+              session_id: connectData.session_id
+            };
+            
+            saveSessionToStorage(currentSession);
+            startConnectionMonitoring();
+          }
+        } else {
+          // Handle detailed error messages from backend
+          const errorMsg = connectData.message || `Connection failed with status ${connectRes.status}`;
+          showMessage(errorMsg, 'error');
         }
         
       } catch (e) {
-        showMessage('Connection error: ' + e.message, 'error');
+        const errorMsg = e.message.includes('fetch') ? 
+          'Network error. Please check your connection and try again.' : 
+          e.message;
+        
+        showMessage('Connection error: ' + errorMsg, 'error');
+        console.error('Login error:', e);
       }
     }
 
-    // Check connection status
+    // Enhanced connection status check with auto-reconnect
     async function checkStatus() {
-      const uid = document.getElementById('login_user_id').value.trim() || 'NES881';
+      const uid = document.getElementById('login_user_id').value.trim() || '';
+      
+      if (!uid) {
+        markDisconnected();
+        currentSession = null;
+        showMessage('Please enter a User ID to check connection status.', 'warning');
+        return;
+      }
       
       try {
-        const res = await fetch(`/calculatentrade_journal/api/broker/status?broker=${broker}&user_id=${uid}`, {
+        const res = await fetch(`${URLS.status}?broker=${broker}&user_id=${uid}`, {
           credentials: 'include'
         });
+        
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        
         const data = await res.json();
         
         if (data.connected) {
           markConnected(broker, uid);
           showDataControls();
           
-          // Update localStorage
-          const storageKey = `broker_${broker}_${uid}`;
-          localStorage.setItem(storageKey, JSON.stringify({
-            connected: true,
+          // Update session info
+          currentSession = {
             broker: broker,
             user_id: uid,
-            connected_at: new Date().toISOString()
-          }));
+            connected: true,
+            session_id: data.session_id,
+            last_activity: data.last_activity
+          };
           
-          const statusMsg = data.message || 'Connected';
-          showMessage(`${broker.toUpperCase()} is connected for user ${uid} (${statusMsg})`, 'success');
+          saveSessionToStorage(currentSession);
+          
+          // Show detailed status message from backend
+          showMessage(data.message || `${broker.toUpperCase()} is connected and verified`, 'success');
+          
+          startConnectionMonitoring();
+          
         } else {
           markDisconnected();
-          localStorage.removeItem(`broker_${broker}_${uid}`);
-          const statusMsg = data.message || 'Not connected';
-          showMessage(`${broker.toUpperCase()}: ${statusMsg}`, 'warning');
+          clearSessionFromStorage(broker, uid);
+          currentSession = null;
           
-          // If expired, suggest reconnection
+          // Show detailed status message from backend
+          const statusMsg = data.message || 'Connection status unknown';
+          
           if (data.expired) {
-            showMessage(`${broker.toUpperCase()} connection expired. Please reconnect.`, 'warning');
+            showMessage(statusMsg, 'warning');
+            // Auto-suggest reconnection
+            setTimeout(() => {
+              if (confirm(`${broker.toUpperCase()} session expired. Reconnect now?`)) {
+                login();
+              }
+            }, 2000);
+          } else {
+            showMessage(statusMsg, data.message && data.message.includes('credentials') ? 'warning' : 'info');
           }
         }
       } catch (e) {
-        showMessage('Status check error: ' + e.message, 'error');
+        const errorMsg = e.message.includes('fetch') ? 
+          'Network error. Please check your connection and try again.' : 
+          e.message;
+        
+        showMessage('Status check error: ' + errorMsg, 'error');
         markDisconnected();
+        clearSessionFromStorage(broker, uid);
+        currentSession = null;
+      }
+    }
+    
+    // Connection monitoring
+    function startConnectionMonitoring() {
+      // Clear existing interval
+      if (connectionCheckInterval) {
+        clearInterval(connectionCheckInterval);
+      }
+      
+      // Check connection every 5 minutes
+      connectionCheckInterval = setInterval(async () => {
+        if (currentSession && currentSession.connected) {
+          await checkStatus();
+        }
+      }, 5 * 60 * 1000);
+    }
+    
+    function stopConnectionMonitoring() {
+      if (connectionCheckInterval) {
+        clearInterval(connectionCheckInterval);
+        connectionCheckInterval = null;
       }
     }
 
-    // Disconnect
+    // Enhanced disconnect with session cleanup
     async function disconnect() {
-      if (!confirm('Are you sure you want to disconnect from the broker?')) return;
+      if (!confirm('Are you sure you want to disconnect from the broker?\n\nNote: Your credentials will be preserved for easy reconnection.')) return;
       
-      const uid = document.getElementById('login_user_id').value.trim() || 'NES881';
+      const uid = document.getElementById('login_user_id').value.trim() || '';
       
       try {
-        const res = await fetch('/calculatentrade_journal/api/broker/disconnect', {
+        showMessage('Disconnecting...', 'info');
+        
+        const res = await fetch(URLS.disconnect, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ broker, user_id: uid })
+          body: JSON.stringify({ 
+            broker: broker, 
+            user_id: uid 
+          })
         });
         
         const result = await res.json();
         
         if (result.ok) {
           markDisconnected();
-          localStorage.removeItem(`broker_${broker}_${uid}`);
-          showMessage('Disconnected successfully (credentials preserved for reconnection)', 'success');
+          clearSessionFromStorage(broker, uid);
+          currentSession = null;
+          stopConnectionMonitoring();
+          
+          showMessage(`Disconnected from ${broker.toUpperCase()} successfully. Credentials preserved for reconnection.`, 'success');
+          
+          // Update register message
+          document.getElementById('register_msg').textContent = 'Ready to reconnect';
+          document.getElementById('register_msg').style.color = '#64748b';
+          
           await loadSaved(); // Refresh remembered accounts
         } else {
           showMessage('Disconnect failed: ' + (result.message || 'Unknown error'), 'error');
@@ -654,43 +1220,103 @@
       }
     }
 
-    // Data fetching functions
+    // Enhanced data fetching with retry logic
     async function fetchBrokerData(kind) {
-      const uid = document.getElementById('login_user_id').value.trim() || 'NES881';
-      showMessage(`Fetching ${kind}...`, 'info');
+      const uid = document.getElementById('login_user_id').value.trim() || '';
+      
+      if (!uid) {
+        showMessage('Please enter a User ID first.', 'error');
+        return;
+      }
+      
+      // Always check connection status first
+      showMessage('Verifying connection...', 'info');
+      await checkStatus();
+      
+      if (!currentSession || !currentSession.connected) {
+        showMessage('Not connected to broker. Please connect first.', 'error');
+        return;
+      }
+      
+      showMessage(`Fetching ${kind} from ${broker.toUpperCase()}...`, 'info');
       
       try {
         const urlMap = {
-          'orders': URLS.api_orders,
-          'trades': URLS.api_trades,
-          'positions': URLS.api_positions
+          'orders': URLS.orders,
+          'trades': URLS.trades,
+          'positions': URLS.positions
         };
         
-        const url = urlMap[kind] + `?broker=${broker}&user_id=${uid}`;
-        const res = await fetch(url, { credentials: 'include' });
+        const url = `${urlMap[kind]}?broker=${broker}&user_id=${uid}`;
+        const res = await fetch(url, { 
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        
         const data = await res.json();
         
-        if (data.ok && data.data) {
-          out.textContent = JSON.stringify(data.data, null, 2);
-          showMessage(`${kind} data loaded successfully (${data.data.length || 0} items)`, 'success');
+        if (data.ok) {
+          // Display the actual data in the output area
+          if (data.data) {
+            const timestamp = new Date().toLocaleTimeString();
+            out.textContent = `[${timestamp}] ${kind.toUpperCase()} Data:\n\n${JSON.stringify(data.data, null, 2)}`;
+            
+            const count = Array.isArray(data.data) ? data.data.length : (typeof data.data === 'object' ? Object.keys(data.data).length : 1);
+            showMessage(`${kind.toUpperCase()} data loaded successfully (${count} items)`, 'success');
+          } else {
+            out.textContent = `[${new Date().toLocaleTimeString()}] No data field in response:\n\n${JSON.stringify(data, null, 2)}`;
+            showMessage(`${kind.toUpperCase()} response received but no data field found`, 'warning');
+          }
+          
+          // Update last activity
+          if (currentSession) {
+            currentSession.last_activity = new Date().toISOString();
+            saveSessionToStorage(currentSession);
+          }
+          
         } else {
-          out.textContent = JSON.stringify(data, null, 2);
+          // Show the full response for debugging when not ok
+          out.textContent = `[${new Date().toLocaleTimeString()}] Error Response:\n\n${JSON.stringify(data, null, 2)}`;
           
           // Handle authentication errors
           if (data.auth_error) {
             markDisconnected();
-            showMessage(`Authentication failed. ${data.message}`, 'error');
+            clearSessionFromStorage(broker, uid);
+            currentSession = null;
+            showMessage(`Authentication failed: ${data.message}. Please reconnect.`, 'error');
+            
+            // Auto-suggest reconnection
+            setTimeout(() => {
+              if (confirm('Session expired. Reconnect now?')) {
+                login();
+              }
+            }, 2000);
           } else {
             showMessage(data.message || `${kind} response received`, 'info');
           }
         }
       } catch (e) {
         showMessage(`Error fetching ${kind}: ` + e.message, 'error');
+        out.textContent = `Error: ${e.message}\n\nFull error details:\n${JSON.stringify(e, null, 2)}`;
+        
+        // If it's a network error, suggest checking connection
+        if (e.message.includes('fetch') || e.message.includes('HTTP 500')) {
+          showMessage('Connection error. Please check your broker connection and try again.', 'warning');
+          markDisconnected();
+          clearSessionFromStorage(broker, uid);
+          currentSession = null;
+        }
       }
     }
     
     async function fetchPortfolio() {
-      const uid = document.getElementById('login_user_id').value.trim() || 'NES881';
+      const uid = document.getElementById('login_user_id').value.trim() || '';
       showMessage('Fetching portfolio...', 'info');
       
       try {
@@ -732,88 +1358,301 @@
       checkStatus();
     }
     
-    function clearRemembered() {
-      if (!confirm('Clear all remembered accounts? This cannot be undone.')) return;
+    // Integrate existing Dhan token
+    async function integrateExistingToken() {
+      if (broker !== 'dhan') {
+        showMessage('Token integration is only available for Dhan broker', 'error');
+        return;
+      }
       
-      // Clear localStorage
-      const keys = Object.keys(localStorage);
-      keys.forEach(key => {
-        if (key.startsWith('broker_')) {
-          localStorage.removeItem(key);
-        }
-      });
+      if (!confirm('This will integrate your existing Dhan token from dhan_token.json.\n\nMake sure you have a valid token file before proceeding.\n\nContinue?')) {
+        return;
+      }
       
-      // Clear server-side
-      fetch('/calculatentrade_journal/api/broker/disconnect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ clear_all: true })
-      });
-      
-      document.getElementById('remembered_accounts').innerHTML = '<option value="">— select saved account —</option>';
-      showMessage('All remembered accounts cleared', 'success');
-    }
-
-    // Initialize broker system
-    async function initBrokerSystem() {
       try {
-        const res = await fetch('/calculatentrade_journal/api/broker/init', {
+        showMessage('Integrating existing Dhan token...', 'info');
+        
+        const res = await fetch(URLS.integrate_token, {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           credentials: 'include'
         });
+        
+        const result = await res.json();
+        
+        if (res.ok && result.ok) {
+          // Auto-fill the client ID
+          document.getElementById('login_user_id').value = result.client_id;
+          
+          showMessage(result.message + '\n\nYou can now click Connect to establish connection.', 'success');
+          
+          // Update register message
+          document.getElementById('register_msg').textContent = '✓ Token Integrated!';
+          document.getElementById('register_msg').style.color = '#22c55e';
+          
+          // Refresh remembered accounts
+          await loadSaved();
+          
+          // Auto-connect after integration
+          setTimeout(async () => {
+            if (confirm('Token integrated successfully! Connect now?')) {
+              await login();
+            }
+          }, 1000);
+          
+        } else {
+          showMessage(result.message || 'Token integration failed', 'error');
+          document.getElementById('register_msg').textContent = '✗ Integration Failed!';
+          document.getElementById('register_msg').style.color = '#ef4444';
+        }
+        
+      } catch (e) {
+        const errorMsg = e.message.includes('fetch') ? 
+          'Network error. Please check your connection and try again.' : 
+          e.message;
+        
+        showMessage('Token integration error: ' + errorMsg, 'error');
+        document.getElementById('register_msg').textContent = '✗ Network Error!';
+        document.getElementById('register_msg').style.color = '#ef4444';
+      }
+    }
+    
+    // Enhanced clear remembered accounts
+    async function clearRemembered() {
+      if (!confirm('Clear all remembered accounts and sessions?\n\nThis will:\n• Remove all saved credentials\n• Disconnect all active sessions\n• Clear local storage\n\nThis cannot be undone.')) return;
+      
+      try {
+        showMessage('Clearing all accounts...', 'info');
+        
+        // Clear localStorage
+        const keys = Object.keys(localStorage);
+        keys.forEach(key => {
+          if (key.startsWith('broker_') || key === SESSION_STORAGE_KEY || key === CREDENTIALS_STORAGE_KEY) {
+            localStorage.removeItem(key);
+          }
+        });
+        
+        // Clear sessionStorage
+        sessionStorage.removeItem('pending_connection');
+        
+        // Clear server-side
+        const res = await fetch(URLS.disconnect, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ clear_all: true })
+        });
+        
+        const result = await res.json();
+        
+        // Reset UI
+        document.getElementById('remembered_accounts').innerHTML = '<option value="">— select saved account —</option>';
+        document.getElementById('register_msg').textContent = '';
+        markDisconnected();
+        
+        // Reset session state
+        currentSession = null;
+        stopConnectionMonitoring();
+        
+        if (result.ok) {
+          showMessage('All remembered accounts and sessions cleared successfully', 'success');
+        } else {
+          showMessage('Accounts cleared locally. Server cleanup may have failed.', 'warning');
+        }
+        
+      } catch (e) {
+        showMessage('Error clearing accounts: ' + e.message, 'error');
+      }
+    }
+
+    // Enhanced broker system initialization
+    async function initBrokerSystem() {
+      try {
+        showMessage('Initializing broker system...', 'info');
+        
+        const res = await fetch(URLS.init, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        
         const data = await res.json();
         
         if (data.ok) {
           console.log('Broker system initialized:', data);
-          showMessage(`Broker system ready. Loaded ${data.accounts_loaded} accounts, ${data.active_sessions} active sessions.`, 'success');
+          
+          const message = `Broker system ready. ${data.accounts_loaded} saved accounts, ${data.active_sessions} active sessions`;
+          if (data.expired_cleaned > 0) {
+            message += `, ${data.expired_cleaned} expired sessions cleaned`;
+          }
+          
+          showMessage(message, 'success');
+          
+          // Check for pending connection from redirect
+          const pending = sessionStorage.getItem('pending_connection');
+          if (pending) {
+            try {
+              const pendingData = JSON.parse(pending);
+              const timeDiff = Date.now() - pendingData.timestamp;
+              
+              // If less than 5 minutes old, check if connection succeeded
+              if (timeDiff < 5 * 60 * 1000) {
+                document.getElementById('broker').value = pendingData.broker;
+                document.getElementById('login_user_id').value = pendingData.user_id;
+                broker = pendingData.broker;
+                onBrokerChange();
+                
+                setTimeout(() => checkStatus(), 1000);
+              }
+              
+              sessionStorage.removeItem('pending_connection');
+            } catch (e) {
+              console.error('Pending connection error:', e);
+            }
+          }
+          
         } else {
           console.warn('Broker init failed:', data);
-          showMessage('Broker system initialization failed', 'warning');
+          showMessage('Broker system initialization failed: ' + (data.message || 'Unknown error'), 'warning');
         }
       } catch (e) {
         console.error('Broker init error:', e);
-        showMessage('Could not initialize broker system', 'warning');
+        showMessage('Could not initialize broker system: ' + e.message, 'warning');
       }
     }
 
-    // Initialize page
+    // Enhanced page initialization
     async function init() {
-      // Set up event listeners
-      document.getElementById('broker').addEventListener('change', onBrokerChange);
-      document.getElementById('remembered_accounts').addEventListener('change', onRememberedSelect);
-      
-      // Initialize broker system first
-      await initBrokerSystem();
-      
-      // Handle URL parameters
-      const params = new URLSearchParams(location.search);
-      const brokerParam = params.get('broker');
-      const userIdParam = params.get('user_id');
-      
-      if (brokerParam) {
-        document.getElementById('broker').value = brokerParam;
-        broker = brokerParam;
+      try {
+        // Set up event listeners
+        document.getElementById('broker').addEventListener('change', onBrokerChange);
+        document.getElementById('remembered_accounts').addEventListener('change', onRememberedSelect);
+        
+        // Add placeholder clearing functionality
+        const inputs = document.querySelectorAll('.form-control');
+        inputs.forEach(input => {
+          input.addEventListener('focus', function() {
+            if (this.value === this.getAttribute('placeholder') || 
+                this.value === 'your_kite_api_key' || 
+                this.value === 'your_kite_api_secret') {
+              this.value = '';
+            }
+          });
+          
+          input.addEventListener('blur', function() {
+            if (this.value === '') {
+              // Don't restore placeholder values
+            }
+          });
+        });
+        
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+          if (e.ctrlKey && e.key === 'Enter') {
+            login();
+          } else if (e.ctrlKey && e.key === 'r') {
+            e.preventDefault();
+            checkStatus();
+          }
+        });
+        
+        // Initialize broker system first
+        await initBrokerSystem();
+        
+        // Handle URL parameters
+        const params = new URLSearchParams(location.search);
+        const brokerParam = params.get('broker');
+        const userIdParam = params.get('user_id');
+        const statusParam = params.get('status');
+        
+        if (brokerParam && ['kite', 'dhan', 'angel'].includes(brokerParam)) {
+          document.getElementById('broker').value = brokerParam;
+          broker = brokerParam;
+        }
+        
+        if (userIdParam) {
+          document.getElementById('login_user_id').value = userIdParam;
+        }
+        
+        // Handle OAuth callback status
+        if (statusParam === 'success') {
+          showMessage('OAuth authentication successful! Checking connection...', 'success');
+          setTimeout(() => checkStatus(), 1000);
+        } else if (statusParam === 'error') {
+          const error = params.get('error') || 'Authentication failed';
+          showMessage(`OAuth error: ${error}`, 'error');
+        }
+        
+        // Initialize UI
+        onBrokerChange();
+        await loadSaved();
+        
+        // Clear default values
+        document.getElementById('kite_api_key').value = '';
+        document.getElementById('kite_api_secret').value = '';
+        document.getElementById('login_user_id').value = ''; // Keep default user ID
+        
+        // Auto-check status for current broker/user
+        const uid = document.getElementById('login_user_id').value.trim();
+        if (uid) {
+          // Always check server status rather than relying on localStorage
+          await checkStatus();
+        }
+        
+        showMessage('Multi-Broker Connect ready. Select broker and enter credentials. (Ctrl+Enter to connect, Ctrl+R to refresh)', 'info');
+        
+        // Set up periodic cleanup
+        setInterval(() => {
+          // Clean expired sessions from localStorage
+          try {
+            const sessions = JSON.parse(localStorage.getItem(SESSION_STORAGE_KEY) || '{}');
+            let cleaned = false;
+            
+            Object.keys(sessions).forEach(key => {
+              const session = sessions[key];
+              if (new Date(session.expires_at) <= new Date()) {
+                delete sessions[key];
+                cleaned = true;
+              }
+            });
+            
+            if (cleaned) {
+              localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessions));
+            }
+          } catch (e) {
+            console.error('Session cleanup error:', e);
+          }
+        }, 10 * 60 * 1000); // Every 10 minutes
+        
+      } catch (e) {
+        console.error('Initialization error:', e);
+        showMessage('Initialization error: ' + e.message, 'error');
       }
-      
-      if (userIdParam) {
-        document.getElementById('login_user_id').value = userIdParam;
-      }
-      
-      // Initialize UI
-      onBrokerChange();
-      await loadSaved();
-      
-      // Auto-check status for current broker/user
-      const uid = document.getElementById('login_user_id').value.trim();
-      if (uid) {
-        await checkStatus();
-      }
-      
-      showMessage('Multi-Broker Connect ready. Select broker and enter credentials.', 'info');
     }
+    
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+      stopConnectionMonitoring();
+    });
 
     // Start when DOM is ready
     document.addEventListener('DOMContentLoaded', init);
+    
+    // Handle visibility change to pause/resume monitoring
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        stopConnectionMonitoring();
+      } else if (currentSession && currentSession.connected) {
+        startConnectionMonitoring();
+        // Check status when page becomes visible again
+        setTimeout(() => checkStatus(), 1000);
+      }
+    });
 </script>
 {% endblock %}

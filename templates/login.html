@@ -66,6 +66,9 @@
         </div>
       </div>
 
+      <!-- Alert Messages -->
+      <div id="alertContainer" class="mb-6"></div>
+
       <!-- Login Form -->
       <form id="loginForm" method="POST" action="{{ url_for('login') }}" class="space-y-5">
         <div class="relative">
@@ -279,40 +282,61 @@
       eyeIcon.innerHTML = type === 'password' ? eyeOpenSVG : eyeClosedSVG;
     });
 
-    // Load saved credentials on page load
+    // Clear any saved credentials on page load
     window.addEventListener('load', function() {
-      const savedEmail = localStorage.getItem('rememberedEmail');
-      const savedPassword = localStorage.getItem('rememberedPassword');
-      
-      if (savedEmail && savedPassword) {
-        emailInput.value = savedEmail;
-        passwordInput.value = savedPassword;
-        rememberCheckbox.checked = true;
-        
-        // Trigger label animation
-        emailInput.dispatchEvent(new Event('input'));
-        passwordInput.dispatchEvent(new Event('input'));
-      }
-    });
-
-    // Handle form submission and remember me
-    loginForm.addEventListener('submit', function(e) {
-      if (rememberCheckbox.checked) {
-        localStorage.setItem('rememberedEmail', emailInput.value);
-        localStorage.setItem('rememberedPassword', passwordInput.value);
-      } else {
-        localStorage.removeItem('rememberedEmail');
-        localStorage.removeItem('rememberedPassword');
-      }
-    });
-
-    // Clear saved data when remember me is unchecked
-    rememberCheckbox.addEventListener('change', function() {
-      if (!this.checked) {
-        localStorage.removeItem('rememberedEmail');
-        localStorage.removeItem('rememberedPassword');
-      }
+      localStorage.removeItem('rememberedEmail');
+      localStorage.removeItem('rememberedPassword');
     });
   })();
+
+  // Alert system
+  function showAlert(message, type = 'error') {
+    const alertContainer = document.getElementById('alertContainer');
+    const alertColors = {
+      success: 'from-green-600/20 to-emerald-600/20 border-green-500/30 text-green-300',
+      error: 'from-red-600/20 to-rose-600/20 border-red-500/30 text-red-300',
+      warning: 'from-yellow-600/20 to-amber-600/20 border-yellow-500/30 text-yellow-300',
+      info: 'from-blue-600/20 to-sky-600/20 border-blue-500/30 text-blue-300'
+    };
+    
+    const alertHtml = `
+      <div class="bg-gradient-to-r ${alertColors[type]} border rounded-lg p-4 mb-4 animate-fade-in">
+        <div class="flex items-center gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            ${type === 'success' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />' : 
+              type === 'error' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />' :
+              type === 'warning' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />' :
+              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />'}
+          </svg>
+          <span class="text-sm font-medium">${message}</span>
+        </div>
+      </div>
+    `;
+    
+    alertContainer.innerHTML = alertHtml;
+    setTimeout(() => {
+      alertContainer.innerHTML = '';
+    }, 5000);
+  }
+
+  // Handle flash messages
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        showAlert('{{ message }}', '{{ category }}');
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
 </script>
+
+<style>
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+</style>
 {% endblock %}

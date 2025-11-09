@@ -1,81 +1,314 @@
 {% extends 'simple_base.html' %}
 {% block content %}
-<style>
-  .auth-page{ min-height:60vh; display:flex; align-items:center; justify-content:center; }
-  .wrapper{ max-width:430px; width:100%; background:#fff; padding:34px; border-radius:6px; box-shadow:0 10px 25px rgba(0,0,0,.1); }
-  .wrapper h2{ font-size:28px; font-weight:600; color:#333; margin-bottom:20px; }
-  .input-box{ margin:18px 0; }
-  .input-box input{ width:100%; height:52px; padding:0 15px; border:1.5px solid #C7BEBE; border-radius:6px; }
-  .button input{ width:100%; color:#fff; background:#4070f4; border:none; padding:14px 16px; border-radius:6px; cursor:pointer; font-weight:600; }
-  .helper{ font-size:13px; color:#555; margin-top:8px; }
-  .helper ul{ margin:8px 0 0; padding-left:18px; }
-  .helper li.valid{ color:#1aa14b; }
-  .helper li.invalid{ color:#d93025; }
-  .hidden{ display:none !important; }
-</style>
-<div class="auth-page">
-  <div class="wrapper">
-    <h2>Enter code and set a new password</h2>
-    <form method="POST" action="{{ url_for('verify_otp_route') }}" id="resetForm" spellcheck="false">
-      <input type="hidden" name="email" value="{{ email }}">
-      <div class="input-box">
-        <input type="text" name="otp" id="otp" placeholder="6-digit code" inputmode="numeric" maxlength="6" required>
-      </div>
-      <div class="input-box">
-        <input type="password" name="password" id="password" placeholder="New password" required autocomplete="new-password">
-      </div>
-      <div class="input-box">
-        <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm new password" required autocomplete="new-password">
+<div class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style="background: var(--bg);">
+  <!-- Animated Background Elements -->
+  <div class="absolute inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-r from-sky-500/10 to-teal-500/10 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-full blur-3xl"></div>
+  </div>
+
+  <div class="w-full max-w-md relative z-10">
+    <!-- Card with Glassmorphism Effect -->
+    <div class="bg-[color:var(--card)]/70 backdrop-blur-xl rounded-2xl border border-slate-800/50 p-8 shadow-2xl relative overflow-hidden">
+      <!-- Decorative Accent -->
+      <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-600 to-red-500"></div>
+      
+      <!-- Animated Logo/Icon -->
+      <div class="flex justify-center mb-6">
+        <div class="w-16 h-16 rounded-full bg-gradient-to-r from-orange-600 to-red-500 flex items-center justify-center shadow-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+          </svg>
+        </div>
       </div>
 
-      <div id="guidelines" class="helper hidden" aria-live="polite">
-        Password should:
-        <ul>
-          <li id="g-len" class="invalid">At least 8 characters</li>
-          <li id="g-upper" class="invalid">1 uppercase letter</li>
-          <li id="g-lower" class="invalid">1 lowercase letter</li>
-          <li id="g-digit" class="invalid">1 number</li>
-          <li id="g-special" class="invalid">1 special character</li>
-          <li id="g-match" class="invalid">Match confirm password</li>
-        </ul>
+      <div class="text-center mb-8">
+        <h2 class="text-3xl font-bold mb-2 bg-gradient-to-r from-orange-400 to-red-300 bg-clip-text text-transparent">Reset Password</h2>
+        <p class="text-[color:var(--muted)] text-sm">Enter the code and create a new password</p>
       </div>
 
-      <div class="input-box button">
-        <input type="submit" value="Reset password">
+      <!-- Alert Messages -->
+      <div id="alertContainer" class="mb-6"></div>
+
+      <!-- Reset Form -->
+      <form id="resetForm" method="POST" action="{{ url_for('verify_otp_route') }}" class="space-y-5">
+        <input type="hidden" name="email" value="{{ email }}">
+        
+        <div class="relative">
+          <input type="text"
+                 name="otp"
+                 id="otp"
+                 placeholder="Enter 6-digit code"
+                 inputmode="numeric"
+                 maxlength="6"
+                 required
+                 class="w-full px-4 py-3.5 bg-slate-800/30 border border-slate-700/50 rounded-xl text-white text-center text-lg font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-300">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-500 absolute right-4 top-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+
+        <div class="relative">
+          <input type="password"
+                 name="password"
+                 id="password"
+                 placeholder=" "
+                 required
+                 autocomplete="new-password"
+                 class="peer w-full px-4 py-3.5 pr-12 bg-slate-800/30 border border-slate-700/50 rounded-xl text-white placeholder-transparent focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-300">
+          <label class="absolute left-4 -top-2.5 bg-[color:var(--card)]/70 backdrop-blur-sm px-1.5 text-sm text-[color:var(--muted)] transition-all duration-300 peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 peer-placeholder-shown:top-3.5 peer-placeholder-shown:left-4 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-orange-400">
+            New password
+          </label>
+          <button type="button" id="togglePassword" class="absolute right-4 top-3.5 text-slate-500 hover:text-orange-400 transition-colors duration-300">
+            <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="relative">
+          <input type="password"
+                 name="confirm_password"
+                 id="confirm_password"
+                 placeholder=" "
+                 required
+                 autocomplete="new-password"
+                 class="peer w-full px-4 py-3.5 pr-12 bg-slate-800/30 border border-slate-700/50 rounded-xl text-white placeholder-transparent focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-300">
+          <label class="absolute left-4 -top-2.5 bg-[color:var(--card)]/70 backdrop-blur-sm px-1.5 text-sm text-[color:var(--muted)] transition-all duration-300 peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 peer-placeholder-shown:top-3.5 peer-placeholder-shown:left-4 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-orange-400">
+            Confirm new password
+          </label>
+          <button type="button" id="toggleConfirmPassword" class="absolute right-4 top-3.5 text-slate-500 hover:text-orange-400 transition-colors duration-300">
+            <svg id="confirmEyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Password Guidelines -->
+        <div id="guidelines" class="bg-slate-800/20 border border-slate-700/30 rounded-lg p-4 hidden">
+          <p class="text-sm text-[color:var(--muted)] mb-3">Password requirements:</p>
+          <ul class="space-y-2 text-xs">
+            <li id="g-len" class="flex items-center gap-2 text-red-400">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+              At least 8 characters
+            </li>
+            <li id="g-upper" class="flex items-center gap-2 text-red-400">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+              One uppercase letter (A-Z)
+            </li>
+            <li id="g-lower" class="flex items-center gap-2 text-red-400">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+              One lowercase letter (a-z)
+            </li>
+            <li id="g-digit" class="flex items-center gap-2 text-red-400">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+              One number (0-9)
+            </li>
+            <li id="g-special" class="flex items-center gap-2 text-red-400">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+              One special character (!@#$%^&*)
+            </li>
+            <li id="g-match" class="flex items-center gap-2 text-red-400">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+              Passwords match
+            </li>
+          </ul>
+        </div>
+
+        <button type="submit" 
+                id="resetBtn"
+                class="group w-full bg-gradient-to-r from-orange-600 to-red-500 hover:from-orange-700 hover:to-red-600 text-white font-semibold py-3.5 px-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 focus:ring-2 focus:ring-orange-500/50 focus:ring-offset-2 focus:ring-offset-slate-900">
+          <span class="flex items-center justify-center">
+            Reset Password
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            </svg>
+          </span>
+        </button>
+      </form>
+
+      <!-- Footer Links -->
+      <div class="flex items-center justify-center mt-6 pt-6 border-t border-slate-700/50">
+        <p class="text-sm text-[color:var(--muted)]">
+          Remember your password? 
+          <a href="{{ url_for('login') }}" 
+             class="font-medium text-orange-400 hover:text-orange-300 transition-colors duration-300 ml-1 hover:underline">
+            Sign in
+          </a>
+        </p>
       </div>
-    </form>
+    </div>
   </div>
 </div>
 
 <script>
-(function(){
-  const pw = document.getElementById('password');
-  const cpw = document.getElementById('confirm_password');
-  const guide = document.getElementById('guidelines');
-  const g = {
-    len: document.getElementById('g-len'),
-    up: document.getElementById('g-upper'),
-    lo: document.getElementById('g-lower'),
-    di: document.getElementById('g-digit'),
-    sp: document.getElementById('g-special'),
-    ma: document.getElementById('g-match')
-  };
-  const reU=/[A-Z]/, reL=/[a-z]/, reD=/[0-9]/, reS=/[^A-Za-z0-9]/;
-
-  function toggle(el, ok){ el.classList.toggle('valid', ok); el.classList.toggle('invalid', !ok); }
-  function validate(){
-    const p = pw.value||'', c = cpw.value||'';
-    const okLen=p.length>=8, okU=reU.test(p), okL=reL.test(p), okD=reD.test(p), okS=reS.test(p), okM=p && p===c;
-    toggle(g.len, okLen); toggle(g.up, okU); toggle(g.lo, okL); toggle(g.di, okD); toggle(g.sp, okS); toggle(g.ma, okM);
-    const allOk = okLen && okU && okL && okD && okS && okM;
-    if((p.length===0 && c.length===0) || allOk){ guide.classList.add('hidden'); } else { guide.classList.remove('hidden'); }
-    return allOk;
+  // Alert system
+  function showAlert(message, type = 'error') {
+    const alertContainer = document.getElementById('alertContainer');
+    const alertColors = {
+      success: 'from-green-600/20 to-emerald-600/20 border-green-500/30 text-green-300',
+      error: 'from-red-600/20 to-rose-600/20 border-red-500/30 text-red-300',
+      warning: 'from-yellow-600/20 to-amber-600/20 border-yellow-500/30 text-yellow-300',
+      info: 'from-blue-600/20 to-sky-600/20 border-blue-500/30 text-blue-300'
+    };
+    
+    const alertHtml = `
+      <div class="bg-gradient-to-r ${alertColors[type]} border rounded-lg p-4 mb-4 animate-fade-in">
+        <div class="flex items-center gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            ${type === 'success' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />' : 
+              type === 'error' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />' :
+              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />'}
+          </svg>
+          <span class="text-sm font-medium">${message}</span>
+        </div>
+      </div>
+    `;
+    
+    alertContainer.innerHTML = alertHtml;
+    setTimeout(() => {
+      alertContainer.innerHTML = '';
+    }, 5000);
   }
-  pw.addEventListener('input', validate);
-  cpw.addEventListener('input', validate);
-  document.getElementById('resetForm').addEventListener('submit', function(e){
-    if(!validate()) e.preventDefault();
-  });
-})();
+
+  // Handle flash messages
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        showAlert('{{ message }}', '{{ category }}');
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  // Password visibility toggle
+  (function() {
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    const eyeIcon = document.getElementById('eyeIcon');
+    
+    const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+    const confirmPasswordInput = document.getElementById('confirm_password');
+    const confirmEyeIcon = document.getElementById('confirmEyeIcon');
+
+    const eyeOpenSVG = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />';
+    const eyeClosedSVG = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />';
+
+    togglePassword.addEventListener('click', function() {
+      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordInput.setAttribute('type', type);
+      eyeIcon.innerHTML = type === 'password' ? eyeOpenSVG : eyeClosedSVG;
+    });
+
+    toggleConfirmPassword.addEventListener('click', function() {
+      const type = confirmPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      confirmPasswordInput.setAttribute('type', type);
+      confirmEyeIcon.innerHTML = type === 'password' ? eyeOpenSVG : eyeClosedSVG;
+    });
+  })();
+
+  // Password validation
+  (function(){
+    const pw = document.getElementById('password');
+    const cpw = document.getElementById('confirm_password');
+    const guide = document.getElementById('guidelines');
+    const g = {
+      len: document.getElementById('g-len'),
+      up: document.getElementById('g-upper'),
+      lo: document.getElementById('g-lower'),
+      di: document.getElementById('g-digit'),
+      sp: document.getElementById('g-special'),
+      ma: document.getElementById('g-match')
+    };
+    const reU=/[A-Z]/, reL=/[a-z]/, reD=/[0-9]/, reS=/[^A-Za-z0-9]/;
+
+    function toggle(el, ok){ 
+      el.classList.toggle('text-green-400', ok); 
+      el.classList.toggle('text-red-400', !ok);
+      const svg = el.querySelector('svg');
+      if (ok) {
+        svg.innerHTML = '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>';
+      } else {
+        svg.innerHTML = '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>';
+      }
+    }
+    
+    function validate(){
+      const p = pw.value||'', c = cpw.value||'';
+      const okLen=p.length>=8, okU=reU.test(p), okL=reL.test(p), okD=reD.test(p), okS=reS.test(p), okM=p && p===c;
+      toggle(g.len, okLen); toggle(g.up, okU); toggle(g.lo, okL); toggle(g.di, okD); toggle(g.sp, okS); toggle(g.ma, okM);
+      const allOk = okLen && okU && okL && okD && okS && okM;
+      if((p.length===0 && c.length===0) || allOk){ guide.classList.add('hidden'); } else { guide.classList.remove('hidden'); }
+      return allOk;
+    }
+    
+    pw.addEventListener('input', validate);
+    cpw.addEventListener('input', validate);
+    document.getElementById('resetForm').addEventListener('submit', function(e){
+      if(!validate()) {
+        e.preventDefault();
+        showAlert('Please ensure all password requirements are met.', 'error');
+        return;
+      }
+      
+      // Show processing state
+      const resetBtn = document.getElementById('resetBtn');
+      resetBtn.disabled = true;
+      const originalText = resetBtn.querySelector('span').innerHTML;
+      resetBtn.querySelector('span').innerHTML = `
+        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Resetting Password...
+      `;
+      
+      // Reset after 5 seconds if no redirect
+      setTimeout(() => {
+        resetBtn.disabled = false;
+        resetBtn.querySelector('span').innerHTML = originalText;
+      }, 5000);
+    });
+    
+    // Auto-focus OTP field
+    document.getElementById('otp').focus();
+    
+    // Only allow numbers in OTP field
+    document.getElementById('otp').addEventListener('input', function(e) {
+      this.value = this.value.replace(/[^0-9]/g, '');
+    });
+  })();
 </script>
+
+<style>
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+  
+  /* Form input focus effects */
+  input:focus ~ label,
+  input:not(:placeholder-shown) ~ label {
+    top: -0.5rem;
+    font-size: 0.75rem;
+    color: rgb(251 146 60);
+  }
+</style>
 {% endblock %}

@@ -852,7 +852,7 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path d="M5 13l4 4L19 7"/>
           </svg>
-          Create Rule
+          <span id="submitBtnText">Create Rule</span>
         </button>
       </div>
     </div>
@@ -906,8 +906,10 @@ function closeModal() {
   updateStepIndicators();
   updateButtons();
   
-  // Reset title
+  // Reset title and current rule ID
   document.getElementById('ruleModalTitle').textContent = 'Create Trading Rule';
+  document.getElementById('submitBtnText').textContent = 'Create Rule';
+  currentRuleId = null;
   
   // Reset counters
   document.getElementById('titleCounter').textContent = '0/100 characters';
@@ -1272,10 +1274,10 @@ async function handleSubmit(e) {
   
   // Collect form data manually to ensure radio buttons are captured
   const data = {
-    title: document.getElementById('ruleTitle').value,
-    description: document.getElementById('ruleDescription').value,
+    title: document.getElementById('ruleTitle').value.trim(),
+    description: document.getElementById('ruleDescription').value.trim(),
     category: document.querySelector('input[name="category"]:checked')?.value || 'Entry',
-    tags: document.getElementById('ruleTags').value,
+    tags: document.getElementById('ruleTags').value.trim(),
     priority: document.querySelector('input[name="priority"]:checked')?.value || 'medium',
     active: true, // Always active for new rules
     save_template: document.getElementById('saveTemplate').checked
@@ -1299,6 +1301,8 @@ async function handleSubmit(e) {
     console.log('Server response:', result); // Debug log
     
     if (result.success) {
+      // Show success message
+      alert(result.message || (currentRuleId ? 'Rule updated successfully!' : 'Rule created successfully!'));
       closeModal();
       location.reload();
     } else {
@@ -1314,47 +1318,74 @@ async function handleSubmit(e) {
 async function editRule(ruleId) {
   try {
     const response = await fetch(`/calculatentrade_journal/api/rules/${ruleId}`);
-    const rule = await response.json();
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to load rule');
+    }
     
     currentRuleId = ruleId;
     document.getElementById('ruleModalTitle').textContent = 'Edit Rule';
+    document.getElementById('submitBtnText').textContent = 'Update Rule';
     document.getElementById('ruleId').value = ruleId;
-    document.getElementById('ruleTitle').value = rule.title;
-    document.getElementById('ruleDescription').value = rule.description || '';
+    document.getElementById('ruleTitle').value = result.title;
+    document.getElementById('ruleDescription').value = result.description || '';
+    
     // Set category radio button
-    const categoryRadio = document.querySelector(`input[name="category"][value="${rule.category}"]`);
+    const categoryRadio = document.querySelector(`input[name="category"][value="${result.category || 'Entry'}"]`);
     if (categoryRadio) {
       categoryRadio.checked = true;
       categoryRadio.dispatchEvent(new Event('change'));
     }
-    document.getElementById('ruleTags').value = rule.tags || '';
-    document.getElementById('rulePriority').value = rule.priority;
-    document.getElementById('ruleActive').checked = rule.active;
-
-    document.getElementById('saveTemplate').checked = rule.save_template;
+    
+    // Set priority radio button
+    const priorityRadio = document.querySelector(`input[name="priority"][value="${result.priority || 'medium'}"]`);
+    if (priorityRadio) {
+      priorityRadio.checked = true;
+      priorityRadio.dispatchEvent(new Event('change'));
+    }
+    
+    document.getElementById('ruleTags').value = result.tags || '';
+    document.getElementById('saveTemplate').checked = result.save_template || false;
+    
+    // Update character counters
+    updateCounter('ruleTitle', 'titleCounter', 100);
+    updateCounter('ruleDescription', 'descCounter', 500);
     
     openModal();
   } catch (error) {
+    console.error('Error loading rule:', error);
     alert('Error loading rule: ' + error.message);
   }
 }
 
 // Delete rule
 async function deleteRule(ruleId) {
-  if (!confirm('Are you sure you want to delete this rule?')) return;
+  if (!confirm('Are you sure you want to delete this rule? This action cannot be undone.')) {
+    return;
+  }
   
   try {
     const response = await fetch(`/calculatentrade_journal/api/rules/${ruleId}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
     
-    if (response.ok) {
+    const result = await response.json();
+    
+    if (result.success) {
+      // Show success message
+      alert('Rule deleted successfully!');
+      // Reload the page to refresh the rules list
       location.reload();
     } else {
-      alert('Error deleting rule');
+      throw new Error(result.message || 'Failed to delete rule');
     }
   } catch (error) {
-    alert('Error: ' + error.message);
+    console.error('Error deleting rule:', error);
+    alert('Error deleting rule: ' + error.message);
   }
 }
 

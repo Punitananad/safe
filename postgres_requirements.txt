@@ -1,0 +1,2 @@
+# PostgreSQL dependencies for CalculatenTrade migration
+psycopg2-binary==2.9.9

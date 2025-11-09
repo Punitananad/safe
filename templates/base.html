@@ -62,7 +62,16 @@
         <img src="{{ url_for('static', filename='favicons/android-chrome-192x192.png') }}" alt="CNT Logo" class="w-10 h-10 rounded-lg">
         <div>
           <div class="text-sm sidebar-label">{{ (current_user.email.split('@')[0] if (current_user is defined and current_user.is_authenticated) else 'Trader') }}</div>
-          <div class="text-xs muted sidebar-label">Active trader</div>
+          <div class="text-xs muted sidebar-label">
+            {% if current_user.is_authenticated %}
+              <span class="inline-flex items-center gap-1">
+                <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                Active session
+              </span>
+            {% else %}
+              Guest user
+            {% endif %}
+          </div>
         </div>
       </div>
 
@@ -280,6 +289,9 @@
   <!-- Toast Service -->
   <script src="{{ url_for('static', filename='js/toast-service.js') }}"></script>
   
+  <!-- Session Manager -->
+  <script src="{{ url_for('static', filename='js/session-manager.js') }}"></script>
+  
   <!-- Flash Messages Integration -->
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -290,6 +302,13 @@
       </div>
     {% endif %}
   {% endwith %}
+
+  <!-- Session Info Display -->
+  {% if current_user.is_authenticated %}
+  <div id="session-info" class="fixed bottom-4 right-4 z-50">
+    <!-- Session info will be populated by JavaScript -->
+  </div>
+  {% endif %}
 
   {% block extra_js %}{% endblock %}
 </body>

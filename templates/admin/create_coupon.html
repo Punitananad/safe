@@ -1,99 +1,266 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Create Coupon</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .form-container { max-width: 500px; background: white; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="text"], input[type="number"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 3px; box-sizing: border-box; }
-        button { padding: 12px 20px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer; }
-        button:hover { background: #218838; }
-        .flash { background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin-bottom: 15px; }
-        .nav { margin-bottom: 20px; }
-        .nav a { margin-right: 15px; text-decoration: none; color: #007bff; }
-        .checkbox-group { display: flex; align-items: center; }
-        .checkbox-group input { margin-right: 8px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>Create Coupon</h1>
-        <div>
-            Owner Panel | 
-            <a href="{{ url_for('admin.logout') }}">Logout</a>
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Create Coupon | Admin Dashboard{% endblock %}
+{% block page_title %}Create Coupon{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-lg border-0">
+      <div class="card-header bg-gradient-primary text-white">
+        <div class="d-flex align-items-center">
+          <i class="fas fa-plus-circle me-3 fs-4"></i>
+          <h4 class="mb-0">Create New Coupon</h4>
         </div>
-    </div>
+      </div>
+      
+      <div class="card-body p-4">
+        <form method="POST" id="couponForm">
+          <div class="row">
+            <!-- Coupon Code -->
+            <div class="col-md-6 mb-4">
+              <label for="code" class="form-label fw-bold">
+                <i class="fas fa-tag text-primary me-2"></i>Coupon Code
+              </label>
+              <input type="text" 
+                     class="form-control form-control-lg" 
+                     id="code" 
+                     name="code" 
+                     placeholder="e.g., SAVE20, WELCOME10" 
+                     required
+                     style="text-transform: uppercase;">
+              <div class="form-text">
+                <i class="fas fa-info-circle me-1"></i>
+                Use uppercase letters and numbers only
+              </div>
+            </div>
 
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            {% for message in messages %}
-                <div class="flash">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+            <!-- Discount Percentage -->
+            <div class="col-md-6 mb-4">
+              <label for="discount_percent" class="form-label fw-bold">
+                <i class="fas fa-percentage text-success me-2"></i>Discount Percentage
+              </label>
+              <div class="input-group input-group-lg">
+                <input type="number" 
+                       class="form-control" 
+                       id="discount_percent" 
+                       name="discount_percent" 
+                       min="1" 
+                       max="100" 
+                       value="10" 
+                       required>
+                <span class="input-group-text">%</span>
+              </div>
+              <div class="form-text">
+                <i class="fas fa-info-circle me-1"></i>
+                Enter discount percentage (1-100%)
+              </div>
+            </div>
+          </div>
 
-    <div class="nav">
-        <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
-        <a href="{{ url_for('admin.coupons') }}">View Coupons</a>
-        <a href="{{ url_for('admin.create_user') }}">Create Admin User</a>
-    </div>
+          <div class="row">
+            <!-- Assign to Mentor -->
+            <div class="col-md-6 mb-4">
+              <label for="mentor_id" class="form-label fw-bold">
+                <i class="fas fa-user-tie text-info me-2"></i>Assign to Mentor
+                <span class="badge bg-secondary ms-2">Optional</span>
+              </label>
+              <select class="form-select form-select-lg" id="mentor_id" name="mentor_id">
+                <option value="">No mentor (Platform-level)</option>
+                {% for mentor in mentors %}
+                <option value="{{ mentor.id }}">{{ mentor.name }}</option>
+                {% endfor %}
+              </select>
+              <div class="form-text">
+                <i class="fas fa-info-circle me-1"></i>
+                Leave empty for platform-level coupon
+              </div>
+            </div>
 
-    <div class="form-container">
-        <h2>New Coupon</h2>
-        
-        <form method="POST">
-            <div class="form-group">
-                <label for="code">Coupon Code:</label>
-                <input type="text" id="code" name="code" required placeholder="e.g., SAVE20" maxlength="50">
+            <!-- Active Status -->
+            <div class="col-md-6 mb-4">
+              <label class="form-label fw-bold">
+                <i class="fas fa-toggle-on text-warning me-2"></i>Status
+              </label>
+              <div class="form-check form-switch mt-2">
+                <input class="form-check-input" 
+                       type="checkbox" 
+                       id="active" 
+                       name="active" 
+                       checked
+                       style="transform: scale(1.5);">
+                <label class="form-check-label ms-2 fw-semibold" for="active">
+                  Active Coupon
+                </label>
+              </div>
+              <div class="form-text">
+                <i class="fas fa-info-circle me-1"></i>
+                Only active coupons can be used by customers
+              </div>
             </div>
-            
-            <div class="form-group">
-                <label for="discount_percent">Discount Percentage:</label>
-                <input type="number" id="discount_percent" name="discount_percent" value="10" required min="1" max="100" placeholder="e.g., 20">
-            </div>
-            
-            <div class="form-group">
-                <label for="mentor_id">Assign to Mentor (optional):</label>
-                <select id="mentor_id" name="mentor_id" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 3px;" onchange="updateCommission()">
-                    <option value="" data-commission="40.0">No mentor (Platform-level)</option>
-                    {% for mentor in mentors %}
-                        <option value="{{ mentor.id }}" data-commission="{{ mentor.get('commission_pct', 40.0) }}">{{ mentor.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="max_uses">Maximum Uses:</label>
-                <input type="number" id="max_uses" name="max_uses" value="100" min="1" placeholder="e.g., 100">
-            </div>
-            
-            <div class="form-group">
-                <label for="commission_pct">Mentor Commission %:</label>
-                <input type="number" id="commission_pct" name="commission_pct" value="40.0" min="0" max="100" step="0.1" placeholder="e.g., 40.0">
-            </div>
-            
-            <div class="form-group">
-                <div class="checkbox-group">
-                    <input type="checkbox" id="active" name="active" checked>
-                    <label for="active">Active</label>
+          </div>
+
+          <!-- Preview Card -->
+          <div class="row mb-4">
+            <div class="col-12">
+              <div class="card bg-light border-2 border-dashed">
+                <div class="card-header bg-transparent">
+                  <h6 class="mb-0">
+                    <i class="fas fa-eye text-primary me-2"></i>Coupon Preview
+                  </h6>
                 </div>
+                <div class="card-body text-center">
+                  <div class="coupon-preview p-4 bg-gradient-primary text-white rounded-3 d-inline-block">
+                    <div class="fs-4 fw-bold mb-2" id="preview-code">SAVE20</div>
+                    <div class="fs-6">
+                      <span id="preview-discount">10</span>% OFF
+                    </div>
+                    <div class="small mt-2 opacity-75">
+                      Valid for subscription purchases
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            
-            <button type="submit">Create Coupon</button>
-        </form>
-    </div>
+          </div>
 
-    <script>
-        function updateCommission() {
-            const mentorSelect = document.getElementById('mentor_id');
-            const commissionInput = document.getElementById('commission_pct');
-            const selectedOption = mentorSelect.options[mentorSelect.selectedIndex];
-            const commission = selectedOption.getAttribute('data-commission') || '40.0';
-            commissionInput.value = commission;
-        }
-    </script>
-</body>
-</html>
+          <!-- Action Buttons -->
+          <div class="d-flex justify-content-between align-items-center">
+            <a href="{{ url_for('admin.coupons') }}" class="btn btn-outline-secondary btn-lg">
+              <i class="fas fa-arrow-left me-2"></i>Back to Coupons
+            </a>
+            
+            <div class="d-flex gap-3">
+              <button type="reset" class="btn btn-outline-warning btn-lg">
+                <i class="fas fa-undo me-2"></i>Reset Form
+              </button>
+              <button type="submit" class="btn btn-success btn-lg">
+                <i class="fas fa-save me-2"></i>Create Coupon
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.bg-gradient-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.coupon-preview {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+  border: 2px dashed rgba(255, 255, 255, 0.3);
+  position: relative;
+}
+
+.coupon-preview::before,
+.coupon-preview::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: #f8f9fa;
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.coupon-preview::before {
+  left: -10px;
+}
+
+.coupon-preview::after {
+  right: -10px;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.card {
+  transition: all 0.3s ease;
+}
+
+.btn {
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.form-check-input:checked {
+  background-color: #28a745;
+  border-color: #28a745;
+}
+
+#code {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const codeInput = document.getElementById('code');
+  const discountInput = document.getElementById('discount_percent');
+  const previewCode = document.getElementById('preview-code');
+  const previewDiscount = document.getElementById('preview-discount');
+
+  // Update preview in real-time
+  function updatePreview() {
+    const code = codeInput.value.toUpperCase() || 'SAVE20';
+    const discount = discountInput.value || '10';
+    
+    previewCode.textContent = code;
+    previewDiscount.textContent = discount;
+  }
+
+  // Auto-uppercase coupon code
+  codeInput.addEventListener('input', function() {
+    this.value = this.value.toUpperCase();
+    updatePreview();
+  });
+
+  discountInput.addEventListener('input', updatePreview);
+
+  // Form validation
+  document.getElementById('couponForm').addEventListener('submit', function(e) {
+    const code = codeInput.value.trim();
+    const discount = parseInt(discountInput.value);
+
+    if (code.length < 3) {
+      e.preventDefault();
+      alert('Coupon code must be at least 3 characters long');
+      codeInput.focus();
+      return;
+    }
+
+    if (!/^[A-Z0-9]+$/.test(code)) {
+      e.preventDefault();
+      alert('Coupon code can only contain uppercase letters and numbers');
+      codeInput.focus();
+      return;
+    }
+
+    if (discount < 1 || discount > 100) {
+      e.preventDefault();
+      alert('Discount percentage must be between 1 and 100');
+      discountInput.focus();
+      return;
+    }
+  });
+
+  // Initialize preview
+  updatePreview();
+});
+</script>
+{% endblock %}

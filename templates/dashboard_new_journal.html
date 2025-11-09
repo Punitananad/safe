@@ -291,7 +291,7 @@ class TradingDashboard {
         data: {
           labels: ['Wins', 'Losses', 'Breakeven'],
           datasets: [{
-            data: [{{ winning_trades }}, {{ losing_trades }}, {{ total_trades - winning_trades - losing_trades }}],
+            data: [{{ winning_trades|int }}, {{ losing_trades|int }}, {{ (total_trades - winning_trades - losing_trades)|int }}],
             backgroundColor: ['#10b981', '#ef4444', '#6b7280'],
             borderWidth: 0
           }]

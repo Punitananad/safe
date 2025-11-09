@@ -1,0 +1,6 @@
+# Additional requirements for enhanced broker connectivity
+cryptography>=3.4.8
+requests>=2.28.0
+pyjwt>=2.4.0
+redis>=4.3.0  # For session storage in production
+celery>=5.2.0  # For background tasks

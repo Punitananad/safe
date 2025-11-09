@@ -1,0 +1,263 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Mentor Details - {{ mentor.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-0">Mentor Details</h2>
+                    <p class="text-muted">Complete overview of mentor performance and commission history</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('admin.mentors') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Mentors
+                    </a>
+                    <a href="{{ url_for('admin.mentor_payments', mentor_id=mentor.id) }}" class="btn btn-primary">
+                        <i class="fas fa-money-bill-wave"></i> Manage Payments
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mentor Info Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-user-tie"></i> Mentor Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Name:</strong></td>
+                                    <td>{{ mentor.name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Mentor ID:</strong></td>
+                                    <td><span class="badge badge-info">{{ mentor.mentor_id }}</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Email:</strong></td>
+                                    <td>{{ mentor.email }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Status:</strong></td>
+                                    <td>
+                                        {% if mentor.active %}
+                                            <span class="badge badge-success">Active</span>
+                                        {% else %}
+                                            <span class="badge badge-danger">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Commission Rate:</strong></td>
+                                    <td><span class="badge badge-warning">{{ analytics[5] if analytics and analytics[5] else 40.0 }}%</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Joined:</strong></td>
+                                    <td>{{ mentor.created_at.strftime('%Y-%m-%d') if mentor.created_at else 'N/A' }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-gradient-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="mb-0">{{ analytics[0] if analytics else 0 }}</h3>
+                            <p class="mb-0">Total Usage</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-chart-line fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-gradient-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="mb-0">{{ analytics[1] if analytics else 0 }}</h3>
+                            <p class="mb-0">Unique Students</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-gradient-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="mb-0">₹{{ "%.2f"|format((analytics[2] if analytics else 0) / 100) }}</h3>
+                            <p class="mb-0">Total Commission</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-rupee-sign fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-gradient-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="mb-0">{{ analytics[4] if analytics else 0 }}</h3>
+                            <p class="mb-0">Total Coupons</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-ticket-alt fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assigned Coupons -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-ticket-alt"></i> Assigned Coupons</h5>
+                </div>
+                <div class="card-body">
+                    {% if coupons %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Discount</th>
+                                        <th>Max Uses</th>
+                                        <th>Current Uses</th>
+                                        <th>Status</th>
+                                        <th>Created</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for coupon in coupons %}
+                                    <tr>
+                                        <td><code>{{ coupon[0] }}</code></td>
+                                        <td>{{ coupon[1] }}%</td>
+                                        <td>{{ coupon[2] }}</td>
+                                        <td>{{ coupon[3] }}</td>
+                                        <td>
+                                            {% if coupon[4] %}
+                                                <span class="badge badge-success">Active</span>
+                                            {% else %}
+                                                <span class="badge badge-secondary">Inactive</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ coupon[5].strftime('%Y-%m-%d') if coupon[5] else 'N/A' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-ticket-alt fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No coupons assigned to this mentor yet.</p>
+                            <a href="{{ url_for('admin.assign_coupon_to_mentor') }}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Assign Coupon
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Students -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-graduation-cap"></i> Recent Students</h5>
+                </div>
+                <div class="card-body">
+                    {% if students %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Student Email</th>
+                                        <th>Student Name</th>
+                                        <th>Coupon Used</th>
+                                        <th>Commission Earned</th>
+                                        <th>Discount Given</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for student in students %}
+                                    <tr>
+                                        <td>{{ student[0] }}</td>
+                                        <td>{{ student[1] }}</td>
+                                        <td><code>{{ student[2] }}</code></td>
+                                        <td class="text-success">₹{{ "%.2f"|format((student[4] if student[4] else 0) / 100) }}</td>
+                                        <td class="text-info">₹{{ "%.2f"|format((student[5] if student[5] else 0) / 100) }}</td>
+                                        <td>{{ student[3].strftime('%Y-%m-%d %H:%M') if student[3] else 'N/A' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-graduation-cap fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No students have used this mentor's coupons yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.bg-gradient-primary {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+}
+.bg-gradient-success {
+    background: linear-gradient(45deg, #28a745, #1e7e34);
+}
+.bg-gradient-info {
+    background: linear-gradient(45deg, #17a2b8, #117a8b);
+}
+.bg-gradient-warning {
+    background: linear-gradient(45deg, #ffc107, #d39e00);
+}
+.opacity-75 {
+    opacity: 0.75;
+}
+</style>
+{% endblock %}

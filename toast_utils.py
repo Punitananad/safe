@@ -1,163 +1,88 @@
 """
-Toast notification utilities for CalculateNTrade
-Provides standardized flash message handling with deduplication
+Toast notification utilities for CalculateNTrade application
+Provides centralized toast management with deduplication and session persistence
 """
 
-from flask import flash, session
-import time
-from typing import Optional, Dict, Any
+from flask import session, request
+import json
+from datetime import datetime
 import hashlib
 
 class ToastManager:
-    """Centralized toast message management"""
-    
-    # Standard message templates to avoid duplication
-    MESSAGES = {
-        'login_success': 'Welcome back! You have successfully logged in.',
-        'login_failed': 'Invalid credentials. Please check your email and password.',
-        'logout_success': 'You have been logged out successfully.',
-        'register_success': 'Account created successfully! You can now log in.',
-        'register_failed': 'Registration failed. Please try again.',
-        'email_exists': 'An account with this email already exists.',
-        'verification_sent': 'Verification code sent to your email.',
-        'verification_failed': 'Verification failed. Please try again.',
-        'password_reset_sent': 'If that email exists, a reset code has been sent.',
-        'password_reset_success': 'Password reset successful. Please log in.',
-        'settings_updated': 'Settings updated successfully.',
-        'trade_saved': 'Trade saved successfully.',
-        'trade_updated': 'Trade updated successfully.',
-        'trade_deleted': 'Trade deleted successfully.',
-        'strategy_saved': 'Strategy saved successfully.',
-        'strategy_updated': 'Strategy updated successfully.',
-        'strategy_deleted': 'Strategy deleted successfully.',
-        'mistake_saved': 'Mistake logged successfully.',
-        'mistake_updated': 'Mistake updated successfully.',
-        'mistake_deleted': 'Mistake deleted successfully.',
-        'subscription_required': 'This feature requires an active subscription.',
-        'subscription_success': 'Subscription activated successfully!',
-        'payment_success': 'Payment processed successfully.',
-        'payment_failed': 'Payment failed. Please try again.',
-        'access_denied': 'Access denied. Insufficient permissions.',
-        'session_expired': 'Your session has expired. Please log in again.',
-        'network_error': 'Network error. Please check your connection.',
-        'server_error': 'Server error. Please try again later.',
-        'validation_error': 'Please check your input and try again.',
-        'file_upload_success': 'File uploaded successfully.',
-        'file_upload_failed': 'File upload failed. Please try again.',
-        'data_export_success': 'Data exported successfully.',
-        'data_import_success': 'Data imported successfully.',
-        'broker_connected': 'Broker account connected successfully.',
-        'broker_disconnected': 'Broker account disconnected.',
-        'broker_connection_failed': 'Failed to connect to broker. Please check your credentials.'
-    }
+    """Centralized toast notification manager"""
     
     @staticmethod
-    def _get_message_id(message: str, category: str = 'info') -> str:
-        """Generate unique ID for message deduplication"""
-        content = f"{category}:{message}"
-        return hashlib.md5(content.encode()).hexdigest()[:12]
+    def _get_toast_key():
+        """Get session key for toast storage"""
+        return '_toast_notifications'
     
     @staticmethod
-    def _should_dedupe(message_id: str, dedupe_window: int = 10) -> bool:
-        """Check if message should be deduplicated"""
-        if 'toast_recent' not in session:
-            session['toast_recent'] = {}
+    def _generate_toast_id(message, toast_type):
+        """Generate unique ID for toast deduplication"""
+        content = f"{message}_{toast_type}_{datetime.now().strftime('%Y%m%d%H')}"
+        return hashlib.md5(content.encode()).hexdigest()[:8]
+    
+    @staticmethod
+    def add_toast(message, toast_type='info', title=None, duration=5000, persistent=False):
+        """Add toast notification to session"""
+        if '_toast_notifications' not in session:
+            session['_toast_notifications'] = []
         
-        recent = session['toast_recent']
-        current_time = time.time()
+        toast_id = ToastManager._generate_toast_id(message, toast_type)
         
-        # Clean old entries
-        session['toast_recent'] = {
-            k: v for k, v in recent.items() 
-            if current_time - v < dedupe_window
+        # Check for duplicates
+        existing_toasts = session['_toast_notifications']
+        for toast in existing_toasts:
+            if toast.get('id') == toast_id:
+                return  # Skip duplicate
+        
+        toast = {
+            'id': toast_id,
+            'message': message,
+            'type': toast_type,
+            'title': title,
+            'duration': duration,
+            'persistent': persistent,
+            'timestamp': datetime.now().isoformat()
         }
         
-        if message_id in session['toast_recent']:
-            return True
-        
-        session['toast_recent'][message_id] = current_time
-        return False
+        session['_toast_notifications'].append(toast)
+        session.modified = True
     
-    @classmethod
-    def show(cls, message: str, category: str = 'info', 
-             template_key: Optional[str] = None, dedupe: bool = True) -> None:
-        """
-        Show a toast notification
-        
-        Args:
-            message: Message text or template key
-            category: Message category ('success', 'error', 'warning', 'info')
-            template_key: Use predefined message template
-            dedupe: Enable deduplication
-        """
-        # Use template if provided
-        if template_key and template_key in cls.MESSAGES:
-            message = cls.MESSAGES[template_key]
-        
-        # Clean and validate message
-        if not message or not isinstance(message, str):
-            return
-        
-        message = message.strip()
-        if not message:
-            return
-        
-        # Deduplication
-        if dedupe:
-            message_id = cls._get_message_id(message, category)
-            if cls._should_dedupe(message_id):
-                return
-        
-        # Ensure category is valid
-        valid_categories = {'success', 'error', 'warning', 'info'}
-        if category not in valid_categories:
-            category = 'info'
-        
-        flash(message, category)
+    @staticmethod
+    def get_toasts():
+        """Get and clear toast notifications from session"""
+        toasts = session.pop('_toast_notifications', [])
+        return toasts
     
-    @classmethod
-    def success(cls, message: str = None, template_key: str = None, dedupe: bool = True) -> None:
-        """Show success toast"""
-        cls.show(message or '', 'success', template_key, dedupe)
-    
-    @classmethod
-    def error(cls, message: str = None, template_key: str = None, dedupe: bool = True) -> None:
-        """Show error toast"""
-        cls.show(message or '', 'error', template_key, dedupe)
-    
-    @classmethod
-    def warning(cls, message: str = None, template_key: str = None, dedupe: bool = True) -> None:
-        """Show warning toast"""
-        cls.show(message or '', 'warning', template_key, dedupe)
-    
-    @classmethod
-    def info(cls, message: str = None, template_key: str = None, dedupe: bool = True) -> None:
-        """Show info toast"""
-        cls.show(message or '', 'info', template_key, dedupe)
+    @staticmethod
+    def clear_toasts():
+        """Clear all toast notifications"""
+        session.pop('_toast_notifications', None)
 
-# Convenience functions for backward compatibility
-def toast_success(message: str = None, template_key: str = None, dedupe: bool = True) -> None:
-    """Show success toast"""
-    ToastManager.success(message, template_key, dedupe)
+# Convenience functions
+def toast_success(message, title="Success", duration=4000):
+    """Add success toast notification"""
+    ToastManager.add_toast(message, 'success', title, duration)
 
-def toast_error(message: str = None, template_key: str = None, dedupe: bool = True) -> None:
-    """Show error toast"""
-    ToastManager.error(message, template_key, dedupe)
+def toast_error(message, title="Error", duration=6000):
+    """Add error toast notification"""
+    ToastManager.add_toast(message, 'error', title, duration)
 
-def toast_warning(message: str = None, template_key: str = None, dedupe: bool = True) -> None:
-    """Show warning toast"""
-    ToastManager.warning(message, template_key, dedupe)
+def toast_warning(message, title="Warning", duration=5000):
+    """Add warning toast notification"""
+    ToastManager.add_toast(message, 'warning', title, duration)
 
-def toast_info(message: str = None, template_key: str = None, dedupe: bool = True) -> None:
-    """Show info toast"""
-    ToastManager.info(message, template_key, dedupe)
+def toast_info(message, title="Info", duration=4000):
+    """Add info toast notification"""
+    ToastManager.add_toast(message, 'info', title, duration)
 
-# Context processor for templates
-def toast_context_processor() -> Dict[str, Any]:
-    """Add toast utilities to template context"""
+def toast_context_processor():
+    """Context processor to make toast utilities available in templates"""
     return {
+        'get_toast_notifications': ToastManager.get_toasts,
         'toast_success': toast_success,
         'toast_error': toast_error,
         'toast_warning': toast_warning,
-        'toast_info': toast_info,
+        'toast_info': toast_info
     }

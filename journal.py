@@ -10,10 +10,73 @@ import pyotp
 from dotenv import load_dotenv
 from flask_session import Session
 from flask_login import login_required
-from flask import current_app
-from sqlalchemy.dialects.sqlite import JSON 
-
 from werkzeug.utils import secure_filename
+
+# Safe import of current_app
+try:
+    from flask import current_app
+except ImportError:
+    current_app = None
+
+# Safe logging function
+def safe_log_error(message):
+    """Safely log errors with fallback to print"""
+    try:
+        if current_app and hasattr(current_app, 'logger'):
+            current_app.logger.error(message)
+        else:
+            print(f"ERROR: {message}")
+    except Exception:
+        print(f"ERROR: {message}")
+
+def _get_empty_dashboard_data():
+    """Return empty dashboard data structure for error cases"""
+    return {
+        'recent_trades': [],
+        'win_rate': 0,
+        'highest_pnl': 0,
+        'trades_this_month': 0,
+        'risk_reward': 0,
+        'total_trades': 0,
+        'winning_trades': 0,
+        'losing_trades': 0,
+        'total_pnl': 0,
+        'monthly_pnl': 0,
+        'equity_curve': [],
+        'monthly_heatmap': [],
+        'current_streak': 0,
+        'longest_win_streak': 0,
+        'longest_loss_streak': 0,
+        'ai_insights': [],
+        'ai_risk_suggestions': [],
+        'mistake_alerts': [],
+        'rule_compliance': 0,
+        'avg_win': 0,
+        'avg_loss': 0,
+        'profit_factor': 0,
+        'max_drawdown': 0,
+        'expectancy': 0,
+        'sharpe_ratio': 0,
+        'risk_of_ruin': 0,
+        'avg_holding_time': "0 hours",
+        'best_trade_symbol': None,
+        'worst_trade_symbol': None,
+        'most_profitable_strategy': None,
+        'challenge_progress': [],
+        'reports_snapshot': {'period': 'No data', 'trades': 0, 'pnl': 0},
+        'xp_points': 0,
+        'level': 1,
+        'badges': [],
+        'strategies': [],
+        'mistakes': [],
+        'now': datetime.now()
+    }
+
+# Apply PostgreSQL compatibility fixes early
+try:
+    import pg_type_fix
+except ImportError:
+    pass
 
 
 
@@ -49,6 +112,8 @@ except Exception as e:
 # Load environment variables
 load_dotenv()
 
+
+
 # Initialize database
 db = SQLAlchemy()
 
@@ -56,6 +121,44 @@ db = SQLAlchemy()
 calculatentrade_bp = Blueprint("calculatentrade", __name__, url_prefix="/calculatentrade_journal")
 
 # Initialize Flask app (will be used in main.py or similar)
+
+# Import and register multi-broker blueprint
+try:
+    from multi_broker_system import multi_broker_bp, integrate_with_calculatentrade
+    # The blueprint will be registered in the main app initialization
+except ImportError as e:
+    safe_log_error(f"Multi-broker system not available: {e}")
+    multi_broker_bp = None
+
+# Helper function for subscription checks
+def subscription_required_journal(f):
+    """Decorator to check subscription for journal routes"""
+    from functools import wraps
+    
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        from subscription_models import get_user_active_subscription
+        from flask_login import current_user
+        from flask import redirect, url_for, session
+        from toast_utils import toast_warning
+        
+        # Check if user is logged in via session
+        if "email" not in session:
+            toast_warning("Please log in to access Journal features.")
+            return redirect(url_for("login"))
+        
+        # Check if current_user is available and has id attribute
+        if not current_user or not hasattr(current_user, 'id') or not current_user.id:
+            toast_warning("Please log in to access Journal features.")
+            return redirect(url_for("login"))
+            
+        active_sub = get_user_active_subscription(current_user.id)
+        if not active_sub:
+            toast_warning("Active subscription required to access Journal features.")
+            return redirect(url_for("subscription"))
+        
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Auto-load persisted accounts on module import
 def init_broker_accounts():
@@ -164,9 +267,9 @@ class RuleStats(db.Model):
 
 # ---- Mistake + supporting models (replace the old simple Mistake class) ----
 from sqlalchemy import Index
-from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON  # optional - but we use db.JSON below
+# Using generic db.JSON for PostgreSQL compatibility
 
-# NOTE: using plain strings for "enums" makes SQLite migrations easier and keeps portability.
+# NOTE: using plain strings for "enums" for PostgreSQL compatibility.
 MISTAKE_CATEGORIES = ('execution', 'analysis', 'risk', 'psychology', 'process', 'other')
 MISTAKE_SEVERITIES = ('low', 'medium', 'high', 'critical')
 
@@ -203,9 +306,8 @@ class Mistake(db.Model):
     current_version = db.Column(db.Integer, nullable=True)
 
     # Attachments & metadata
-    # Attachments & metadata
-# NOTE: attribute renamed to avoid SQLAlchemy reserved attribute 'metadata'
-    metadata_json = db.Column('metadata', db.JSON, default=dict)
+    # NOTE: attribute renamed to avoid SQLAlchemy reserved attribute 'metadata'
+    metadata_json = db.Column('metadata', db.Text, default='{}')
     attachments_count = db.Column(db.Integer, default=0)
 
 
@@ -243,7 +345,7 @@ class Mistake(db.Model):
             'resolved_by': self.resolved_by,
             'is_deleted': self.is_deleted,
             # expose metadata under the old key name for clients
-            'metadata': self.metadata_json or {},
+            'metadata': json.loads(self.metadata_json) if self.metadata_json and self.metadata_json != '{}' else {},
             'attachments_count': self.attachments_count,
             'pnl_impact': self.pnl_impact,
             'risk_at_time': self.risk_at_time,
@@ -273,7 +375,7 @@ class MistakeAttachment(db.Model):
     size = db.Column(db.Integer)
     url = db.Column(db.String(2000))   # path or CDN url
     # python attribute renamed to avoid SQLAlchemy reserved attribute 'metadata'
-    attachment_metadata_json = db.Column('metadata', db.JSON, default=dict)
+    attachment_metadata_json = db.Column('metadata', db.Text, default='{}')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
@@ -284,7 +386,7 @@ class MistakeAttachment(db.Model):
             'size': self.size,
             'url': self.url,
             # expose as 'metadata' to clients to keep API stable
-            'metadata': self.attachment_metadata_json or {},
+            'metadata': json.loads(self.attachment_metadata_json) if self.attachment_metadata_json and self.attachment_metadata_json != '{}' else {},
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
@@ -312,8 +414,7 @@ class MistakeTradeLink(db.Model):
 
 Index('ix_mistakes_searchable_text', Mistake.searchable_text)
 
-# Optional: For production, consider creating an FTS5 virtual table in SQLite (or use Postgres tsvector)
-# e.g. CREATE VIRTUAL TABLE mistake_fts USING fts5(title, description, content='mistakes', content_rowid='id');
+# PostgreSQL full-text search can be implemented using tsvector columns if needed
 
 
 class Challenge(db.Model):
@@ -922,6 +1023,61 @@ def api_dashboard_monthly_heatmap():
 
 
 
+@calculatentrade_bp.route('/api/update_trade/<int:trade_id>', methods=['POST'])
+def api_update_trade(trade_id):
+    """Update a trade in the database"""
+    try:
+        data = request.get_json()
+        
+        # Find the trade
+        trade = Trade.query.get_or_404(trade_id)
+        
+        # Update trade fields
+        if 'date' in data:
+            trade.date = datetime.strptime(data['date'], '%Y-%m-%d')
+        if 'symbol' in data:
+            trade.symbol = data['symbol']
+        if 'trade_type' in data:
+            trade.trade_type = data['trade_type']
+        if 'quantity' in data:
+            trade.quantity = float(data['quantity'])
+        if 'entry_price' in data:
+            trade.entry_price = float(data['entry_price'])
+        if 'exit_price' in data:
+            trade.exit_price = float(data['exit_price'])
+        if 'pnl' in data:
+            trade.pnl = float(data['pnl'])
+        if 'result' in data:
+            trade.result = data['result']
+        if 'notes' in data:
+            trade.notes = data['notes']
+        
+        # Save to database
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Trade updated successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@calculatentrade_bp.route('/api/delete_trade/<int:trade_id>', methods=['POST'])
+def api_delete_trade(trade_id):
+    """Delete a trade from the database"""
+    try:
+        # Find the trade
+        trade = Trade.query.get_or_404(trade_id)
+        
+        # Delete the trade
+        db.session.delete(trade)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Trade deleted successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @calculatentrade_bp.route('/api/dashboard/trade_review', methods=['POST'])
 def api_dashboard_trade_review():
     """Mark a trade as reviewed"""
@@ -973,249 +1129,459 @@ def api_dashboard_add_reflection():
 
 
 @calculatentrade_bp.route('/dashboard')
-@login_required
+@subscription_required_journal
 def dashboard():
-    # Basic metrics
-    recent_trades = Trade.query.order_by(Trade.date.desc()).limit(10).all()
-    total_trades = Trade.query.count()
-    winning_trades = Trade.query.filter_by(result='win').count()
-    losing_trades = Trade.query.filter_by(result='loss').count()
-    win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
+    """Enhanced dashboard with comprehensive error handling"""
+    try:
+        # Initialize database connection if needed
+        if not db or not hasattr(db, 'engine'):
+            safe_log_error("Database not properly initialized")
+            return render_template(
+                'dashboard_new_journal.html',
+                error_message="Database connection issue. Please try again.",
+                **_get_empty_dashboard_data()
+            )
+        # Basic metrics with error handling
+        try:
+            recent_trades = Trade.query.order_by(Trade.date.desc()).limit(10).all()
+        except Exception as e:
+            safe_log_error(f"Error fetching recent trades: {e}")
+            recent_trades = []
+        
+        try:
+            # ✅ FIX: Ensure all counts are integers for safe comparison
+            total_trades = Trade.query.count() or 0
+            winning_trades = Trade.query.filter_by(result='win').count() or 0
+            losing_trades = Trade.query.filter_by(result='loss').count() or 0
+            
+            # Ensure they are integers
+            total_trades = int(total_trades)
+            winning_trades = int(winning_trades)
+            losing_trades = int(losing_trades)
+        except Exception as e:
+            safe_log_error(f"Error fetching trade counts: {e}")
+            total_trades = 0
+            winning_trades = 0
+            losing_trades = 0
+        
+        win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
     
-    # PnL calculations
-    total_pnl = sum(t.pnl for t in Trade.query.all())
-    highest_pnl_trade = Trade.query.filter_by(result='win').order_by(Trade.pnl.desc()).first()
-    highest_pnl = highest_pnl_trade.pnl if highest_pnl_trade else 0
+        # PnL calculations with error handling
+        try:
+            all_trades = Trade.query.all()
+            total_pnl = sum(float(t.pnl or 0) for t in all_trades)
+            highest_pnl_trade = Trade.query.filter_by(result='win').order_by(Trade.pnl.desc()).first()
+            highest_pnl = float(highest_pnl_trade.pnl) if highest_pnl_trade and highest_pnl_trade.pnl else 0
+        except Exception as e:
+            safe_log_error(f"Error calculating PnL: {e}")
+            total_pnl = 0
+            highest_pnl = 0
     
-    # Monthly stats
-    start_of_month = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    trades_this_month = Trade.query.filter(Trade.date >= start_of_month).count()
-    monthly_pnl = sum(t.pnl for t in Trade.query.filter(Trade.date >= start_of_month).all())
+        # Monthly stats with error handling
+        try:
+            start_of_month = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            # ✅ FIX: Ensure count is integer for safe comparison
+            trades_this_month = Trade.query.filter(Trade.date >= start_of_month.date()).count() or 0
+            trades_this_month = int(trades_this_month)
+            monthly_trades = Trade.query.filter(Trade.date >= start_of_month.date()).all()
+            monthly_pnl = sum(float(t.pnl or 0) for t in monthly_trades)
+        except Exception as e:
+            safe_log_error(f"Error calculating monthly stats: {e}")
+            trades_this_month = 0
+            monthly_pnl = 0
     
-    # Risk/Reward calculations
-    trades_with_risk = Trade.query.filter(Trade.risk > 0, Trade.reward > 0).all()
-    risk_reward = 0
-    if trades_with_risk:
-        total_ratio = sum(trade.reward / trade.risk for trade in trades_with_risk if trade.risk > 0)
-        risk_reward = round(total_ratio / len(trades_with_risk), 2)
-    
-    # Equity curve data (last 30 days)
-    last_30_days = datetime.now() - timedelta(days=30)
-    trades_30_days = Trade.query.filter(Trade.date >= last_30_days).order_by(Trade.date).all()
-    equity_curve = []
-    cumulative_pnl = 0
-    for trade in trades_30_days:
-        cumulative_pnl += trade.pnl
-        equity_curve.append({'date': trade.date.strftime('%Y-%m-%d'), 'pnl': cumulative_pnl})
-    
-    # Monthly heatmap data (last 12 months)
-    monthly_heatmap = []
-    for i in range(12):
-        month_start = (datetime.now().replace(day=1) - timedelta(days=30*i)).replace(day=1)
-        month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
-        month_trades = Trade.query.filter(Trade.date >= month_start, Trade.date <= month_end).all()
-        month_pnl = sum(t.pnl for t in month_trades)
-        monthly_heatmap.append({
-            'month': month_start.strftime('%b %Y'),
-            'pnl': month_pnl,
-            'trades': len(month_trades)
-        })
-    
-    # Win/Loss streaks
-    current_streak = 0
-    longest_win_streak = 0
-    longest_loss_streak = 0
-    temp_win_streak = 0
-    temp_loss_streak = 0
-    
-    for trade in reversed(recent_trades):
-        if trade.result == 'win':
-            temp_win_streak += 1
-            temp_loss_streak = 0
-            longest_win_streak = max(longest_win_streak, temp_win_streak)
-        elif trade.result == 'loss':
-            temp_loss_streak += 1
+        # Risk/Reward calculations
+        try:
+            trades_with_risk = Trade.query.filter(
+                Trade.risk.isnot(None), 
+                Trade.reward.isnot(None),
+                Trade.risk > 0, 
+                Trade.reward > 0
+            ).all()
+        except Exception as e:
+            safe_log_error(f"Error fetching trades with risk: {e}")
+            trades_with_risk = []
+        
+        risk_reward = 0
+        if trades_with_risk:
+            # ✅ FIX: Ensure proper float conversion and safe comparison
+            valid_trades = []
+            for trade in trades_with_risk:
+                try:
+                    risk_val = float(trade.risk) if trade.risk is not None else 0.0
+                    reward_val = float(trade.reward) if trade.reward is not None else 0.0
+                    if risk_val > 0:
+                        valid_trades.append(reward_val / risk_val)
+                except (ValueError, TypeError, ZeroDivisionError):
+                    continue
+            if valid_trades:
+                risk_reward = round(sum(valid_trades) / len(valid_trades), 2)
+        
+        # Equity curve data (last 30 days)
+        try:
+            last_30_days = datetime.now() - timedelta(days=30)
+            trades_30_days = Trade.query.filter(Trade.date >= last_30_days.date()).order_by(Trade.date).all()
+            equity_curve = []
+            cumulative_pnl = 0
+            for trade in trades_30_days:
+                try:
+                    cumulative_pnl += float(trade.pnl or 0)
+                    equity_curve.append({
+                        'date': trade.date.strftime('%Y-%m-%d'), 
+                        'pnl': round(cumulative_pnl, 2)
+                    })
+                except (ValueError, TypeError, AttributeError):
+                    continue
+        except Exception as e:
+            safe_log_error(f"Error calculating equity curve: {e}")
+            equity_curve = []
+        
+        # Monthly heatmap data (last 12 months)
+        try:
+            monthly_heatmap = []
+            for i in range(12):
+                try:
+                    month_start = (datetime.now().replace(day=1) - timedelta(days=30*i)).replace(day=1)
+                    month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+                    month_trades = Trade.query.filter(
+                        Trade.date >= month_start.date(), 
+                        Trade.date <= month_end.date()
+                    ).all()
+                    month_pnl = sum(float(t.pnl or 0) for t in month_trades)
+                    monthly_heatmap.append({
+                        'month': month_start.strftime('%b %Y'),
+                        'pnl': round(month_pnl, 2),
+                        'trades': len(month_trades)
+                    })
+                except Exception:
+                    continue
+        except Exception as e:
+            safe_log_error(f"Error calculating monthly heatmap: {e}")
+            monthly_heatmap = []
+        
+        # Win/Loss streaks
+        try:
+            current_streak = 0
+            longest_win_streak = 0
+            longest_loss_streak = 0
             temp_win_streak = 0
-            longest_loss_streak = max(longest_loss_streak, temp_loss_streak)
-    
-    current_streak = temp_win_streak if temp_win_streak > 0 else -temp_loss_streak
-    
-    # AI insights (mock data for now)
-    ai_insights = [
-        {"trade_id": t.id, "reason": "Good entry timing", "mistake": "Exit too early", "improvement": "Hold for target"}
-        for t in recent_trades[:5]
-    ]
-    
-    ai_risk_suggestions = [
-        "Consider reducing position size by 10% based on recent volatility",
-        "Your win rate is strong - maintain current strategy",
-        "Review stop-loss levels - recent trades show 15% average loss"
-    ]
-    
-    # Mistake analysis
-    mistake_alerts = []
-    for mistake in Mistake.query.all():
-        count = mistake.recurrence_count or 1
-        if count >= 3:
-            mistake_alerts.append({
-                'title': mistake.title,
-                'count': count,
-                'severity': mistake.severity,
-                'impact': abs(mistake.pnl_impact) if mistake.pnl_impact else 0
-            })
-    
-    # Rule compliance (mock calculation)
-    total_rules = Rule.query.count()
-    rule_compliance = 85 if total_rules > 0 else 0  # Mock percentage
-    
-    # Advanced metrics
-    avg_win = sum(t.pnl for t in Trade.query.filter_by(result='win').all()) / winning_trades if winning_trades > 0 else 0
-    avg_loss = abs(sum(t.pnl for t in Trade.query.filter_by(result='loss').all()) / losing_trades) if losing_trades > 0 else 0
-    
-    # Profit Factor = Gross Profit ÷ Gross Loss
-    gross_profit = sum(t.pnl for t in Trade.query.filter_by(result='win').all())
-    gross_loss = abs(sum(t.pnl for t in Trade.query.filter_by(result='loss').all()))
-    profit_factor = gross_profit / gross_loss if gross_loss > 0 else 0
-    
-    # Max Drawdown calculation
-    all_trades = Trade.query.order_by(Trade.date).all()
-    cumulative_pnl = 0
-    peak = 0
-    max_drawdown = 0
-    for trade in all_trades:
-        cumulative_pnl += trade.pnl
-        if cumulative_pnl > peak:
-            peak = cumulative_pnl
-        drawdown = peak - cumulative_pnl
-        if drawdown > max_drawdown:
-            max_drawdown = drawdown
-    
-    # Expectancy = (Win% × AvgWin) - (Loss% × AvgLoss)
-    expectancy = (win_rate/100 * avg_win) - ((100-win_rate)/100 * avg_loss) if total_trades > 0 else 0
-    
-    # Sharpe ratio (simplified)
-    sharpe_ratio = (total_pnl / total_trades) / (total_pnl * 0.1) if total_trades > 0 and total_pnl != 0 else 0
-    
-    # Risk of ruin (simplified calculation)
-    risk_of_ruin = max(0, min(100, (100 - win_rate) * 2)) if win_rate < 60 else 5
-    
-    # Average holding time (mock)
-    avg_holding_time = "2.5 hours"  # Would need entry/exit timestamps
-    
-    # Best and worst trade symbols
-    best_trade = Trade.query.filter_by(result='win').order_by(Trade.pnl.desc()).first()
-    worst_trade = Trade.query.filter_by(result='loss').order_by(Trade.pnl.asc()).first()
-    best_trade_symbol = best_trade.symbol if best_trade else None
-    worst_trade_symbol = worst_trade.symbol if worst_trade else None
-    
-    # Most profitable strategy
-    most_profitable_strategy = None
-    best_pnl = float('-inf')
-    for strategy in Strategy.query.all():
-        strategy_pnl = sum(t.pnl for t in Trade.query.filter_by(strategy_id=strategy.id).all())
-        if strategy_pnl > best_pnl:
-            best_pnl = strategy_pnl
-            most_profitable_strategy = {'name': strategy.name, 'pnl': strategy_pnl}
-    
-    # Challenge progress
-    active_challenges = Challenge.query.filter_by(status='ongoing').all()
-    challenge_progress = []
-    for challenge in active_challenges[:3]:  # Top 3
-        trades = challenge.trades.all()
-        current_pnl = sum(t.pnl for t in trades)
-        progress = (current_pnl / challenge.target_value * 100) if challenge.target_value > 0 else 0
-        challenge_progress.append({
-            'title': challenge.title,
-            'progress': min(progress, 100),
-            'current': current_pnl,
-            'target': challenge.target_value
-        })
-    
-    # Reports snapshot
-    last_7_days = datetime.now() - timedelta(days=7)
-    week_trades = Trade.query.filter(Trade.date >= last_7_days).all()
-    week_pnl = sum(t.pnl for t in week_trades)
-    
-    reports_snapshot = {
-        'period': 'Last 7 days',
-        'trades': len(week_trades),
-        'pnl': week_pnl
-    }
-    
-    # Gamification (mock data)
-    xp_points = total_trades * 10 + winning_trades * 5
-    level = min(10, xp_points // 100 + 1)
-    
-    badges = []
-    if winning_trades >= 5:
-        badges.append({'name': '5 Wins', 'icon': 'trophy', 'color': 'gold'})
-    if win_rate >= 60:
-        badges.append({'name': 'High Win Rate', 'icon': 'target', 'color': 'green'})
-    if monthly_pnl > 0:
-        badges.append({'name': 'Profitable Month', 'icon': 'chart-line', 'color': 'blue'})
-    
-    return render_template(
-        'dashboard_new_journal.html',
-        # Basic metrics
-        recent_trades=recent_trades,
-        win_rate=round(win_rate, 2),
-        highest_pnl=highest_pnl,
-        trades_this_month=trades_this_month,
-        risk_reward=risk_reward,
-        total_trades=total_trades,
-        winning_trades=winning_trades,
-        losing_trades=losing_trades,
-        total_pnl=total_pnl,
-        monthly_pnl=monthly_pnl,
+            temp_loss_streak = 0
+            
+            for trade in reversed(recent_trades):
+                try:
+                    if trade.result == 'win':
+                        temp_win_streak += 1
+                        temp_loss_streak = 0
+                        longest_win_streak = max(longest_win_streak, temp_win_streak)
+                    elif trade.result == 'loss':
+                        temp_loss_streak += 1
+                        temp_win_streak = 0
+                        longest_loss_streak = max(longest_loss_streak, temp_loss_streak)
+                except AttributeError:
+                    continue
+            
+            current_streak = temp_win_streak if temp_win_streak > 0 else -temp_loss_streak
+        except Exception as e:
+            safe_log_error(f"Error calculating streaks: {e}")
+            current_streak = 0
+            longest_win_streak = 0
+            longest_loss_streak = 0
         
-        # Charts data
-        equity_curve=equity_curve,
-        monthly_heatmap=monthly_heatmap,
+        # AI insights (mock data for now)
+        try:
+            ai_insights = []
+            for t in recent_trades[:5]:
+                try:
+                    ai_insights.append({
+                        "trade_id": t.id, 
+                        "reason": "Good entry timing", 
+                        "mistake": "Exit too early", 
+                        "improvement": "Hold for target"
+                    })
+                except AttributeError:
+                    continue
+            
+            ai_risk_suggestions = [
+                "Consider reducing position size by 10% based on recent volatility",
+                "Your win rate is strong - maintain current strategy",
+                "Review stop-loss levels - recent trades show 15% average loss"
+            ]
+        except Exception as e:
+            safe_log_error(f"Error generating AI insights: {e}")
+            ai_insights = []
+            ai_risk_suggestions = []
         
-        # Streaks
-        current_streak=current_streak,
-        longest_win_streak=longest_win_streak,
-        longest_loss_streak=longest_loss_streak,
+        # Mistake analysis
+        try:
+            mistake_alerts = []
+            mistakes = Mistake.query.all()
+            for mistake in mistakes:
+                try:
+                    # ✅ FIX: Ensure proper integer casting for count comparison
+                    count = int(mistake.recurrence_count or 1)
+                    if count >= 3:  # Safe: int >= int
+                        # ✅ FIX: Ensure pnl_impact is properly cast to float
+                        impact = abs(float(mistake.pnl_impact)) if mistake.pnl_impact is not None else 0.0
+                        mistake_alerts.append({
+                            'title': mistake.title,
+                            'count': count,
+                            'severity': mistake.severity,
+                            'impact': impact
+                        })
+                except (ValueError, TypeError, AttributeError):
+                    continue
+        except Exception as e:
+            safe_log_error(f"Error analyzing mistakes: {e}")
+            mistake_alerts = []
         
-        # AI insights
-        ai_insights=ai_insights,
-        ai_risk_suggestions=ai_risk_suggestions,
-        
-        # Mistakes & Rules
-        mistake_alerts=mistake_alerts,
-        rule_compliance=rule_compliance,
+        # Rule compliance (mock calculation)
+        try:
+            total_rules = Rule.query.count() or 0
+            total_rules = int(total_rules)  # ✅ FIX: Ensure count is integer
+            rule_compliance = 85 if total_rules > 0 else 0  # Safe: int > int
+        except Exception as e:
+            safe_log_error(f"Error calculating rule compliance: {e}")
+            total_rules = 0
+            rule_compliance = 0
         
         # Advanced metrics
-        avg_win=avg_win,
-        avg_loss=avg_loss,
-        profit_factor=profit_factor,
-        max_drawdown=max_drawdown,
-        expectancy=round(expectancy, 2),
-        sharpe_ratio=round(sharpe_ratio, 2),
-        risk_of_ruin=round(risk_of_ruin, 1),
-        avg_holding_time=avg_holding_time,
-        best_trade_symbol=best_trade_symbol,
-        worst_trade_symbol=worst_trade_symbol,
-        most_profitable_strategy=most_profitable_strategy,
+        try:
+            # ✅ FIX: winning_trades and losing_trades are already cast to int above, so comparisons are safe
+            win_trades = Trade.query.filter_by(result='win').all()
+            loss_trades = Trade.query.filter_by(result='loss').all()
+            
+            avg_win = sum(float(t.pnl or 0) for t in win_trades) / winning_trades if winning_trades > 0 else 0
+            avg_loss = abs(sum(float(t.pnl or 0) for t in loss_trades) / losing_trades) if losing_trades > 0 else 0
+        except Exception as e:
+            safe_log_error(f"Error calculating advanced metrics: {e}")
+            avg_win = 0
+            avg_loss = 0
         
-        # Reports & Challenges
-        challenge_progress=challenge_progress,
-        reports_snapshot=reports_snapshot,
+        # Profit Factor = Gross Profit ÷ Gross Loss
+        try:
+            win_trades = Trade.query.filter_by(result='win').all()
+            loss_trades = Trade.query.filter_by(result='loss').all()
+            
+            gross_profit = sum(float(t.pnl or 0) for t in win_trades)
+            gross_loss = abs(sum(float(t.pnl or 0) for t in loss_trades))
+            profit_factor = gross_profit / gross_loss if gross_loss > 0 else 0
+        except Exception as e:
+            safe_log_error(f"Error calculating profit factor: {e}")
+            profit_factor = 0
         
-        # Gamification
-        xp_points=xp_points,
-        level=level,
-        badges=badges,
+        # Max Drawdown calculation
+        try:
+            all_trades = Trade.query.order_by(Trade.date).all()
+            cumulative_pnl = 0
+            peak = 0
+            max_drawdown = 0
+            for trade in all_trades:
+                try:
+                    cumulative_pnl += float(trade.pnl or 0)
+                    if cumulative_pnl > peak:
+                        peak = cumulative_pnl
+                    drawdown = peak - cumulative_pnl
+                    if drawdown > max_drawdown:
+                        max_drawdown = drawdown
+                except (ValueError, TypeError):
+                    continue
+        except Exception as e:
+            safe_log_error(f"Error calculating max drawdown: {e}")
+            max_drawdown = 0
         
-        # Other data
-        strategies=Strategy.query.all(),
-        mistakes=Mistake.query.all(),
-        now=datetime.now()
-    )
+        # Expectancy = (Win% × AvgWin) - (Loss% × AvgLoss)
+        try:
+            # ✅ FIX: total_trades is already cast to int above, so comparison is safe
+            expectancy = (win_rate/100 * avg_win) - ((100-win_rate)/100 * avg_loss) if total_trades > 0 else 0
+        except Exception as e:
+            safe_log_error(f"Error calculating expectancy: {e}")
+            expectancy = 0
+        
+        # Sharpe ratio (simplified)
+        try:
+            # ✅ FIX: total_trades is already cast to int, comparisons are safe
+            if total_trades > 0 and total_pnl != 0:
+                avg_return = total_pnl / total_trades
+                # Simple volatility estimate
+                volatility = abs(total_pnl * 0.1) if total_pnl != 0 else 1
+                sharpe_ratio = avg_return / volatility
+            else:
+                sharpe_ratio = 0
+        except Exception as e:
+            safe_log_error(f"Error calculating Sharpe ratio: {e}")
+            sharpe_ratio = 0
+        
+        # Risk of ruin (simplified calculation)
+        try:
+            risk_of_ruin = max(0, min(100, (100 - win_rate) * 2)) if win_rate < 60 else 5
+        except Exception as e:
+            safe_log_error(f"Error calculating risk of ruin: {e}")
+            risk_of_ruin = 0
+        
+        # Average holding time (mock)
+        avg_holding_time = "2.5 hours"  # Would need entry/exit timestamps
+        
+        # Best and worst trade symbols
+        try:
+            best_trade = Trade.query.filter_by(result='win').order_by(Trade.pnl.desc()).first()
+            worst_trade = Trade.query.filter_by(result='loss').order_by(Trade.pnl.asc()).first()
+            best_trade_symbol = best_trade.symbol if best_trade else None
+            worst_trade_symbol = worst_trade.symbol if worst_trade else None
+        except Exception as e:
+            safe_log_error(f"Error finding best/worst trades: {e}")
+            best_trade_symbol = None
+            worst_trade_symbol = None
+        
+        # Most profitable strategy
+        try:
+            most_profitable_strategy = None
+            best_pnl = float('-inf')
+            strategies = Strategy.query.all()
+            for strategy in strategies:
+                try:
+                    strategy_trades = Trade.query.filter_by(strategy_id=strategy.id).all()
+                    strategy_pnl = sum(float(t.pnl or 0) for t in strategy_trades)
+                    if strategy_pnl > best_pnl:
+                        best_pnl = strategy_pnl
+                        most_profitable_strategy = {'name': strategy.name, 'pnl': strategy_pnl}
+                except Exception:
+                    continue
+        except Exception as e:
+            safe_log_error(f"Error finding most profitable strategy: {e}")
+            most_profitable_strategy = None
+        
+        # Challenge progress
+        try:
+            active_challenges = Challenge.query.filter_by(status='ongoing').all()
+            challenge_progress = []
+            for challenge in active_challenges[:3]:  # Top 3
+                try:
+                    trades = challenge.trades.all()
+                    current_pnl = sum(float(t.pnl or 0) for t in trades)
+                    # ✅ FIX: Cast target_value to float to ensure numeric comparison
+                    target_value = float(challenge.target_value) if challenge.target_value else 0
+                    progress = (current_pnl / target_value * 100) if target_value > 0 else 0
+                    challenge_progress.append({
+                        'title': challenge.title,
+                        'progress': min(progress, 100),
+                        'current': current_pnl,
+                        'target': target_value
+                    })
+                except Exception:
+                    continue
+        except Exception as e:
+            safe_log_error(f"Error calculating challenge progress: {e}")
+            challenge_progress = []
+        
+        # Reports snapshot
+        try:
+            last_7_days = datetime.now() - timedelta(days=7)
+            week_trades = Trade.query.filter(Trade.date >= last_7_days.date()).all()
+            week_pnl = sum(float(t.pnl or 0) for t in week_trades)
+            
+            reports_snapshot = {
+                'period': 'Last 7 days',
+                'trades': len(week_trades),
+                'pnl': week_pnl
+            }
+        except Exception as e:
+            safe_log_error(f"Error calculating reports snapshot: {e}")
+            reports_snapshot = {'period': 'No data', 'trades': 0, 'pnl': 0}
+        
+        # Gamification (mock data)
+        try:
+            # ✅ FIX: Ensure xp_points calculation uses integers
+            xp_points = int(total_trades * 10 + winning_trades * 5)
+            level = min(10, xp_points // 100 + 1)
+            
+            badges = []
+            # ✅ FIX: winning_trades is already int, comparison is safe
+            if winning_trades >= 5:
+                badges.append({'name': '5 Wins', 'icon': 'trophy', 'color': 'gold'})
+            # ✅ FIX: win_rate is float, comparison is safe
+            if win_rate >= 60:
+                badges.append({'name': 'High Win Rate', 'icon': 'target', 'color': 'green'})
+            # ✅ FIX: monthly_pnl is float, comparison is safe
+            if monthly_pnl > 0:
+                badges.append({'name': 'Profitable Month', 'icon': 'chart-line', 'color': 'blue'})
+        except Exception as e:
+            safe_log_error(f"Error calculating gamification data: {e}")
+            xp_points = 0
+            level = 1
+            badges = []
+    
+        return render_template(
+            'dashboard_new_journal.html',
+            # Basic metrics
+            recent_trades=recent_trades,
+            win_rate=round(win_rate, 2),
+            highest_pnl=highest_pnl,
+            trades_this_month=trades_this_month,
+            risk_reward=risk_reward,
+            total_trades=total_trades,
+            winning_trades=winning_trades,
+            losing_trades=losing_trades,
+            total_pnl=total_pnl,
+            monthly_pnl=monthly_pnl,
+            
+            # Charts data
+            equity_curve=equity_curve,
+            monthly_heatmap=monthly_heatmap,
+            
+            # Streaks
+            current_streak=current_streak,
+            longest_win_streak=longest_win_streak,
+            longest_loss_streak=longest_loss_streak,
+            
+            # AI insights
+            ai_insights=ai_insights,
+            ai_risk_suggestions=ai_risk_suggestions,
+            
+            # Mistakes & Rules
+            mistake_alerts=mistake_alerts,
+            rule_compliance=rule_compliance,
+            
+            # Advanced metrics
+            avg_win=avg_win,
+            avg_loss=avg_loss,
+            profit_factor=profit_factor,
+            max_drawdown=max_drawdown,
+            expectancy=round(expectancy, 2),
+            sharpe_ratio=round(sharpe_ratio, 2),
+            risk_of_ruin=round(risk_of_ruin, 1),
+            avg_holding_time=avg_holding_time,
+            best_trade_symbol=best_trade_symbol,
+            worst_trade_symbol=worst_trade_symbol,
+            most_profitable_strategy=most_profitable_strategy,
+            
+            # Reports & Challenges
+            challenge_progress=challenge_progress,
+            reports_snapshot=reports_snapshot,
+            
+            # Gamification
+            xp_points=xp_points,
+            level=level,
+            badges=badges,
+            
+            # Other data
+            strategies=Strategy.query.all() if db else [],
+            mistakes=Mistake.query.all() if db else [],
+            now=datetime.now()
+        )
+    except Exception as e:
+        safe_log_error(f"Critical error in journal dashboard: {e}")
+        import traceback
+        safe_log_error(f"Dashboard error traceback: {traceback.format_exc()}")
+        # Return minimal dashboard with empty data
+        return render_template(
+            'dashboard_new_journal.html',
+            error_message="Dashboard temporarily unavailable. Please try again.",
+            **_get_empty_dashboard_data()
+        )
 
 
 @calculatentrade_bp.route('/trades')
-@login_required
+@subscription_required_journal
 def get_trades():
     trades = Trade.query.order_by(Trade.date.desc()).all()
     strategies = Strategy.query.all()
@@ -1295,6 +1661,42 @@ def api_get_trade(trade_id):
     return jsonify(trade)
 
 
+@calculatentrade_bp.route('/real_broker_connect')
+@subscription_required_journal
+def real_broker_connect():
+    """Route to access multi-broker connect functionality"""
+    try:
+        # Import multi-broker functions
+        from multi_broker_system import get_broker_session_status, USER_SESSIONS
+        
+        user_id = request.args.get('user_id', 'default_user')
+        connected_brokers = []
+        
+        # Check all brokers for existing connections
+        for broker in ['kite', 'dhan', 'angel']:
+            try:
+                status = get_broker_session_status(broker, user_id)
+                if status['connected']:
+                    connected_brokers.append({
+                        'broker': broker,
+                        'user_id': user_id,
+                        'session_data': status.get('session_data', {})
+                    })
+            except Exception as e:
+                safe_log_error(f"Error checking {broker} status: {e}")
+                continue
+        
+        return render_template('multi_broker_connect.html',
+                             connected_brokers=connected_brokers,
+                             has_connected_brokers=len(connected_brokers) > 0,
+                             user_id=user_id)
+    except Exception as e:
+        safe_log_error(f"Error in real_broker_connect: {e}")
+        return render_template('multi_broker_connect.html',
+                             connected_brokers=[],
+                             has_connected_brokers=False,
+                             user_id='default_user')
+
 @calculatentrade_bp.route('/api/trades', methods=['POST'])
 def api_add_trade():
     try:
@@ -1358,7 +1760,7 @@ def api_add_trade():
 
 
 @calculatentrade_bp.route('/api/trades/<int:trade_id>', methods=['PUT'])
-def api_update_trade(trade_id):
+def api_update_trade_put(trade_id):
     try:
         trade = Trade.query.get_or_404(trade_id)
         data = request.json
@@ -1398,7 +1800,7 @@ def api_update_trade(trade_id):
 
 
 @calculatentrade_bp.route('/api/trades/<int:trade_id>', methods=['DELETE'])
-def api_delete_trade(trade_id):
+def api_delete_trade_delete(trade_id):
     trade = Trade.query.get_or_404(trade_id)
     db.session.delete(trade)
     db.session.commit()
@@ -1437,6 +1839,7 @@ def api_get_strategy(strategy_id):
 
 
 @calculatentrade_bp.route('/strategies')
+@subscription_required_journal
 def get_strategies():
     strategies = Strategy.query.all()
     enriched_strategies = []
@@ -1629,6 +2032,7 @@ def api_delete_strategy(strategy_id):
 
 
 @calculatentrade_bp.route('/rules')
+@subscription_required_journal
 def get_rules():
     try:
         # Get filter parameters
@@ -1743,7 +2147,14 @@ def api_get_rule(rule_id):
     return jsonify({
         'id': r.id,
         'title': r.title,
-        'description': r.description
+        'description': r.description,
+        'category': getattr(r, 'category', 'Entry'),
+        'tags': getattr(r, 'tags', ''),
+        'priority': getattr(r, 'priority', 'medium'),
+        'active': getattr(r, 'active', True),
+        'linked_strategy_id': getattr(r, 'linked_strategy_id', None),
+        'violation_consequence': getattr(r, 'violation_consequence', 'log'),
+        'save_template': getattr(r, 'save_template', False)
     })
 
 
@@ -1785,27 +2196,36 @@ def api_add_rule():
 
 @calculatentrade_bp.route('/api/rules/<int:rule_id>', methods=['PUT'])
 def api_update_rule(rule_id):
-    data = request.json
-    r = Rule.query.get_or_404(rule_id)
-    
-    # Validation
-    title = data.get('title', r.title).strip()
-    if not title or len(title) > 100:
-        return jsonify({'success': False, 'message': 'Title is required and must be under 100 characters'}), 400
-    
-    r.title = title
-    r.description = data.get('description', r.description)
-    r.category = data.get('category', r.category)
-    r.tags = data.get('tags', r.tags)
-    r.priority = data.get('priority', r.priority)
-    r.active = data.get('active', r.active)
-    r.linked_strategy_id = int(data.get('linked_strategy_id')) if data.get('linked_strategy_id') else None
-    r.violation_consequence = data.get('violation_consequence', r.violation_consequence)
-    r.save_template = data.get('save_template', r.save_template)
-    r.updated_at = datetime.utcnow()
-    
-    db.session.commit()
-    return jsonify({'success': True, 'id': r.id})
+    try:
+        data = request.json
+        r = Rule.query.get_or_404(rule_id)
+        
+        # Validation
+        title = data.get('title', r.title).strip()
+        if not title or len(title) > 100:
+            return jsonify({'success': False, 'message': 'Title is required and must be under 100 characters'}), 400
+        
+        # Check for duplicate title (excluding current rule)
+        existing = Rule.query.filter(Rule.title == title, Rule.id != rule_id).first()
+        if existing:
+            return jsonify({'success': False, 'message': 'A rule with this title already exists'}), 400
+        
+        r.title = title
+        r.description = data.get('description', r.description)
+        r.category = data.get('category', r.category)
+        r.tags = data.get('tags', r.tags)
+        r.priority = data.get('priority', r.priority)
+        r.active = data.get('active', r.active)
+        r.linked_strategy_id = int(data.get('linked_strategy_id')) if data.get('linked_strategy_id') else None
+        r.violation_consequence = data.get('violation_consequence', r.violation_consequence)
+        r.save_template = data.get('save_template', r.save_template)
+        r.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        return jsonify({'success': True, 'id': r.id, 'message': 'Rule updated successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 @calculatentrade_bp.route('/api/rules/<int:rule_id>', methods=['DELETE'])
@@ -1814,13 +2234,22 @@ def api_delete_rule(rule_id):
         r = Rule.query.get(rule_id)
         if not r:
             return jsonify({'success': False, 'message': 'Rule not found'}), 404
+        
+        # Delete associated rule stats first to avoid foreign key constraint issues
+        try:
+            stats = RuleStats.query.filter_by(rule_id=rule_id).all()
+            for stat in stats:
+                db.session.delete(stat)
+        except Exception:
+            pass  # Stats might not exist
             
         db.session.delete(r)
         db.session.commit()
         return jsonify({'success': True, 'message': 'Rule deleted successfully'})
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        current_app.logger.error(f'Error deleting rule {rule_id}: {str(e)}')
+        return jsonify({'success': False, 'message': f'Database error: {str(e)}'}), 500
 
 # Add missing rule compliance tracking endpoint
 @calculatentrade_bp.route('/api/rules/<int:rule_id>/violation', methods=['POST'])
@@ -1855,6 +2284,7 @@ def api_log_rule_violation(rule_id):
 
 
 @calculatentrade_bp.route('/mistakes')
+@subscription_required_journal
 def get_mistakes():
     mistakes = Mistake.query.order_by(Mistake.created_at.desc()).all()
     enriched_mistakes = []
@@ -1982,10 +2412,17 @@ def api_add_mistake():
             metadata = json.loads(metadata)
         except:
             metadata = {}
+    
+    # Serialize metadata to JSON string
+    metadata_json = json.dumps(metadata) if metadata else '{}'
 
     # Create Mistake with all available fields
+    reporter_id = data.get('reporter_id')
+    if reporter_id == '':
+        reporter_id = None
+        
     m = Mistake(
-        reporter_id=data.get('reporter_id'),
+        reporter_id=reporter_id,
         related_trade_id=related_trade_id,
         title=title,
         description=data.get('description'),
@@ -1994,7 +2431,7 @@ def api_add_mistake():
         confidence=confidence,
         pnl_impact=pnl_impact,
         risk_at_time=risk_at_time,
-        metadata_json=metadata,
+        metadata_json=metadata_json,
         searchable_text=f"{title} {data.get('description', '')}".strip()
     )
     db.session.add(m)
@@ -2041,7 +2478,8 @@ def api_add_mistake():
                     filename=filename,
                     mime_type=file.content_type,
                     size=os.path.getsize(file_path),
-                    url=url_for('calculatentrade.serve_mistake_attachment', filename=f"{m.id}_{filename}", _external=True)
+                    url=url_for('calculatentrade.serve_mistake_attachment', filename=f"{m.id}_{filename}", _external=True),
+                    attachment_metadata_json='{}'
                 )
                 db.session.add(attachment)
                 m.attachments_count = (m.attachments_count or 0) + 1
@@ -2113,7 +2551,7 @@ def api_update_mistake(mistake_id):
                 metadata = json.loads(metadata)
             except:
                 metadata = {}
-        m.metadata_json = metadata
+        m.metadata_json = json.dumps(metadata) if metadata else '{}'
     
     # Handle tags update
     if 'tags' in data:
@@ -2163,7 +2601,8 @@ def api_update_mistake(mistake_id):
                     filename=filename,
                     mime_type=file.content_type,
                     size=os.path.getsize(file_path),
-                    url=url_for('calculatentrade.serve_mistake_attachment', filename=f"{m.id}_{filename}", _external=True)
+                    url=url_for('calculatentrade.serve_mistake_attachment', filename=f"{m.id}_{filename}", _external=True),
+                    attachment_metadata_json='{}'
                 )
                 db.session.add(attachment)
                 m.attachments_count = m.attachments.count()
@@ -2242,6 +2681,7 @@ def api_get_trades_for_mistakes():
 
 # ---------------- CHALLENGES ---------------- #
 @calculatentrade_bp.route("/challenges")
+@subscription_required_journal
 def get_challenges():
     challenges = Challenge.query.order_by(Challenge.created_at.desc()).all()
     return render_template("challenges_journal.html", challenges=challenges, now=datetime.now())
@@ -2408,6 +2848,7 @@ def api_get_challenge_calendar(challenge_id):
 
 
 @calculatentrade_bp.route('/reports')
+@subscription_required_journal
 def get_reports():
     """
     Render enhanced reports page with performance analytics.
@@ -2944,6 +3385,7 @@ def api_strategies():
 
 
 @calculatentrade_bp.route('/trade_form', methods=['GET'])
+@subscription_required_journal
 def trade_form():
     """Empty form for adding a new trade"""
     strategies = Strategy.query.all()
@@ -3006,7 +3448,7 @@ def trade_form_post():
         db.session.add(trade)
         db.session.commit()
         
-        toast_success(template_key='trade_saved')
+        toast_success("Trade saved successfully!")
         return redirect(url_for('calculatentrade.get_trades'))
         
     except Exception as e:
@@ -3041,7 +3483,7 @@ def edit_trade_form(trade_id):
             trade.result = 'win' if trade.pnl > 0 else ('loss' if trade.pnl < 0 else 'breakeven')
             
             db.session.commit()
-            toast_success(template_key='trade_updated')
+            toast_success("Trade updated successfully!")
             return redirect(url_for('calculatentrade.get_trades'))
             
         except Exception as e:
@@ -3097,7 +3539,7 @@ def save_trade():
         db.session.add(trade)
 
     db.session.commit()
-    toast_success(template_key='trade_saved')
+    toast_success("Trade saved successfully!")
     return redirect(url_for(".get_trades"))   # ✅ go back to /trades
 
 
@@ -3443,7 +3885,7 @@ def settings():
 
 
 @calculatentrade_bp.route('/tutorials')
-@login_required
+@subscription_required_journal
 def tutorials():
     tutorials_list = [
         {
@@ -3480,36 +3922,127 @@ def tutorials():
     return render_template('tutorials_journal.html', tutorials=tutorials_list, now=datetime.now())
 
 
-# ---------------- BROKER CONNECTION ROUTES ---------------- #
-@calculatentrade_bp.route('/connect_broker')
-@login_required
-def connect_broker():
-    # Load persisted accounts on page load
+# ---------------- MULTI-BROKER API ENDPOINTS ---------------- #
+
+# Add the missing API endpoints that are returning 404
+@calculatentrade_bp.route('/api/multi_broker/register_app/<broker>', methods=['POST'])
+def api_register_app_broker(broker):
+    """Register broker app credentials"""
     try:
-        load_persisted_accounts_into_memory()
-        current_app.logger.info("Loaded persisted broker accounts")
+        from multi_broker_system import USER_APPS, save_broker_account
+        
+        if broker not in ['kite', 'dhan', 'angel']:
+            return jsonify({"ok": False, "message": "unknown broker"}), 400
+            
+        data = request.get_json(force=True)
+        user_id = data.get("user_id", "").strip()
+        api_key = data.get("api_key")
+        api_secret = data.get("api_secret")
+        client_id = data.get("client_id")
+        access_token = data.get("access_token")
+        totp_secret = data.get("totp_secret")
+        client_code = data.get("client_code")
+        password = data.get("password")
+
+        if not user_id:
+            return jsonify({"ok": False, "message": "user_id required"}), 400
+
+        # Save to in-memory store
+        USER_APPS.setdefault(broker, {})[user_id] = {
+            "api_key": api_key,
+            "api_secret": api_secret,
+            "client_id": client_id,
+            "access_token": access_token,
+            "totp_secret": totp_secret,
+            "client_code": client_code,
+            "password": password
+        }
+        
+        # Save to database if function is available
+        try:
+            save_broker_account(broker, user_id,
+                              api_key=api_key,
+                              api_secret=api_secret,
+                              client_id=client_id,
+                              access_token=access_token,
+                              totp_secret=totp_secret)
+        except Exception as e:
+            safe_log_error(f"Failed to save broker account: {e}")
+        
+        return jsonify({"ok": True, "message": f"Registered {user_id} for {broker}"}), 200
+        
     except Exception as e:
-        current_app.logger.error(f"Failed to load persisted accounts: {e}")
-    
-    # Get current user ID from session (you may need to adjust this based on your auth system)
-    current_user_id = session.get('user_id', 'NES881')
-    
-    # Check if user has any existing broker connections
-    existing_connections = []
-    for broker in ["kite", "dhan", "angel"]:
-        acc = BrokerAccount.query.filter_by(broker=broker, user_id=current_user_id).first()
-        if acc and acc.api_key:
-            existing_connections.append({
-                "broker": broker,
-                "connected": acc.connected,
-                "has_credentials": bool(acc.api_key and acc.api_secret),
-                "last_connected": acc.last_connected_at.isoformat() if acc.last_connected_at else None
+        safe_log_error(f"Error registering {broker} app: {e}")
+        return jsonify({"ok": False, "message": str(e)}), 500
+
+@calculatentrade_bp.route('/api/multi_broker/validate_session/<broker>/<user_id>')
+def api_validate_session(broker, user_id):
+    """Validate if a session is still active"""
+    try:
+        from multi_broker_system import get_broker_session_status
+        
+        status = get_broker_session_status(broker, user_id)
+        if status['connected']:
+            return jsonify({
+                'connected': True,
+                'broker': broker,
+                'user_id': user_id,
+                'session_data': status.get('session_data', {})
             })
-    
-    return render_template('connect_broker_journal.html', 
-                         now=datetime.now(), 
-                         current_user_id=current_user_id,
-                         existing_connections=existing_connections)
+        else:
+            return jsonify({
+                'connected': False,
+                'broker': broker,
+                'user_id': user_id
+            })
+    except Exception as e:
+        safe_log_error(f"Error validating session for {broker}/{user_id}: {e}")
+        return jsonify({
+            'connected': False,
+            'broker': broker,
+            'user_id': user_id,
+            'error': str(e)
+        })
+
+# ---------------- MULTI-BROKER INTEGRATION ---------------- #
+@calculatentrade_bp.route('/multi_broker_connect')
+def multi_broker_connect():
+    """Multi-broker connection page"""
+    try:
+        # Check for existing broker connections
+        from multi_broker_system import get_broker_session_status, USER_SESSIONS
+        
+        user_id = request.args.get('user_id', 'default_user')
+        connected_brokers = []
+        
+        # Check all brokers for existing connections
+        for broker in ['kite', 'dhan', 'angel']:
+            try:
+                status = get_broker_session_status(broker, user_id)
+                if status['connected']:
+                    connected_brokers.append({
+                        'broker': broker,
+                        'user_id': user_id,
+                        'session_data': status.get('session_data', {})
+                    })
+            except Exception as e:
+                safe_log_error(f"Error checking {broker} status: {e}")
+                continue
+        
+        return render_template('multi_broker_connect.html',
+                             connected_brokers=connected_brokers,
+                             has_connected_brokers=len(connected_brokers) > 0,
+                             user_id=user_id)
+    except Exception as e:
+        safe_log_error(f"Error in multi_broker_connect: {e}")
+        return render_template('multi_broker_connect.html',
+                             connected_brokers=[],
+                             has_connected_brokers=False,
+                             user_id='default_user')
+
+
+# ---------------- BROKER CONNECTION ROUTES ---------------- #
+
 
 # ---------- Helper for TOTP secret normalization ----------
 def _normalize_base32_secret(s: str):
@@ -4236,55 +4769,95 @@ def broker_status():
 # Multi-Broker Connect API Endpoints
 # Production note: Replace with encrypted DB storage and proper secret management
 
-@calculatentrade_bp.route("/api/broker/connect", methods=["POST"])
-def broker_connect():
-    """Save broker connection with persistent storage"""
+@calculatentrade_bp.route('/api/broker/get-all-data')
+def api_get_all_broker_data():
+    """Get all trading data from connected broker (orders, trades, positions)"""
     try:
-        data = request.get_json(force=True)
-        user_id = data.get("user_id", "NES881").strip()
-        broker = data.get("broker", "").strip()
-        connected = data.get("connected", True)
-        session_data = data.get("session_data", {})
+        from multi_broker_system import USER_SESSIONS, get_kite_for_user, _dhan_client_from_session, _handle_angel_call
         
-        # Validate input
-        if not broker or broker not in ["kite", "dhan", "angel"]:
-            return jsonify({"ok": False, "message": "Invalid broker"})
+        broker = request.args.get('broker')
+        user_id = request.args.get('user_id', 'NES881')
         
-        # Get or create broker account
-        account = BrokerAccount.query.filter_by(broker=broker, user_id=user_id).first()
-        if not account:
-            account = BrokerAccount(broker=broker, user_id=user_id)
-            db.session.add(account)
+        if not broker or broker not in ['kite', 'dhan', 'angel']:
+            return jsonify({'success': False, 'message': 'Invalid broker'})
         
-        # Update connection status
-        account.connected = connected
-        if connected:
-            account.last_connected_at = datetime.utcnow()
-            # Use existing access token if available, otherwise generate new one
-            if not account.access_token:
-                import secrets
-                account.access_token = f"bt_{broker}_{user_id}_{secrets.token_urlsafe(32)}"
-        else:
-            # Don't clear access_token on disconnect - keep for reconnection
-            pass
+        all_data = {}
         
-        db.session.commit()
-        current_app.logger.info(f"Broker {broker} connection {'established' if connected else 'removed'} for user {user_id}")
+        if broker == 'kite':
+            sess = USER_SESSIONS["kite"].get(user_id)
+            if sess:
+                kite = get_kite_for_user(user_id, sess["access_token"])
+                all_data['orders'] = kite.orders()
+                all_data['trades'] = kite.trades()
+                all_data['positions'] = kite.positions()
         
-        return jsonify({
-            "ok": True,
-            "message": "saved",
-            "user_id": user_id,
-            "broker": broker,
-            "token": account.access_token if connected else None
-        })
+        elif broker == 'dhan':
+            client, _, _ = _dhan_client_from_session(user_id)
+            if client:
+                all_data['orders'] = client.get_order_list()
+                all_data['positions'] = client.get_positions()
+                if hasattr(client, "get_trade_book"):
+                    all_data['trades'] = client.get_trade_book()
+                else:
+                    all_data['trades'] = []
+        
+        elif broker == 'angel':
+            all_data['orders'] = _handle_angel_call(user_id, "orderBook")
+            all_data['trades'] = _handle_angel_call(user_id, "tradeBook")
+            all_data['positions'] = _handle_angel_call(user_id, "position")
+        
+        return jsonify({'success': True, 'data': all_data})
         
     except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"Broker connect error: {e}")
-        return jsonify({"ok": False, "message": str(e)})
+        current_app.logger.error(f"Error fetching all broker data: {e}")
+        return jsonify({'success': False, 'message': str(e)})
 
-@calculatentrade_bp.route("/api/broker/status_api")
+
+
+@calculatentrade_bp.route('/api/broker/multi-status')
+def api_multi_broker_status():
+    """Get status of all brokers using multi-broker system"""
+    try:
+        from multi_broker_system import get_broker_session_status
+        
+        user_id = request.args.get('user_id', 'NES881')
+        brokers = ['kite', 'dhan', 'angel']
+        
+        broker_status = {}
+        for broker in brokers:
+            try:
+                status = get_broker_session_status(broker, user_id)
+                broker_status[broker] = {
+                    'connected': status['connected'],
+                    'user_id': user_id,
+                    'has_session_data': bool(status.get('session_data'))
+                }
+            except Exception as e:
+                broker_status[broker] = {
+                    'connected': False,
+                    'user_id': user_id,
+                    'error': str(e)
+                }
+        
+        return jsonify({
+            'success': True,
+            'user_id': user_id,
+            'brokers': broker_status
+        })
+        
+    except ImportError:
+        return jsonify({
+            'success': False,
+            'message': 'Multi-broker system not available'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        })
+
+
+@calculatentrade_bp.route("/api/broker/status")
 def broker_status_api():
     """Check broker connection status (alternative endpoint)"""
     user_id = request.args.get("user_id", "NES881").strip()
@@ -5397,3 +5970,19 @@ def migrate_rules_table():
         load_persisted_accounts_into_memory(app)
 
 # ---------------- MAIN ---------------- #
+        return jsonify({"ok": True, "message": f"Disconnected {broker} for user {user_id}"})
+        
+    except Exception as e:
+        current_app.logger.error(f"Disconnect error: {e}")
+        return jsonify({"ok": False, "message": str(e)})
+
+
+# Initialize broker accounts on module load
+try:
+    init_broker_accounts()
+except Exception as e:
+    print(f"Warning: Could not initialize broker accounts: {e}")
+
+
+# Export the blueprint
+__all__ = ['calculatentrade_bp']

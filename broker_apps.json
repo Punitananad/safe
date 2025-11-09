@@ -1,0 +1,21 @@
+{
+  "kite": {
+    "NES881": {
+      "api_key": "dg0e9xp065nfmkxm",
+      "api_secret": "7y92wjx2c3xuafuwbtsxg3bfvvl3h0fu",
+      "client_id": null,
+      "access_token": null,
+      "totp_secret": null
+    }
+  },
+  "dhan": {
+    "1107798386": {
+      "api_key": null,
+      "api_secret": null,
+      "client_id": "1107798386",
+      "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJkaGFuIiwicGFydG5lcklkIjoiIiwiZXhwIjoxNzYyNjkwOTk4LCJpYXQiOjE3NjI2MDQ1OTgsInRva2VuQ29uc3VtZXJUeXBlIjoiU0VMRiIsIndlYmhvb2tVcmwiOiIiLCJkaGFuQ2xpZW50SWQiOiIxMTA3Nzk4Mzg2In0.M4QLqT_cACFbs24_-5aCIZnAFKKi_xkerIPrlLMZJRfwtAvidD4yFqRQP3Zrs4Y43_-nb_Faynebv6bEK36M-w",
+      "totp_secret": null
+    }
+  },
+  "angel": {}
+}

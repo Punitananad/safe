@@ -239,7 +239,7 @@ class TradingJournalAdvanced {
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Connecting...');
         
         setTimeout(() => {
-            window.location.href = `/calculatentrade_journal/connect_broker?broker=${broker}`;
+            window.location.href = `/multi_broker_connect?broker=${broker}`;
         }, 1000);
     }
 
