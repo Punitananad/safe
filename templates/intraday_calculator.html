@@ -12,20 +12,32 @@
   .rounded-xl-2 { border-radius: 1rem; }
   .kbd { background: rgba(255,255,255,0.02); padding: .125rem .4rem; border-radius: .375rem; font-size: .85rem; color: var(--muted); }
 
-  main { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+  main { max-width: 1100px; margin: 0 auto; padding: 1rem; }
+  @media (min-width: 768px) {
+    main { padding: 2rem; }
+  }
   .search-results { max-height: 260px; overflow:auto; background: rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); border-radius: .75rem; }
-  .search-result-item { padding: .6rem .8rem; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; color: #e6eef6; }
+  .search-result-item { padding: .5rem .6rem; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; color: #e6eef6; font-size: 0.9rem; }
+  @media (min-width: 768px) {
+    .search-result-item { padding: .6rem .8rem; font-size: 1rem; }
+  }
   .search-result-item:hover, .search-result-item.highlighted { background: rgba(56,189,248,0.15); }
 
   .form-input { 
     background: rgba(255,255,255,0.02); 
     color: #e6eef6; 
     border: 2px solid rgba(255,255,255,0.08); 
-    padding: 0.75rem 1rem; 
+    padding: 0.6rem 0.8rem; 
     border-radius: 0.75rem; 
     width: 100%; 
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     transition: all 0.2s ease;
+  }
+  @media (min-width: 768px) {
+    .form-input {
+      padding: 0.75rem 1rem;
+      font-size: 0.95rem;
+    }
   }
   .form-input::placeholder { color: var(--muted); }
   .form-input:focus { 
@@ -40,7 +52,10 @@
   }
 
   
-  .btn { padding: .5rem .75rem; border-radius:.6rem; font-weight:600; cursor:pointer; border:1px solid rgba(255,255,255,0.04); }
+  .btn { padding: .4rem .6rem; border-radius:.6rem; font-weight:600; cursor:pointer; border:1px solid rgba(255,255,255,0.04); font-size: 0.85rem; }
+  @media (min-width: 768px) {
+    .btn { padding: .5rem .75rem; font-size: 1rem; }
+  }
   .btn-primary { background: linear-gradient(90deg,#06b6d4,#3b82f6); color:#041024; border:none; }
   .btn-success { background: linear-gradient(90deg,#10b981,#06b6d4); color:#041024; border:none; }
   .btn-warning { background: linear-gradient(90deg,#f59e0b,#fb923c); color:#041024; border:none; }
@@ -68,14 +83,21 @@
   }
 
   .trade-type .btn {
-    min-width: 100px;
+    min-width: 80px;
     text-align: center;
     font-weight: 700;
-    padding: 0.75rem 1rem;
+    padding: 0.6rem 0.8rem;
     border-radius: 0.5rem;
     transition: all 0.2s ease;
     border: 2px solid transparent;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
+  }
+  @media (min-width: 768px) {
+    .trade-type .btn {
+      min-width: 100px;
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+    }
   }
 
   .buy-btn {
@@ -124,7 +146,11 @@
   }
   @media (max-width: 1023px) {
     .grid-3 { display:block; }
+    .grid-results { display:grid; grid-template-columns: repeat(2, 1fr); gap:0.75rem; }
+  }
+  @media (max-width: 640px) {
     .grid-results { display:block; }
+    .grid-results > div { margin-bottom: 0.75rem; }
   }
 
 .card-bg {
@@ -162,101 +188,100 @@ aside {
 
 {% block content %}
 <main id="main" tabindex="-1">
-  <header class="mb-6">
-    <h1 class="text-2xl font-extrabold">Intraday Trade Calculator</h1>
-    <p class="muted mt-1 text-sm">Precise intraday sizing, stop-loss and targets — save to your journal when ready.</p>
+  <header class="mb-4 sm:mb-6">
+    <h1 class="text-xl sm:text-2xl font-extrabold">Intraday Trade Calculator</h1>
+    <p class="muted mt-1 text-xs sm:text-sm">Precise intraday sizing, stop-loss and targets — save to your journal when ready.</p>
   </header>
 
-  <section class="card-bg rounded-xl-2 p-6" aria-labelledby="trade-form-heading">
-    <h2 id="trade-form-heading" class="text-lg font-semibold mb-3">Stock Search & Trade Parameters</h2>
-    <p class="muted text-sm mb-4">Calculate entry, exit, risk and capital for intraday trades (demo uses 5× leverage).</p>
+  <section class="card-bg rounded-xl-2 p-4 sm:p-6" aria-labelledby="trade-form-heading">
+    <h2 id="trade-form-heading" class="text-base sm:text-lg font-semibold mb-2 sm:mb-3">Stock Search & Trade Parameters</h2>
+    <p class="muted text-xs sm:text-sm mb-3 sm:mb-4">Calculate entry, exit, risk and capital for intraday trades (demo uses 5× leverage).</p>
 
-      <form id="tradeForm" autocomplete="off" class="space-y-4">
+      <form id="tradeForm" autocomplete="off" class="space-y-3 sm:space-y-4">
 
         <div>
-          <label class="text-sm muted mb-2 block">Search for stock or enter manually</label>
+          <label class="text-xs sm:text-sm muted mb-1 sm:mb-2 block">Search for stock or enter manually</label>
           <div class="relative">
-            <input id="stockSearch" type="text" class="form-input pr-12" placeholder="Type symbol, company name, or enter manually" />
-            <button id="clearSearch" type="button" class="btn btn-outline absolute right-0 top-0 mt-1 mr-1" style="display:none;">✕</button>
+            <input id="stockSearch" type="text" class="form-input pr-10 sm:pr-12" placeholder="Type symbol, company name, or enter manually" />
+            <button id="clearSearch" type="button" class="btn btn-outline absolute right-0 top-0 mt-1 mr-1 text-xs" style="display:none;">✕</button>
           </div>
           <div id="searchResults" class="search-results mt-2" style="display:none;"></div>
           <p class="muted text-xs mt-2">💡 Search from database or type manually (e.g., RELIANCE, TCS, CUSTOM_SYMBOL) | <span class="text-green-400">Live market prices available</span></p>
-
         </div>
 
         <div id="stockPriceDisplay" style="display:none;" class="tile mt-2">
-          <div class="flex items-center justify-between">
-            <div>
-              <h3 id="stockName" class="font-semibold">Stock Name</h3>
-              <div class="mt-1 text-sm muted"><span class="kbd">Symbol</span> <span id="stockSymbol" class="ml-2 badge">SYMBOL</span></div>
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div class="flex-1">
+              <h3 id="stockName" class="font-semibold text-sm sm:text-base">Stock Name</h3>
+              <div class="mt-1 text-xs sm:text-sm muted"><span class="kbd">Symbol</span> <span id="stockSymbol" class="ml-2 badge">SYMBOL</span></div>
             </div>
-            <div class="text-right">
-              <div id="stockPrice" class="text-xl font-semibold">₹0.00</div>
-              <div id="stockChange" class="muted text-sm mt-1">+0.00 (+0.00%)</div>
-              <div id="stockUpdateTime" class="muted text-xs mt-2">--:--:--</div>
-              <div class="mt-3">
-                <button type="button" class="btn btn-primary" onclick="autoFillPrice()">Use this price</button>
+            <div class="text-center sm:text-right">
+              <div id="stockPrice" class="text-lg sm:text-xl font-semibold">₹0.00</div>
+              <div id="stockChange" class="muted text-xs sm:text-sm mt-1">+0.00 (+0.00%)</div>
+              <div id="stockUpdateTime" class="muted text-xs mt-1 sm:mt-2">--:--:--</div>
+              <div class="mt-2 sm:mt-3">
+                <button type="button" class="btn btn-primary text-xs sm:text-sm" onclick="autoFillPrice()">Use this price</button>
               </div>
             </div>
           </div>
         </div>
 
         <div>
-          <label class="text-sm muted mb-2 block">Trade Type</label>
+          <label class="text-xs sm:text-sm muted mb-1 sm:mb-2 block">Trade Type</label>
           <div class="trade-type" role="radiogroup" aria-label="Trade type">
             <button type="button" class="btn buy-btn active" data-type="buy" onclick="setTradeType('buy')">▲ BUY</button>
             <button type="button" class="btn sell-btn" data-type="sell" onclick="setTradeType('sell')">▼ SELL</button>
           </div>
         </div>
 
-        <div class="grid gap-4 lg:grid-cols-2">
+        <div class="grid gap-3 sm:gap-4 sm:grid-cols-2">
           <div>
-            <label class="text-sm muted mb-1 block">Average Price</label>
+            <label class="text-xs sm:text-sm muted mb-1 block">Average Price</label>
             <input id="avgPrice" type="number" step="0.01" class="form-input" placeholder="Enter average price per share" required />
           </div>
           <div>
-            <label class="text-sm muted mb-1 block">Quantity</label>
+            <label class="text-xs sm:text-sm muted mb-1 block">Quantity</label>
             <input id="quantity" type="number" class="form-input" placeholder="Number of shares" required />
           </div>
         </div>
 
-        <div class="grid gap-4 lg:grid-cols-2">
+        <div class="grid gap-3 sm:gap-4 sm:grid-cols-2">
           <div>
-            <label class="text-sm muted mb-1 block" id="expectedReturnLabel">Expected Return (%)</label>
+            <label class="text-xs sm:text-sm muted mb-1 block" id="expectedReturnLabel">Expected Return (%)</label>
             <input id="expectedReturn" type="number" step="0.1" class="form-input" value="2.5" />
           </div>
           <div>
-            <label class="text-sm muted mb-1 block">Risk (%)</label>
+            <label class="text-xs sm:text-sm muted mb-1 block">Risk (%)</label>
             <input id="riskPercent" type="number" step="0.1" class="form-input" value="2.5" />
           </div>
         </div>
 
         <div>
-          <label class="text-sm muted mb-1 block">Trade Notes</label>
+          <label class="text-xs sm:text-sm muted mb-1 block">Trade Notes</label>
           <input id="comment" type="text" class="form-input" placeholder="Stock name, strategy, or comments..." />
         </div>
 
-        <div class="flex items-center gap-3 mt-2">
-          <button type="button" class="btn btn-success" onclick="calculate()"><i class="fa fa-calculator"></i> Calculate</button>
-          <button type="button" class="btn btn-warning" onclick="resetForm()"><i class="fa fa-refresh"></i> Reset</button>
-          <button type="button" class="btn btn-outline" onclick="window.location.href='{{ url_for('show_saved_trades') }}'"><i class="fa fa-list"></i> View Saved Trades</button>
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3 mt-2">
+          <button type="button" class="btn btn-success flex-1 sm:flex-none" onclick="calculate()"><i class="fa fa-calculator"></i> Calculate</button>
+          <button type="button" class="btn btn-warning flex-1 sm:flex-none" onclick="resetForm()"><i class="fa fa-refresh"></i> Reset</button>
+          <button type="button" class="btn btn-outline w-full sm:w-auto" onclick="window.location.href='{{ url_for('show_saved_trades') }}'"><i class="fa fa-list"></i> View Saved Trades</button>
         </div>
 
     </form>
   </section>
 
   <!-- Results Section -->
-  <section id="output" style="display: none;" class="mt-8">
-    <div class="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-2 border-teal-500/20 rounded-xl-2 p-6 shadow-2xl">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-semibold text-white">Trade Results</h2>
-        <div id="resultTradeType" class="px-3 py-1 rounded-full text-sm font-semibold bg-green-500 text-black">BUY</div>
+  <section id="output" style="display: none;" class="mt-6 sm:mt-8">
+    <div class="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-2 border-teal-500/20 rounded-xl-2 p-4 sm:p-6 shadow-2xl">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4 gap-2">
+        <h2 class="text-lg sm:text-xl font-semibold text-white">Trade Results</h2>
+        <div id="resultTradeType" class="px-3 py-1 rounded-full text-xs sm:text-sm font-semibold bg-green-500 text-black self-start sm:self-auto">BUY</div>
       </div>
       
       <div class="grid-results">
-        <div class="bg-gradient-to-br from-green-900/30 to-green-800/20 border border-green-500/30 rounded-lg p-4">
+        <div class="bg-gradient-to-br from-green-900/30 to-green-800/20 border border-green-500/30 rounded-lg p-3 sm:p-4">
           <span class="block text-xs text-green-300 mb-1">Target Price</span>
-          <span class="block text-lg font-bold text-green-400" id="targetPrice">₹0.00</span>
+          <span class="block text-base sm:text-lg font-bold text-green-400" id="targetPrice">₹0.00</span>
         </div>
         <div class="bg-gradient-to-br from-red-900/30 to-red-800/20 border border-red-500/30 rounded-lg p-4">
           <span class="block text-xs text-red-300 mb-1">Stop-Loss Price</span>
@@ -280,15 +305,15 @@ aside {
         </div>
       </div>
       
-      <div class="mt-6 bg-gradient-to-br from-slate-700/30 to-slate-600/20 border border-slate-500/30 rounded-lg p-4">
-        <h3 class="text-sm font-semibold mb-2 text-slate-300">Trade Notes</h3>
-        <p id="resultComment" class="text-slate-400">No notes provided</p>
+      <div class="mt-4 sm:mt-6 bg-gradient-to-br from-slate-700/30 to-slate-600/20 border border-slate-500/30 rounded-lg p-3 sm:p-4">
+        <h3 class="text-xs sm:text-sm font-semibold mb-2 text-slate-300">Trade Notes</h3>
+        <p id="resultComment" class="text-slate-400 text-xs sm:text-sm">No notes provided</p>
       </div>
       
-      <div class="flex items-center gap-3 mt-6">
-        <button type="button" class="btn btn-success" onclick="saveAndReset()"><i class="fa fa-save"></i> Save & Reset</button>
-        <button type="button" class="btn btn-primary" onclick="copyResults()"><i class="fa fa-copy"></i> Copy Results</button>
-        <button type="button" class="btn btn-outline" onclick="window.location.href='{{ url_for('show_saved_trades') }}'"><i class="fa fa-list"></i> View Saved Trades</button>
+      <div class="flex flex-wrap items-center gap-2 sm:gap-3 mt-4 sm:mt-6">
+        <button type="button" class="btn btn-success flex-1 sm:flex-none" onclick="saveAndReset()"><i class="fa fa-save"></i> Save & Reset</button>
+        <button type="button" class="btn btn-primary flex-1 sm:flex-none" onclick="copyResults()"><i class="fa fa-copy"></i> Copy Results</button>
+        <button type="button" class="btn btn-outline w-full sm:w-auto" onclick="window.location.href='{{ url_for('show_saved_trades') }}'"><i class="fa fa-list"></i> View Saved Trades</button>
       </div>
     </div>
   </section>

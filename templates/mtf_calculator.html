@@ -228,13 +228,17 @@
       <form id="tradeForm" autocomplete="off" class="space-y-4">
         <div>
           <label class="text-sm muted mb-1 block">Leverage</label>
-          <select id="leverage" class="form-input">
-            <option value="1">1x (No Leverage)</option>
-            <option value="2">2x Leverage</option>
-            <option value="3">3x Leverage</option>
-            <option value="4" selected>4x Leverage</option>
-            <option value="5">5x Leverage</option>
-          </select>
+          <div class="flex gap-2">
+            <select id="leverage" class="form-input" onchange="handleLeverageChange()">
+              <option value="1">1x (No Leverage)</option>
+              <option value="2">2x Leverage</option>
+              <option value="3">3x Leverage</option>
+              <option value="4" selected>4x Leverage</option>
+              <option value="5">5x Leverage</option>
+              <option value="custom">Custom</option>
+            </select>
+            <input id="customLeverage" type="number" step="0.1" min="1" max="10" class="form-input" placeholder="Enter custom" style="display:none;" onchange="updateCustomLeverage()" />
+          </div>
         </div>
         <div>
           <label class="text-sm muted mb-2 block">Search for Stock or Enter Manually</label>
@@ -347,6 +351,7 @@
       
       <div class="flex items-center gap-3 mt-6">
         <button type="button" class="btn btn-success" onclick="saveAndReset()"><i class="fa fa-save"></i> Save & Reset</button>
+        <button type="button" class="btn btn-warning" onclick="testSave()"><i class="fa fa-test"></i> Test Save</button>
         <button type="button" class="btn btn-primary" onclick="copyResults()"><i class="fa fa-copy"></i> Copy Results</button>
         <button type="button" class="btn btn-outline" onclick="window.location.href='/saved_mtf'"><i class="fa fa-list"></i> View Saved Trades</button>
       </div>
@@ -361,6 +366,32 @@
 let tradeType = "buy";
 let selectedStock = null;
 let resultData = null;
+let currentLeverage = 4.0;
+
+function handleLeverageChange() {
+  const leverageSelect = document.getElementById('leverage');
+  const customInput = document.getElementById('customLeverage');
+  
+  if (leverageSelect.value === 'custom') {
+    customInput.style.display = 'block';
+    customInput.focus();
+    currentLeverage = parseFloat(customInput.value) || 4.0;
+  } else {
+    customInput.style.display = 'none';
+    currentLeverage = parseFloat(leverageSelect.value);
+  }
+}
+
+function updateCustomLeverage() {
+  const customInput = document.getElementById('customLeverage');
+  const value = parseFloat(customInput.value);
+  if (value >= 1 && value <= 10) {
+    currentLeverage = value;
+  } else {
+    alert('Please enter a leverage between 1 and 10');
+    customInput.value = currentLeverage;
+  }
+}
 
 function setTradeType(type) {
   tradeType = type;
@@ -395,7 +426,8 @@ function calculate() {
   const quantity = parseFloat(document.getElementById("quantity").value);
   const expectedReturn = parseFloat(document.getElementById("expectedReturn").value);
   const riskPercent = parseFloat(document.getElementById("riskPercent").value);
-  const leverage = parseFloat(document.getElementById("leverage").value);
+  handleLeverageChange(); // Update currentLeverage
+  const leverage = currentLeverage;
   const comment = document.getElementById("comment").value.trim();
 
   if (isNaN(avgPrice) || isNaN(quantity) || avgPrice <= 0 || quantity <= 0) {
@@ -454,6 +486,26 @@ function calculate() {
   }, 100);
 }
 
+async function testSave() {
+  try {
+    const response = await fetch('/test_mtf_save', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({})
+    });
+    const result = await response.json();
+    if (response.ok) {
+      alert(`Test save successful! Trade ID: ${result.trade_id}`);
+    } else {
+      alert(`Test save failed: ${result.error}`);
+    }
+  } catch (error) {
+    console.error('Test save error:', error);
+    alert('Test save error. Check console.');
+  }
+}
+
 async function saveAndReset() {
   if (!resultData) {
     calculate();
@@ -467,13 +519,16 @@ async function saveAndReset() {
     const response = await fetch('/save_mtf_result', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
       body: JSON.stringify(resultData)
     });
+    const result = await response.json();
     if (response.ok) {
       alert('MTF trade saved successfully!');
       resetForm();
     } else {
-      alert('Failed to save. Try again.');
+      alert(`Failed to save: ${result.error}`);
+      console.error('Save error:', result);
     }
   } catch (error) {
     console.error('Error saving:', error);

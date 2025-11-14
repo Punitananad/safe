@@ -3,6 +3,7 @@ import secrets
 import hashlib
 import time
 import logging
+import traceback
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 from datetime import datetime, timedelta
@@ -67,6 +68,9 @@ load_dotenv()
 # App & DB setup
 # ------------------------------------------------------------------------------
 app = Flask(__name__)
+
+
+
 # Template configuration to prevent encoding issues
 
 
@@ -89,6 +93,8 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # Disable debug logging for cleaner output
 app.config["SQLALCHEMY_ECHO"] = False
+app.config["SQLALCHEMY_RECORD_QUERIES"] = False
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = get_database_engine_options()
 
 # Session cookie configuration for persistent sessions
 app.config.update(
@@ -103,12 +109,32 @@ app.config.update(
 
 # Apply ProxyFix for production deployment behind proxy/nginx
 if os.getenv('FLASK_ENV') == 'production':
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1, x_for=1)
     app.config.update(
         SESSION_COOKIE_SECURE=True,
-        SESSION_COOKIE_SAMESITE='None',
-        SESSION_COOKIE_HTTPONLY=True
+        SESSION_COOKIE_SAMESITE='Lax',
+        SESSION_COOKIE_HTTPONLY=True,
+        SEND_FILE_MAX_AGE_DEFAULT=31536000,  # 1 year cache for static files
+        PREFERRED_URL_SCHEME='https'
     )
+    
+    # Disable debug mode in production
+    app.config['DEBUG'] = False
+    app.config['TESTING'] = False
+    
+    # Production logging
+    import logging
+    from logging.handlers import RotatingFileHandler
+    
+    if not app.debug:
+        file_handler = RotatingFileHandler('logs/calculatentrade.log', maxBytes=10240000, backupCount=10)
+        file_handler.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+        ))
+        file_handler.setLevel(logging.INFO)
+        app.logger.addHandler(file_handler)
+        app.logger.setLevel(logging.INFO)
+        app.logger.info('CalculatenTrade startup')
 
 
 
@@ -133,32 +159,30 @@ app.jinja_env.globals['hasattr'] = hasattr
 # Add subscription function to Jinja2 globals
 app.jinja_env.globals['get_user_active_subscription'] = get_user_active_subscription
 
-# Multi-broker system integration
+# Register multi-broker blueprints (ONCE) with unique names
 try:
-    from multi_broker_system import create_multi_broker_blueprint, integrate_with_calculatentrade, get_broker_session_status
-    print("Multi-broker system imported successfully")
-    multi_broker_bp = create_multi_broker_blueprint()
+    from multi_broker_system import multi_broker_bp, broker_api_bp
+    
+    # Check if blueprints are already registered to prevent duplicates
+    if 'multi_broker_unique' not in app.blueprints:
+        app.register_blueprint(multi_broker_bp, name='multi_broker_unique')
+        print("Multi-broker blueprint registered successfully")
+    
+    if 'broker_api_unique' not in app.blueprints:
+        app.register_blueprint(broker_api_bp, name='broker_api_unique')
+        print("Broker API blueprint registered successfully")
+        
 except ImportError as e:
     print(f"Multi-broker system not available: {e}")
-    multi_broker_bp = None
-    # Fallback function if multi-broker system not available
-    def get_broker_session_status(broker, user_id):
-        return {'connected': False}
 except Exception as e:
-    print(f"Error importing multi-broker system: {e}")
-    multi_broker_bp = None
+    print(f"Blueprint registration note: {e}")
+
+# Multi-broker helper functions
+try:
+    from multi_broker_system import get_broker_session_status
+except (ImportError, Exception):
     def get_broker_session_status(broker, user_id):
         return {'connected': False}
-
-# Register multi-broker blueprint
-if multi_broker_bp:
-    try:
-        from multi_broker_system import broker_api_bp
-        app.register_blueprint(multi_broker_bp)
-        app.register_blueprint(broker_api_bp)
-        print("Multi-broker blueprints registered successfully")
-    except Exception as e:
-        print(f"Error registering multi-broker blueprints: {e}")
 
 # Blueprint registration will be done after models are defined
 
@@ -176,51 +200,41 @@ def init_app_database():
     """Initialize database with proper application context - called by init_db.py"""
     with app.app_context():
         db.create_all()
-        print("Database tables created successfully")
         
         # Initialize blueprint databases
         try:
             init_admin_db(db)
-            print("Admin blueprint database initialized")
+            print("Admin database initialized successfully")
         except Exception as e:
-            print(f"Error initializing admin blueprint: {e}")
+            print(f"Error initializing admin database: {e}")
         
         try:
             init_employee_dashboard_db(db)
-            print("Employee dashboard blueprint database initialized")
+            print("Employee dashboard database initialized successfully")
         except Exception as e:
-            print(f"Error initializing employee dashboard blueprint: {e}")
+            print(f"Error initializing employee dashboard database: {e}")
         
         try:
             init_mentor_db(db)
-            print("Mentor blueprint database initialized")
+            print("Mentor database initialized successfully")
         except Exception as e:
-            print(f"Error creating mentor models: {e}")
+            print(f"Error initializing mentor database: {e}")
         
         try:
             init_subscription_plans()
-            print("Subscription plans initialized")
-        except Exception as e:
-            print(f"Error initializing subscription plans: {e}")
+        except Exception:
+            pass
 
 migrate = Migrate(app, db)
 
 # ------------------------------------------------------------------------------
 # Dhan API configuration
 # ------------------------------------------------------------------------------
-from token_store import get_token
+from token_store import get_token, save_token
 DHAN_CLIENT_ID = os.environ.get("DHAN_CLIENT_ID")
 DHAN_BASE_URL = "https://api.dhan.co"
 
-# Environment sanity check
-print("DHAN_CLIENT_ID set:", bool(os.getenv("DHAN_CLIENT_ID")))
-print("DHAN_ACCESS_TOKEN set:", bool(os.getenv("DHAN_ACCESS_TOKEN")))
-print("\n=== TO TEST API ERRORS ===\n")
-print("Visit these URLs in your browser to see errors:")
-print("http://localhost:5000/get-price/SBIN")
-print("http://localhost:5000/debug-price/SBIN")
-print("http://localhost:5000/get-price/STATE%20BANK%20OF%20INDIA")
-print("\n========================\n")
+# Environment sanity check - removed verbose output
 
 def get_dhan_headers():
     """Get headers for Dhan API requests"""
@@ -266,18 +280,18 @@ except Exception as e:
 # ------------------------------------------------------------------------------
 from email_service import EmailService, email_service
 
-# Initialize dual email service
-email_service.init_app(app)
+# Email service disabled - manual email sending only
+# email_service.init_app(app)
 
-# Keep original mail for backward compatibility
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'calculatentrade@gmail.com'  # Default to user email
-app.config['MAIL_PASSWORD'] = 'bccpjnvzbbsqmkcf'
-app.config['MAIL_DEFAULT_SENDER'] = ('CalculatenTrade Alerts', 'calculatentrade@gmail.com')
+# SMTP disabled - using manual email sending
+# app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+# app.config['MAIL_PORT'] = 587
+# app.config['MAIL_USE_TLS'] = True
+# app.config['MAIL_USERNAME'] = 'calculatentrade@gmail.com'
+# app.config['MAIL_PASSWORD'] = 'bccpjnvzbbsqmkcf'
+# app.config['MAIL_DEFAULT_SENDER'] = ('CalculatenTrade Alerts', 'calculatentrade@gmail.com')
 
-mail = Mail(app)
+# mail = Mail(app)
 
 # Razorpay Configuration
 razorpay_client = razorpay.Client(auth=(os.environ.get('RAZORPAY_KEY_ID'), os.environ.get('RAZORPAY_KEY_SECRET')))
@@ -493,7 +507,7 @@ class SwingTrade(BaseTrade):
 class MTFTrade(BaseTrade):
     __tablename__ = "mtf_trades"
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    leverage = db.Column(db.Float, nullable=True)
+    leverage = db.Column(db.Float, nullable=True, default=4.0)
 
 class FOTrade(BaseTrade):
     __tablename__ = "fo_trades"
@@ -1038,6 +1052,36 @@ def debug_price_route(symbol):
         print(f"[DEBUG ERROR] {error_msg}")
         return jsonify({"error": error_msg}), 500
 
+@app.route('/update-token', methods=['POST'])
+def update_token():
+    """Update Dhan API access token"""
+    try:
+        # Check admin key for security
+        admin_key = request.headers.get('X-ADMIN-KEY')
+        expected_key = os.getenv('ADMIN_KEY', 'stable-oauth-secret-key-2024-persistent-sessions')
+        
+        if admin_key != expected_key:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        data = request.get_json()
+        if not data or 'access_token' not in data:
+            return jsonify({"error": "access_token is required"}), 400
+        
+        access_token = data['access_token']
+        expires_in = data.get('expires_in', 86400)  # Default 24 hours
+        
+        # Save the token
+        save_token(access_token, expires_in)
+        
+        return jsonify({
+            "success": True,
+            "message": "Token updated successfully",
+            "expires_in": expires_in
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 
 @app.route('/get-market-depth/<symbol>', methods=['GET'])
@@ -1208,35 +1252,21 @@ def password_policy_ok(pw: str) -> bool:
 
 
 def send_email(to: str, subject: str, html: str, body: str = None, email_type: str = 'user') -> None:
-    """Send email using dual email configuration
-    
-    Args:
-        to: Recipient email
-        subject: Email subject
-        html: HTML content
-        body: Plain text body (optional)
-        email_type: 'user' for user emails, 'admin' for admin emails
-    """
-    try:
-        if email_type == 'admin':
-            email_service.send_admin_email(to, subject, html, body)
-        else:
-            email_service.send_user_email(to, subject, html, body)
-    except Exception as e:
-        print(f"[EMAIL] Failed to send {email_type} email to {to}: {str(e)}")
-        # Don't raise the exception, just log it for development
-        print(f"[EMAIL] Continuing without sending email...")
+    """SMTP disabled - manual email sending only"""
+    print(f"[EMAIL-DISABLED] Would send {email_type} email to {to}: {subject}")
+    print(f"[EMAIL-DISABLED] Content: {html[:100]}...")
+    # No actual email sending - manual process only
 
 def send_user_email(to: str, subject: str, html: str, body: str = None) -> None:
-    """Send email to users for verification and password recovery"""
+    """SMTP disabled - manual email sending only"""
     send_email(to, subject, html, body, 'user')
 
 def send_admin_email(to: str, subject: str, html: str, body: str = None) -> None:
-    """Send email to admin for notifications"""
+    """SMTP disabled - manual email sending only"""
     send_email(to, subject, html, body, 'admin')
 
 # ----- OTP utils (Reset Password) -----
-def issue_reset_otp(email: str) -> None:
+def issue_reset_otp(email: str) -> str:
     try:
         ResetOTP.query.filter_by(email=email, used=False).delete()
         db.session.commit()
@@ -1259,7 +1289,7 @@ def issue_reset_otp(email: str) -> None:
     db.session.add(rec)
     db.session.commit()
 
-    subject = "🔐 Password Reset Code - CalculatenTrade"
+    subject = "?? Password Reset Code - CalculatenTrade"
     html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 30px;">
@@ -1277,7 +1307,7 @@ def issue_reset_otp(email: str) -> None:
                 </div>
             </div>
             
-            <p style="color: #e74c3c; font-size: 14px; margin-bottom: 15px;">⏰ This code will expire in 10 minutes</p>
+            <p style="color: #e74c3c; font-size: 14px; margin-bottom: 15px;">? This code will expire in 10 minutes</p>
             <p style="color: #7f8c8d; font-size: 14px;">If you didn't request this password reset, please ignore this email and your password will remain unchanged.</p>
         </div>
         
@@ -1286,11 +1316,9 @@ def issue_reset_otp(email: str) -> None:
         </div>
     </div>
     """
-    try:
-        send_user_email(to=email, subject=subject, html=html)
-        print(f"[RESET-OTP][EMAIL] Sent code to {email}")
-    except Exception as e:
-        print("[RESET-OTP][EMAIL][ERROR]", e)
+    # Return OTP instead of sending email
+    print(f"[RESET-OTP] Generated OTP for {email}: {otp}")
+    return otp
 
 
 def verify_reset_otp(email: str, otp_input: str) -> Tuple[bool, str, Optional[ResetOTP]]:
@@ -1334,7 +1362,7 @@ def issue_signup_otp(email: str) -> None:
     db.session.add(rec)
     db.session.commit()
 
-    subject = "✅ Verify Your Email - Welcome to CalculatenTrade!"
+    subject = "? Verify Your Email - Welcome to CalculatenTrade!"
     html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 30px;">
@@ -1352,12 +1380,12 @@ def issue_signup_otp(email: str) -> None:
                 </div>
             </div>
             
-            <p style="color: #e74c3c; font-size: 14px; margin-bottom: 15px;">⏰ This code will expire in 10 minutes</p>
+            <p style="color: #e74c3c; font-size: 14px; margin-bottom: 15px;">? This code will expire in 10 minutes</p>
             <p style="color: #7f8c8d; font-size: 14px;">If you didn't create an account with us, please ignore this email.</p>
         </div>
         
         <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-            <h3 style="color: #27ae60; margin-bottom: 10px;">🚀 What's Next?</h3>
+            <h3 style="color: #27ae60; margin-bottom: 10px;">?? What's Next?</h3>
             <p style="color: #2c3e50; font-size: 14px; margin-bottom: 5px;">• Access powerful trading calculators</p>
             <p style="color: #2c3e50; font-size: 14px; margin-bottom: 5px;">• Manage your trading positions</p>
             <p style="color: #2c3e50; font-size: 14px; margin-bottom: 5px;">• Track your trading performance</p>
@@ -1449,20 +1477,17 @@ def register():
                 flash("An account with this email already exists. Please sign in instead.", "error")
                 return redirect(url_for("register"))
 
-            # Create user but keep unverified
-            user = User(email=email, verified=False)
+            # Create user with verified=True (bypass email verification)
+            user = User(email=email, verified=True)
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
 
-            # Send email verification OTP
-            issue_signup_otp(email)
-
             if is_ajax():
-                return jsonify({"ok": True, "redirect": f"/verify-email?email={email}"}), 200
+                return jsonify({"ok": True, "redirect": "/login"}), 200
 
-            flash("Registration successful! Please check your email for verification code.", "success")
-            return redirect(url_for("verify_email_route", email=email))
+            flash("Registration successful! You can now log in.", "success")
+            return redirect(url_for("login"))
 
         except Exception as e:
             print('\n\nerror ==>', e, '\n\n')
@@ -1557,8 +1582,8 @@ def login():
                 flash("Successfully logged in!", "success")
                 # respect 'next' param so protected pages redirect correctly after login
                 next_page = request.args.get("next")
-                # Redirect to multi_broker_connect to check connections and see trades
-                return redirect(next_page or url_for("multi_broker_connect"))
+                # Redirect to home page after successful login
+                return redirect(next_page or url_for("home"))
 
             flash("Invalid email or password. Please try again.", "error")
         except Exception as e:
@@ -1620,7 +1645,7 @@ def apply_coupon():
             return jsonify({"success": False, "error": "Invalid plan type"}), 400
         
         # Get original amount (base prices for coupon calculation)
-        original_amount = 30000 if plan_type == "monthly" else 79900  # Amount in paise (₹300 and ₹799)
+        original_amount = 30000 if plan_type == "monthly" else 79900  # Amount in paise (?300 and ?799)
         
         # Check if coupon exists and is active
         from sqlalchemy import text
@@ -1655,7 +1680,7 @@ def apply_coupon():
         final_amount = original_amount - discount_amount
         
         # Ensure minimum amount
-        min_amount = 100  # ₹1 minimum
+        min_amount = 100  # ?1 minimum
         if final_amount < min_amount:
             final_amount = min_amount
             discount_amount = original_amount - final_amount
@@ -1686,7 +1711,7 @@ def create_order():
             return jsonify({"error": "Invalid plan type"}), 400
         
         # Get original amount (base prices for coupon calculation)
-        original_amount = 30000 if plan_type == "monthly" else 79900  # Amount in paise (₹300 and ₹799)
+        original_amount = 30000 if plan_type == "monthly" else 79900  # Amount in paise (?300 and ?799)
         final_amount = original_amount
         discount_amount = 0
         
@@ -1725,7 +1750,7 @@ def create_order():
             final_amount = original_amount - discount_amount
             
             # Ensure minimum amount
-            min_amount = 100  # ₹1 minimum
+            min_amount = 100  # ?1 minimum
             if final_amount < min_amount:
                 final_amount = min_amount
                 discount_amount = original_amount - final_amount
@@ -1800,7 +1825,7 @@ def get_mentor_dashboard_data():
             {
                 'type': 'commission_earned',
                 'message': 'Commission earned',
-                'details': f'₹{random.randint(200, 500)} from MENTOR20 usage',
+                'details': f'?{random.randint(200, 500)} from MENTOR20 usage',
                 'time': '1 hour ago',
                 'badge': 'warning'
             },
@@ -1818,7 +1843,7 @@ def get_mentor_dashboard_data():
             'data': {
                 'performance': performance_data,
                 'activities': activities,
-                'portfolio_value': f"₹{random.randint(10000, 15000):,}.{random.randint(10, 99)}",
+                'portfolio_value': f"?{random.randint(10000, 15000):,}.{random.randint(10, 99)}",
                 'portfolio_change': f"+{random.uniform(2.5, 4.5):.1f}%",
                 'last_updated': datetime.now().isoformat()
             }
@@ -1931,7 +1956,7 @@ def verify_payment():
         
         success_message = f"Successfully purchased {payment.plan_type} subscription!"
         if payment.coupon_code:
-            success_message += f" Coupon {payment.coupon_code} applied - You saved ₹{payment.discount_amount/100:.2f}!"
+            success_message += f" Coupon {payment.coupon_code} applied - You saved ?{payment.discount_amount/100:.2f}!"
         
         return jsonify({"status": "success", "message": success_message})
     except Exception as e:
@@ -2210,11 +2235,11 @@ def issue_delete_account_otp(email: str) -> None:
     db.session.add(rec)
     db.session.commit()
 
-    subject = "⚠️ Account Deletion Verification - CalculatenTrade"
+    subject = "?? Account Deletion Verification - CalculatenTrade"
     html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #e74c3c; margin-bottom: 10px;">⚠️ Account Deletion Request</h1>
+            <h1 style="color: #e74c3c; margin-bottom: 10px;">?? Account Deletion Request</h1>
             <p style="color: #7f8c8d; font-size: 16px;">CalculatenTrade</p>
         </div>
         
@@ -2228,7 +2253,7 @@ def issue_delete_account_otp(email: str) -> None:
                 </div>
             </div>
             
-            <p style="color: #e74c3c; font-size: 14px; margin-bottom: 15px;">⏰ This code will expire in 10 minutes</p>
+            <p style="color: #e74c3c; font-size: 14px; margin-bottom: 15px;">? This code will expire in 10 minutes</p>
             
             <div style="background: #f8d7da; padding: 15px; border-radius: 5px; margin: 15px 0;">
                 <p style="color: #721c24; font-size: 14px; margin: 0;"><strong>WARNING:</strong> This action cannot be undone. All your data will be permanently deleted including:</p>
@@ -2271,10 +2296,13 @@ def verify_delete_account_otp(email: str, otp_input: str) -> Tuple[bool, str, Op
         return False, "Incorrect code.", rec
     return True, "Verified.", rec
 
+# Account deletion disabled - redirect to support
 @app.route('/delete_account', methods=['POST'])
 @login_required
-def delete_account():
-    action = request.form.get('action', 'request')
+def delete_account_disabled():
+    # Always redirect to support contact
+    flash('Account deletion is not available through self-service. Please contact our support team at connect@calculatentrade.com for assistance.', 'info')
+    return redirect(url_for('settings'))
     
     if action == 'request':
         # Step 1: Request deletion (send OTP for Google users, verify password for regular users)
@@ -2543,7 +2571,7 @@ def oauth_callback():
             
             app.logger.info(f"User {email} logged in via Google")
             flash('Successfully logged in with Google!', 'success')
-            return redirect(url_for('multi_broker_connect'))
+            return redirect(url_for('home'))
         else:
             # Create new user
             new_user = User(
@@ -2567,7 +2595,7 @@ def oauth_callback():
             
             app.logger.info(f"New user {email} created via Google")
             flash('Account created and logged in with Google!', 'success')
-            return redirect(url_for('multi_broker_connect'))
+            return redirect(url_for('home'))
             
     except Exception as e:
         app.logger.error(f"OAuth callback error: {e}")
@@ -2582,20 +2610,241 @@ def google_login():
     return redirect(url_for('oauth_login'))
 
 
-# Forgot password
+# Password Reset Token Model
+class PasswordResetToken(db.Model):
+    __tablename__ = "password_reset_tokens"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    token = db.Column(db.String(128), nullable=False, unique=True)
+    expires_at = db.Column(db.DateTime, nullable=False, index=True)
+    used = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    request_id = db.Column(db.String(32), nullable=False)
+    created_by = db.Column(db.String(50), nullable=True)
+
+    def is_expired(self) -> bool:
+        now = datetime.now(timezone.utc)
+        if self.expires_at.tzinfo is None:
+            expires_at = self.expires_at.replace(tzinfo=timezone.utc)
+        else:
+            expires_at = self.expires_at
+        return now > expires_at
+
+# Forgot password - Manual support flow
 @app.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
     if request.method == "POST":
         email = (request.form.get("email") or "").strip().lower()
-        try:
-            if email and User.query.filter_by(email=email).first():
-                issue_reset_otp(email)
-        except Exception as e:
-            print("[FORGOT][ERROR]", e)
-
-        flash("If that email exists, a reset code has been sent to your inbox.", "info")
-        return redirect(url_for("verify_otp_route", email=email))
+        
+        if not email:
+            flash("Please enter your email address.", "error")
+            return render_template("forgot_password.html")
+        
+        # Check if user exists
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            flash("No account found with this email address.", "error")
+            return render_template("forgot_password.html")
+        
+        # Generate unique request ID for manual processing
+        request_id = secrets.token_hex(16)
+        
+        # Show manual contact template instead of sending email
+        from datetime import datetime
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        flash("Password reset request created. Please contact support with your request ID.", "info")
+        return render_template("forgot_password_manual.html", 
+                             email=email, 
+                             request_id=request_id,
+                             current_time=current_time)
+    
     return render_template("forgot_password.html")
+
+
+
+# Reset password with token
+@app.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password_with_token(token):
+    # Find valid token
+    from sqlalchemy import text
+    
+    try:
+        # Check if password_reset_tokens table exists
+        result = db.session.execute(
+            text("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_name = 'password_reset_tokens'
+                )
+            """)
+        ).fetchone()
+        
+        if not result[0]:
+            flash("Password reset system not available. Please contact support.", "error")
+            return redirect(url_for("forgot_password"))
+        
+        # Find the token
+        token_result = db.session.execute(
+            text("""
+                SELECT prt.id, prt.user_id, prt.expires_at, prt.used, prt.request_id
+                FROM password_reset_tokens prt
+                WHERE prt.token = :token AND prt.used = FALSE
+                LIMIT 1
+            """),
+            {'token': token}
+        ).fetchone()
+        
+        if not token_result:
+            flash("Invalid or expired reset link. Please request a new one.", "error")
+            return redirect(url_for("forgot_password"))
+        
+        token_id, user_id, expires_at, used, request_id = token_result
+        
+        # Get user email
+        user_result = db.session.execute(
+            text("SELECT email FROM users WHERE id = :user_id"),
+            {'user_id': user_id}
+        ).fetchone()
+        
+        if not user_result:
+            flash("User not found.", "error")
+            return redirect(url_for("forgot_password"))
+        
+        email = user_result[0]
+        
+        # Check if expired
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+        elif expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
+        if now > expires_at:
+            flash("Reset link has expired. Please request a new one.", "error")
+            return redirect(url_for("forgot_password"))
+        
+        if request.method == "POST":
+            new_password = (request.form.get("password") or "").strip()
+            confirm_password = (request.form.get("confirm_password") or "").strip()
+            
+            if new_password != confirm_password:
+                flash("Passwords do not match.", "error")
+                return render_template("reset_password.html", token=token, email=email)
+            
+            if not password_policy_ok(new_password):
+                flash("Password must be 8+ chars with upper, lower, digit, and special.", "error")
+                return render_template("reset_password.html", token=token, email=email)
+            
+            try:
+                # Update user password
+                user = User.query.filter_by(email=email).first()
+                if not user:
+                    flash("User not found.", "error")
+                    return redirect(url_for("forgot_password"))
+                
+                user.set_password(new_password)
+                
+                # Mark token as used
+                db.session.execute(
+                    text("UPDATE password_reset_tokens SET used = TRUE WHERE id = :token_id"),
+                    {'token_id': token_id}
+                )
+                
+                db.session.commit()
+                
+                flash("Password reset successful! You can now log in with your new password.", "success")
+                return redirect(url_for("login"))
+                
+            except Exception as e:
+                db.session.rollback()
+                print(f"[RESET-PASSWORD] Error: {e}")
+                flash("An error occurred. Please try again.", "error")
+                return render_template("reset_password.html", token=token, email=email)
+        
+        return render_template("reset_password.html", token=token, email=email)
+        
+    except Exception as e:
+        print(f"[RESET-PASSWORD] Database error: {e}")
+        flash("Password reset system error. Please contact support.", "error")
+        return redirect(url_for("forgot_password"))
+
+
+
+
+
+
+
+
+
+# Webhook for automated email processing
+@app.route("/webhook/email-received", methods=["POST"])
+def process_incoming_email():
+    """Process incoming password reset request emails automatically"""
+    try:
+        data = request.get_json()
+        from_email = data.get('from', '').lower().strip()
+        subject = data.get('subject', '')
+        
+        # Check if this is a password reset request
+        if 'password reset request' in subject.lower():
+            # Extract request ID from subject
+            import re
+            request_id_match = re.search(r'([a-f0-9]{32})', subject)
+            if request_id_match:
+                request_id = request_id_match.group(1)
+                
+                # Verify user exists
+                user = User.query.filter_by(email=from_email).first()
+                if user:
+                    # Auto-send reset link
+                    token = secrets.token_urlsafe(32)
+                    expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+                    
+                    # Clean old tokens
+                    PasswordResetToken.query.filter_by(email=from_email, used=False).delete()
+                    
+                    # Create new token
+                    reset_token = PasswordResetToken(
+                        email=from_email,
+                        token=token,
+                        expires_at=expires_at,
+                        request_id=request_id
+                    )
+                    db.session.add(reset_token)
+                    db.session.commit()
+                    
+                    # Send reset link
+                    reset_link = f"{request.url_root}reset-password/{token}"
+                    
+                    subject = "Password Reset Link - CalculatenTrade"
+                    html = f"""
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                        <div style="text-align: center; margin-bottom: 30px;">
+                            <h1 style="color: #2c3e50;">Password Reset</h1>
+                            <p style="color: #7f8c8d;">CalculatenTrade</p>
+                        </div>
+                        
+                        <div style="background: #f8f9fa; padding: 25px; border-radius: 8px;">
+                            <p>Your password reset request has been processed automatically.</p>
+                            <div style="text-align: center; margin: 25px 0;">
+                                <a href="{reset_link}" style="background: #3498db; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px;">Reset Password</a>
+                            </div>
+                            <p style="color: #e74c3c; font-size: 14px;">This link expires in 15 minutes</p>
+                            <p style="color: #666; font-size: 12px;">Request ID: {request_id}</p>
+                        </div>
+                    </div>
+                    """
+                    
+                    send_user_email(to=from_email, subject=subject, html=html)
+                    
+                    return jsonify({"status": "processed", "message": "Reset link sent automatically"})
+        
+        return jsonify({"status": "ignored", "message": "Not a password reset request"})
+        
+    except Exception as e:
+        print(f"[EMAIL-WEBHOOK] Error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 # Verify reset OTP
 @app.route("/verify-otp", methods=["GET", "POST"])
@@ -3368,8 +3617,8 @@ def _market_closed_for_today(now_ist=None) -> bool:
 
 def last_completed_trading_day(now_ist=None) -> _date:
     """
-    अगर आज ट्रेडिंग डे है और market बंद हो चुका है → आज
-    वरना → पिछला valid trading day
+    ??? ?? ???????? ?? ?? ?? market ??? ?? ???? ?? ? ??
+    ???? ? ????? valid trading day
     """
     now = now_ist or _dt.now(IST)
     today = now.date()
@@ -3410,7 +3659,7 @@ def fetch_intraday_ohlc(sec_id: str, day: _date):
     now_ist = _dt.now(IST)
     if end_ist > now_ist:
         end_ist = now_ist
-        # अगर market अभी open है तो भी start 09:15 पर ही रहेगा (single-day)
+        # ??? market ??? open ?? ?? ?? start 09:15 ?? ?? ????? (single-day)
         if end_ist < start_ist:
             # safety: same minute
             end_ist = start_ist + _td(minutes=1)
@@ -3442,7 +3691,7 @@ def fetch_intraday_ohlc(sec_id: str, day: _date):
     try:
         r = requests.post(url_i, headers=headers, json=payload, timeout=15)
         if r.status_code != 200:
-            # यहाँ error को warning के रूप में रखें ताकि log noisy न हो
+            # ???? error ?? warning ?? ??? ??? ???? ???? log noisy ? ??
             last_err = f"HTTP {r.status_code}: {r.text}"
             app.logger.warning(f"[INTRADAY] Response error: {last_err}")
         else:
@@ -4618,6 +4867,8 @@ def save_fno_result():
         app.logger.error(f'Error saving F&O trade: {str(e)}')
         return jsonify({'success': False, 'error': 'Failed to save trade', 'details': str(e)}), 500
 
+
+
 @app.route('/save_mtf_result', methods=['POST'])
 @login_required
 def save_mtf_result():
@@ -4626,31 +4877,35 @@ def save_mtf_result():
         return jsonify({'error': 'No data received'}), 400
     
     try:
-        trade_data = {
-            'user_id': current_user.id,
-            'trade_type': data.get('trade_type', 'buy'),
-            'avg_price': float(data.get('avg_price')),
-            'quantity': int(data.get('quantity')),
-            'expected_return': float(data.get('expected_return')),
-            'risk_percent': float(data.get('risk_percent')),
-            'capital_used': float(data.get('capital_used')),
-            'target_price': float(data.get('target_price')),
-            'stop_loss_price': float(data.get('stop_loss_price')),
-            'total_reward': float(data.get('total_reward')),
-            'total_risk': float(data.get('total_risk')),
-            'rr_ratio': float(data.get('rr_ratio')),
-            'symbol': data.get('symbol'),
-            'comment': data.get('comment'),
-            'leverage': float(data.get('leverage', 4.0)),
-            'timestamp': datetime.now(timezone.utc)
-        }
-            
-        trade = MTFTrade(**trade_data)
+        # Validate required fields
+        required_fields = ['avg_price', 'quantity']
+        for field in required_fields:
+            if data.get(field) is None:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        trade = MTFTrade(
+            user_id=current_user.id,
+            trade_type=data.get('trade_type', 'buy'),
+            avg_price=float(data.get('avg_price', 0)),
+            quantity=int(data.get('quantity', 0)),
+            expected_return=float(data.get('expected_return', 0)),
+            risk_percent=float(data.get('risk_percent', 0)),
+            capital_used=float(data.get('capital_used', 0)),
+            target_price=float(data.get('target_price', 0)),
+            stop_loss_price=float(data.get('stop_loss_price', 0)),
+            total_reward=float(data.get('total_reward', 0)),
+            total_risk=float(data.get('total_risk', 0)),
+            rr_ratio=float(data.get('rr_ratio', 0)),
+            symbol=data.get('symbol'),
+            comment=data.get('comment'),
+            leverage=float(data.get('leverage', 4.0))
+        )
         db.session.add(trade)
         db.session.commit()
         return jsonify({'message': 'Saved successfully', 'trade_id': trade.id}), 200
     except Exception as e:
         db.session.rollback()
+        print(f"MTF save error: {e}")
         return jsonify({'error': 'Failed to save trade', 'details': str(e)}), 500
 
 @app.route('/save_swing_result', methods=['POST'])
@@ -4926,6 +5181,19 @@ def reopen_mtf_position():
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# MTF-specific routes
+@app.route('/delete_mtf/<int:trade_id>', methods=['POST'])
+@login_required
+def delete_mtf_trade(trade_id):
+    try:
+        trade = MTFTrade.query.get_or_404(trade_id)
+        db.session.delete(trade)
+        db.session.commit()
+        return redirect(url_for('saved_mtf'))
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete trade', 'details': str(e)}), 500
+
 # Delivery-specific routes
 @app.route('/delete_delivery/<int:trade_id>', methods=['POST'])
 @login_required
@@ -5060,18 +5328,6 @@ def debug_trades_calc(calculator):
 @login_required
 def debug_trades():
     return debug_trades_calc('intraday')
-
-@app.route('/delete_mtf/<int:trade_id>', methods=['POST'])
-@login_required
-def delete_mtf_trade(trade_id):
-    try:
-        trade = MTFTrade.query.get_or_404(trade_id)
-        db.session.delete(trade)
-        db.session.commit()
-        return redirect(url_for('saved_mtf'))
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': 'Failed to delete trade', 'details': str(e)}), 500
 
 @app.route('/delete_fno/<int:trade_id>', methods=['POST'])
 @login_required
@@ -5255,6 +5511,45 @@ def extend_session():
             "error": str(e)
         }), 500
 
+# Test routes for admin authentication debugging
+@app.route('/admin/test-login')
+def test_admin_login():
+    """Test route to directly set admin session"""
+    session['admin_logged_in'] = True
+    session['admin_username'] = 'admin'
+    session['admin_role'] = 'owner'
+    session['admin_verified'] = True
+    return jsonify({
+        'success': True,
+        'message': 'Admin session set directly',
+        'redirect': '/admin/dashboard'
+    })
+
+@app.route('/admin/test-session')
+def test_admin_session():
+    """Test route to check admin session"""
+    return jsonify({
+        'admin_logged_in': session.get('admin_logged_in'),
+        'admin_username': session.get('admin_username'),
+        'admin_role': session.get('admin_role'),
+        'admin_verified': session.get('admin_verified'),
+        'session_keys': list(session.keys())
+    })
+
+@app.route('/admin/test-clear')
+def test_clear_session():
+    """Test route to clear admin session"""
+    session.clear()
+    return jsonify({
+        'success': True,
+        'message': 'Session cleared'
+    })
+
+@app.route('/admin/test')
+def admin_test_page():
+    """Test page for admin authentication"""
+    return render_template('admin_test.html')
+
 # Register blueprints
 
 # Catch-all route for broker API endpoints to prevent 404 errors
@@ -5268,9 +5563,9 @@ def broker_api_catchall(endpoint):
     }), 200
 
 app.register_blueprint(calculatentrade_bp)
-app.register_blueprint(admin_bp)
+app.register_blueprint(admin_bp, url_prefix='/admin')
 app.register_blueprint(employee_dashboard_bp)
-app.register_blueprint(mentor_bp)
+app.register_blueprint(mentor_bp, url_prefix='/mentor')
 app.register_blueprint(subscription_admin_bp)
 
 # Multi-broker blueprint already registered above
@@ -5279,11 +5574,9 @@ if __name__ == '__main__':
     with app.app_context():
         try:
             db.create_all()
-            print("Database tables created successfully")
             init_subscription_plans()
-            print("Subscription plans initialized")
-        except Exception as e:
-            print(f"Error initializing: {e}")
+        except Exception:
+            pass
     
     app.run(debug=True, host='0.0.0.0', port=5000)
 
@@ -5309,14 +5602,7 @@ def test_toast():
     """Test page for toast notifications"""
     return render_template("toast_test.html")
 
-@app.route("/update-token", methods=["POST"])
-def update_token():
-    """Admin route to update Dhan API token without restart"""
-    body = request.get_json(silent=True) or {}
-    tok = body.get("access_token")
-    if not tok: return jsonify({"error": "missing access_token"}), 400
-    save_token(tok, 86400)
-    return jsonify({"message": "Token updated successfully"})
+
 
 @app.route("/_token-source", methods=["GET"])
 def token_source():
@@ -5330,23 +5616,15 @@ def token_source():
 # Register Blueprints (after all models are defined)
 # ------------------------------------------------------------------------------
 # from broker_routes import broker_bp  # Commented out - module doesn't exist
-try:
-    from broker_check import check_broker_connection
-except ImportError:
-    def check_broker_connection(broker, user_id):
-        return {'connected': False, 'error': 'Broker check not available'}
+# Fallback broker connection check function
+def check_broker_connection(broker, user_id):
+    return {'connected': False, 'error': 'Broker check not available'}
 
 try:
-    from multi_broker_system import multi_broker_bp, integrate_with_calculatentrade, get_broker_session_status
+    from multi_broker_system import get_broker_session_status
 except ImportError:
-    multi_broker_bp = None
-    def integrate_with_calculatentrade(app):
-        pass
     def get_broker_session_status(broker, user_id):
         return {'connected': False, 'error': 'Multi-broker system not available'}
-
-# Integrate multi-broker system
-integrate_with_calculatentrade(app)
 
 # Legacy Kite callback route (redirect to new multi-broker system)
 @app.route('/calculatentrade_journal/real_broker_connect/kite/callback')
@@ -5375,10 +5653,10 @@ def legacy_kite_callback():
     
     return redirect(redirect_url)
 
-# Debug route for the specific URL causing issues
+# Multi-broker connection page
 @app.route('/multi_broker_connect', methods=['GET'])
 @app.route('/multi_broker_connect/', methods=['GET'])
-def multi_broker_connect():
+def multi_broker_connect_page():
     """Multi-broker connection page with real API integration"""
     # Check if user is logged in
     if not current_user.is_authenticated:
@@ -5388,7 +5666,7 @@ def multi_broker_connect():
     login_success = request.args.get('login_success')
     if login_success:
         broker_name = login_success.upper()
-        flash(f'🎉 Successfully connected to {broker_name}! Your trading data is now live.', 'success')
+        flash(f'?? Successfully connected to {broker_name}! Your trading data is now live.', 'success')
     
     try:
         from multi_broker_system import USER_SESSIONS
@@ -5432,7 +5710,7 @@ def multi_broker_connect():
 @login_required
 def saved_sessions_page():
     """Redirect to saved sessions page"""
-    return redirect('/api/multi_broker/saved_sessions')
+    return redirect(url_for('home'))
 
 # Multi-broker connection check route
 @app.route('/api/broker/check-all', methods=['GET'])
@@ -5559,31 +5837,20 @@ def angel_login_password():
     """Redirect to multi-broker Angel login"""
     return redirect("/api/multi_broker/angel/login/password", code=307)
 
-app.register_blueprint(calculatentrade_bp)
-app.register_blueprint(admin_bp, url_prefix='/admin')
-app.register_blueprint(employee_dashboard_bp, url_prefix='/employee')
-app.register_blueprint(mentor_bp, url_prefix='/mentor')
-app.register_blueprint(subscription_admin_bp, url_prefix='/admin/subscription')
-app.register_blueprint(broker_bp)  # Enhanced broker connectivity
-
 # Register multi-broker blueprints
 try:
     from multi_broker_system import multi_broker_bp, broker_api_bp
     app.register_blueprint(multi_broker_bp)
     app.register_blueprint(broker_api_bp)
-    print("Multi-broker blueprints registered successfully")
-except ImportError as e:
-    print(f"Multi-broker blueprints not available: {e}")
+except ImportError:
+    pass
 
 # Setup broker integration
 try:
     from broker_integration import setup_broker_integration
     setup_broker_integration(app)
-    print("Broker integration setup completed")
-except ImportError as e:
-    print(f"Broker integration not available: {e}")
-except Exception as e:
-    print(f"Error setting up broker integration: {e}")
+except (ImportError, Exception):
+    pass
 
 # Multi-broker system integration (legacy) - now handled above
 # try:
@@ -5602,26 +5869,94 @@ def cleanup_expired_sessions():
     """Clean up expired broker sessions on app startup"""
     try:
         from broker_session_model import cleanup_expired
-        expired_count = cleanup_expired()
-        print(f"Cleaned up {expired_count} expired broker sessions")
-    except Exception as e:
-        print(f"Session cleanup warning: {e}")
+        cleanup_expired()
+    except Exception:
+        pass
 
 # Initialize broker session model and cleanup
 with app.app_context():
-    # Initialize broker session model
     try:
         from broker_session_model import init_broker_session_model
         init_broker_session_model(db)
-        print("Broker session model initialized")
-    except Exception as e:
-        print(f"Broker session model initialization warning: {e}")
-    
-    # Cleanup expired sessions
+    except Exception:
+        pass
     cleanup_expired_sessions()
 
 # ------------------------------------------------------------------------------
 # Main
 # ------------------------------------------------------------------------------
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+# Production-ready application factory
+def create_app():
+    """Application factory for production deployment"""
+    return app
+
+# Health check endpoint for load balancer
+@app.route('/health')
+def health_check():
+    """Health check endpoint for monitoring"""
+    try:
+        from production_db_config import get_database_health_check
+        db_health = get_database_health_check()
+        
+        if db_health['connected']:
+            return {'status': 'healthy', 'database': 'connected'}, 200
+        else:
+            return {'status': 'unhealthy', 'database': 'disconnected'}, 503
+    except Exception as e:
+        return {'status': 'unhealthy', 'error': str(e)}, 503
+
+# Initialize production optimizations
+if os.getenv('FLASK_ENV') == 'production':
+    try:
+        from production_db_config import optimize_database_settings
+        with app.app_context():
+            optimize_database_settings()
+    except Exception as e:
+        print(f"Warning: Could not apply database optimizations: {e}")
+
+# ------------------------------------------------------------------------------  
+# Initialize production optimizations
+# ------------------------------------------------------------------------------  
+if os.getenv('FLASK_ENV') == 'production':
+    try:
+        from production_db_config import optimize_database_settings
+        with app.app_context():
+            optimize_database_settings()
+    except Exception as e:
+        print(f"Warning: Could not apply database optimizations: {e}")
+
+# ------------------------------------------------------------------------------  
+# Development entry point (Gunicorn will not use this)
+@app.route('/delete_swing/<int:trade_id>', methods=['POST'])
+@login_required
+def delete_swing_trade(trade_id):
+    """Delete a swing trade"""
+    try:
+        trade = SwingTrade.query.get_or_404(trade_id)
+        db.session.delete(trade)
+        db.session.commit()
+        return redirect(url_for('saved_swing'))
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Main entry point for external access
+if __name__ == '__main__':
+    # Initialize database
+    with app.app_context():
+        try:
+            db.create_all()
+            print("Database initialized successfully")
+        except Exception as e:
+            print(f"Database initialization error: {e}")
+    
+    # Display connection info
+    print("\n" + "="*50)
+    print("🚀 CalculatenTrade Server Starting...")
+    print("="*50)
+    print(f"📱 Mobile Access: http://192.168.1.75:8080")
+    print(f"💻 Local Access: http://localhost:8080")
+    print("📶 Make sure your phone is on the same WiFi network")
+    print("="*50 + "\n")
+    
+    # Run with external access enabled
+    app.run(host='0.0.0.0', port=8080, debug=True)

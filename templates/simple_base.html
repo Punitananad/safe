@@ -27,6 +27,23 @@
     @media (prefers-reduced-motion: reduce) {
       * { transition: none !important; animation: none !important; }
     }
+    
+    /* Mobile responsive improvements */
+    @media (max-width: 768px) {
+      .max-w-7xl { padding-left: 1rem; padding-right: 1rem; }
+      .text-3xl { font-size: 1.875rem; }
+      .text-4xl { font-size: 2.25rem; }
+      .text-5xl { font-size: 2.5rem; }
+      .py-4 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+    }
+    
+    @media (max-width: 480px) {
+      .text-xl { font-size: 1.125rem; }
+      .text-2xl { font-size: 1.25rem; }
+      .px-4 { padding-left: 0.75rem; padding-right: 0.75rem; }
+      .py-6 { padding-top: 1rem; padding-bottom: 1rem; }
+      .gap-6 { gap: 1rem; }
+    }
   </style>
 
   {% block extra_css %}{% endblock %}
@@ -46,11 +63,10 @@
         </a>
 
         
-        <nav class="hidden md:flex items-center gap-6 absolute left-1/2 transform -translate-x-1/2" aria-label="Main navigation">
-          <a href="{{ url_for('home')}}" class="text-slate-300 hover:text-white transition">Features</a>
-          <a href="{{ url_for('calculator') }}" class="text-slate-300 hover:text-white transition">Calculators</a>
-          <a href="{{ url_for('calculatentrade.dashboard') }}" class="text-slate-300 hover:text-white transition">Journal</a>
-         
+        <nav class="hidden md:flex items-center gap-4 lg:gap-6 absolute left-1/2 transform -translate-x-1/2" aria-label="Main navigation">
+          <a href="{{ url_for('home')}}" class="text-slate-300 hover:text-white transition text-sm lg:text-base">Features</a>
+          <a href="{{ url_for('calculator') }}" class="text-slate-300 hover:text-white transition text-sm lg:text-base">Calculators</a>
+          <a href="{{ url_for('calculatentrade.dashboard') }}" class="text-slate-300 hover:text-white transition text-sm lg:text-base">Journal</a>
         </nav>
         <div class="hidden md:flex items-center gap-3">
           {% if current_user and current_user.is_authenticated %}
@@ -68,7 +84,7 @@
           {% endif %}
         </div>
         <div class="md:hidden">
-          <button id="nav-toggle" class="p-2 rounded-md focus-ring" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu">
+          <button id="nav-toggle" class="p-3 rounded-md focus-ring hover:bg-slate-800/50 transition-colors" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu">
             <svg id="hamburger-open" class="w-6 h-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M4 7h16M4 12h16M4 17h16" stroke="white" stroke-width="2" stroke-linecap="round"></path>
             </svg>
@@ -79,20 +95,22 @@
         </div>
       </div>
     </div>
-    <div id="mobile-menu" class="md:hidden hidden" role="region" aria-label="Mobile menu">
-      <div class="px-4 pb-6 space-y-3">
-        <a href="#features" class="block px-3 py-2 rounded-md text-slate-200 hover:bg-slate-800">Features</a>
-        <a href="{{ url_for('calculator') }}" class="block px-3 py-2 rounded-md text-slate-200 hover:bg-slate-800">Calculators</a>
-        <a href="{{ url_for('show_saved_trades') }}" class="block px-3 py-2 rounded-md text-slate-200 hover:bg-slate-800">Journal</a>
+    <div id="mobile-menu" class="md:hidden hidden bg-[color:var(--bg)]/95 backdrop-blur-sm border-t border-slate-800" role="region" aria-label="Mobile menu">
+      <div class="px-4 pb-6 space-y-2">
+        <a href="#features" class="block px-4 py-3 rounded-md text-slate-200 hover:bg-slate-800 transition-colors font-medium">Features</a>
+        <a href="{{ url_for('calculator') }}" class="block px-4 py-3 rounded-md text-slate-200 hover:bg-slate-800 transition-colors font-medium">Calculators</a>
+        <a href="{{ url_for('show_saved_trades') }}" class="block px-4 py-3 rounded-md text-slate-200 hover:bg-slate-800 transition-colors font-medium">Saved Trades</a>
         {% if current_user and current_user.is_authenticated %}
-        <a href="{{ url_for('settings') }}" class="block px-3 py-2 rounded-md text-slate-200 hover:bg-slate-800">Settings</a>
+        <a href="{{ url_for('settings') }}" class="block px-4 py-3 rounded-md text-slate-200 hover:bg-slate-800 transition-colors font-medium">Settings</a>
+        <a href="{{ url_for('subscription') }}" class="block px-4 py-3 rounded-md text-slate-200 hover:bg-slate-800 transition-colors font-medium">Subscription</a>
         {% endif %}
        
-        <div class="flex gap-3 pt-2">
+        <div class="pt-4 border-t border-slate-700">
           {% if current_user and current_user.is_authenticated %}
-          <a href="{{ url_for('settings') }}" class="w-full px-3 py-2 rounded-md text-center bg-slate-800">Settings</a>
+          <a href="{{ url_for('logout') }}" class="block w-full px-4 py-3 rounded-md text-center bg-red-600 hover:bg-red-700 transition-colors font-medium text-white">Sign Out</a>
           {% else %}
-          <a href="{{ url_for('login') }}" class="w-full px-3 py-2 rounded-md text-center bg-gradient-to-r from-sky-600 to-teal-500">Sign In</a>
+          <a href="{{ url_for('login') }}" class="block w-full px-4 py-3 rounded-md text-center bg-gradient-to-r from-sky-600 to-teal-500 hover:from-sky-700 hover:to-teal-600 transition-all font-medium text-white">Sign In</a>
+          <a href="{{ url_for('register') }}" class="block w-full px-4 py-3 mt-2 rounded-md text-center border border-slate-600 hover:bg-slate-800 transition-colors font-medium text-slate-200">Sign Up</a>
           {% endif %}
         </div>
       </div>
@@ -100,8 +118,8 @@
   </header>
 
   {% block content %}{% endblock %}
-  <footer class="border-t border-slate-800 mt-12">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 md:grid-cols-4 gap-6">
+  <footer class="border-t border-slate-800 mt-8 sm:mt-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
       <div>
         <a href="{{ url_for('home') }}" class="flex items-center gap-3">
           <img src="{{ url_for('static', filename='favicons/android-chrome-192x192.png') }}" alt="CNT Logo" class="w-8 h-8 rounded-lg">
@@ -133,8 +151,8 @@
       <div class="text-sm text-slate-400">
         <div class="font-semibold mb-2">Contact</div>
         <div class="text-xs">connect@calculatentrade.com</div>
-        <div class="mt-3 flex gap-3">
-          <a href="https://www.instagram.com/calculatentrade?igsh=bng1bnF3dnJtMWZj" target="_blank" class="p-2 rounded bg-slate-800 focus-ring" aria-label="Instagram"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" stroke="white" stroke-width="1.2"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" stroke="white" stroke-width="1.2"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" stroke="white" stroke-width="1.2" stroke-linecap="round"/></svg></a>
+        <div class="mt-3 flex gap-2 sm:gap-3">
+          <a href="https://www.instagram.com/calculatentrade?igsh=bng1bnF3dnJtMWZj" target="_blank" class="p-2 rounded bg-slate-800 hover:bg-slate-700 focus-ring transition-colors" aria-label="Instagram"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" stroke="white" stroke-width="1.2"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" stroke="white" stroke-width="1.2"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" stroke="white" stroke-width="1.2" stroke-linecap="round"/></svg></a>
         </div>
       </div>
     </div>
@@ -197,20 +215,56 @@
       const mobileMenu = document.getElementById('mobile-menu');
       const hamOpen = document.getElementById('hamburger-open');
       const hamClose = document.getElementById('hamburger-close');
+      
+      function toggleMobileMenu() {
+        if (!navToggle || !mobileMenu) return;
+        
+        const expanded = navToggle.getAttribute('aria-expanded') === 'true';
+        const newExpanded = !expanded;
+        
+        navToggle.setAttribute('aria-expanded', String(newExpanded));
+        
+        if (newExpanded) {
+          mobileMenu.classList.remove('hidden');
+          hamOpen && hamOpen.classList.add('hidden');
+          hamClose && hamClose.classList.remove('hidden');
+          document.body.style.overflow = 'hidden';
+        } else {
+          mobileMenu.classList.add('hidden');
+          hamOpen && hamOpen.classList.remove('hidden');
+          hamClose && hamClose.classList.add('hidden');
+          document.body.style.overflow = '';
+        }
+      }
+      
       if (navToggle) {
-        navToggle.addEventListener('click', () => {
-          const expanded = navToggle.getAttribute('aria-expanded') === 'true';
-          navToggle.setAttribute('aria-expanded', String(!expanded));
-          mobileMenu && mobileMenu.classList.toggle('hidden');
-          hamOpen && hamOpen.classList.toggle('hidden');
-          hamClose && hamClose.classList.toggle('hidden');
+        navToggle.addEventListener('click', toggleMobileMenu);
+        navToggle.addEventListener('touchstart', function(e) {
+          e.preventDefault();
+          toggleMobileMenu();
         });
       }
+      
+      // Close menu when clicking on links
+      const mobileLinks = document.querySelectorAll('#mobile-menu a');
+      mobileLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+            toggleMobileMenu();
+          }
+        });
+      });
+      
+      // Close menu on escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && mobileMenu && !mobileMenu.classList.contains('hidden')) {
+          toggleMobileMenu();
+        }
+      });
 
       // Year
       const yearEl = document.getElementById('year');
       if (yearEl) yearEl.textContent = new Date().getFullYear();
-    })();f (yearEl) yearEl.textContent = new Date().getFullYear();
     })();
   </script>
 

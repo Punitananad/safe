@@ -2,6 +2,10 @@
 
 {% block title %}Trade History - Trading Journal{% endblock %}
 
+{% block head %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+{% endblock %}
+
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
@@ -197,6 +201,255 @@
     100% { opacity: 1; }
   }
   
+  /* Mobile Responsive Styles */
+  @media (max-width: 768px) {
+    .space-y-6 {
+      padding: 0;
+      max-width: 100vw;
+      overflow-x: hidden;
+    }
+    
+    .container, .max-w-7xl, .max-w-6xl, .max-w-5xl, .max-w-4xl {
+      max-width: 100% !important;
+      padding-left: 0.5rem !important;
+      padding-right: 0.5rem !important;
+    }
+    
+    .space-y-4 > * + * {
+      margin-top: 1rem;
+    }
+    
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+      margin: 0;
+    }
+    
+    .stat-card {
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+    }
+    
+    .stat-value {
+      font-size: 0.75rem;
+    }
+    
+    .stat-label {
+      font-size: 0.6rem;
+    }
+    
+    .grid.grid-cols-1.lg\:grid-cols-2 {
+      grid-template-columns: 1fr;
+    }
+    
+    .chart-container {
+      height: 200px;
+      padding: 0.75rem;
+      margin: 0;
+    }
+    
+    .table-container {
+      overflow-x: auto;
+      margin: 0;
+      border-radius: 0.5rem;
+    }
+    
+    .table-dark {
+      min-width: 800px;
+    }
+    
+    .filter-card {
+      padding: 0.75rem;
+      margin: 0;
+    }
+    
+    .grid.grid-cols-1.md\:grid-cols-4 {
+      grid-template-columns: 1fr;
+      gap: 0.3rem;
+    }
+    
+    .grid.grid-cols-1.md\:grid-cols-4 label {
+      font-size: 0.65rem;
+      margin-bottom: 0.25rem;
+    }
+    
+    .form-control, .form-select {
+      padding: 0.3rem 0.4rem;
+      font-size: 0.7rem;
+      min-height: 28px;
+    }
+    
+    /* Header mobile fixes */
+    .flex.items-center.gap-3 {
+      gap: 0.25rem;
+      padding: 0 0.1rem;
+    }
+    
+    .text-xl {
+      font-size: 0.85rem;
+      line-height: 1rem;
+    }
+    
+    .min-w-0.flex-1 {
+      min-width: 0;
+      flex: 1;
+    }
+    
+    /* Button improvements */
+    .grid.grid-cols-2.gap-2 {
+      gap: 0.15rem;
+      margin: 0 -0.1rem;
+    }
+    
+    .px-3.py-2\.5 {
+      padding: 0.625rem 0.75rem;
+    }
+    
+    /* Mobile table view */
+    .table-dark thead {
+      display: none;
+    }
+    
+    .table-dark tbody tr {
+      display: block;
+      border: 1px solid #334155;
+      border-radius: 0.5rem;
+      margin-bottom: 0.875rem;
+      padding: 0.875rem;
+      background: var(--card);
+    }
+    
+    .table-dark tbody td {
+      display: block;
+      text-align: left !important;
+      border: none;
+      padding: 0.25rem 0;
+    }
+    
+    .table-dark tbody td:before {
+      content: attr(data-label) ": ";
+      font-weight: 600;
+      color: var(--accent);
+      display: inline-block;
+      min-width: 80px;
+    }
+    
+    /* Mobile modal adjustments */
+    .max-w-2xl, .max-w-4xl, .max-w-5xl {
+      max-width: 95vw;
+      margin: 0.75rem;
+    }
+    
+    .max-h-\[90vh\] {
+      max-height: 85vh;
+    }
+    
+    .grid.grid-cols-2 {
+      grid-template-columns: 1fr;
+    }
+    
+    .analytics-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+    }
+    
+    .metric-card {
+      padding: 0.75rem;
+    }
+    
+    .metric-value {
+      font-size: 1rem;
+    }
+    
+    /* DataTables mobile adjustments */
+    .dataTables_wrapper .dataTables_filter,
+    .dataTables_wrapper .dataTables_length {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    
+    .dataTables_wrapper .dataTables_filter input {
+      width: 100%;
+      margin-left: 0;
+    }
+    
+    /* Mobile action buttons in table */
+    .table-dark tbody td .flex.gap-1 {
+      flex-wrap: wrap;
+      gap: 0.375rem;
+      justify-content: flex-start;
+    }
+    
+    .table-dark tbody td button {
+      min-width: 32px;
+      height: 32px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .space-y-6 {
+      padding: 0 0.5rem;
+    }
+    
+    .stats-grid {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+    
+    .analytics-grid {
+      grid-template-columns: 1fr;
+      gap: 0.375rem;
+    }
+    
+    .stat-card {
+      padding: 0.75rem;
+    }
+    
+    .stat-value {
+      font-size: 1.125rem;
+    }
+    
+    .chart-container {
+      height: 220px;
+      padding: 0.625rem;
+    }
+    
+    .text-xl {
+      font-size: 1.125rem;
+      line-height: 1.5rem;
+    }
+    
+    .filter-card {
+      padding: 0.75rem;
+    }
+    
+    /* Smaller buttons on very small screens */
+    .px-3.py-2\.5 {
+      padding: 0.5rem 0.625rem;
+      font-size: 0.8125rem;
+    }
+    
+    .w-full.inline-flex {
+      padding: 0.625rem 1rem;
+    }
+    
+    /* Table container full width on small screens */
+    .table-container {
+      margin: 0 -0.5rem;
+    }
+    
+    .table-dark tbody tr {
+      margin-bottom: 0.75rem;
+      padding: 0.75rem;
+    }
+    
+    /* Modal adjustments for very small screens */
+    .max-w-2xl, .max-w-4xl, .max-w-5xl {
+      max-width: 98vw;
+      margin: 0.5rem;
+    }
+  }
+
   /* DataTables Pagination Styling */
   .dataTables_wrapper .dataTables_paginate .paginate_button {
     background: #1e293b !important;
@@ -271,26 +524,349 @@
     text-align: center !important;
     margin-bottom: 0.5rem !important;
   }
+
+  /* === Enhanced Ultra-Compact Mobile Optimizations === */
+  @media (max-width: 768px) {
+    /* Ultra-compact action buttons */
+    .md\:hidden .grid.grid-cols-2 button,
+    .md\:hidden .grid.grid-cols-3 button,
+    .md\:hidden a.w-full.inline-flex {
+      padding: 0.2rem 0.3rem !important;
+      min-height: 24px !important;
+      font-size: 0.6rem !important;
+      gap: 0.1rem !important;
+      border-radius: 0.25rem !important;
+    }
+
+    /* Hide button text, show only icons on mobile */
+    .md\:hidden .grid.grid-cols-2 button span,
+    .md\:hidden .grid.grid-cols-3 button span,
+    .md\:hidden a.w-full.inline-flex span {
+      display: none !important;
+    }
+    
+    .md\:hidden .grid.grid-cols-2 button,
+    .md\:hidden .grid.grid-cols-3 button,
+    .md\:hidden a.w-full.inline-flex {
+      min-width: 28px !important;
+      padding: 0.25rem !important;
+      justify-content: center !important;
+    }
+    
+    .md\:hidden .grid.grid-cols-2 button svg,
+    .md\:hidden .grid.grid-cols-3 button svg,
+    .md\:hidden a.w-full.inline-flex svg {
+      margin-right: 0 !important;
+      width: 12px !important;
+      height: 12px !important;
+    }
+
+    /* Compact header */
+    .flex.items-center.gap-3 {
+      gap: 0.5rem !important;
+    }
+
+    .text-xl {
+      font-size: 1rem !important;
+      line-height: 1.2rem !important;
+    }
+
+    /* Smaller back button */
+    .flex-shrink-0.inline-flex.items-center.gap-2 {
+      padding: 0.25rem 0.4rem !important;
+      min-height: 28px !important;
+      font-size: 0.7rem !important;
+    }
+
+    .flex-shrink-0.inline-flex.items-center.gap-2 svg {
+      width: 12px !important;
+      height: 12px !important;
+    }
+
+    /* Ultra-compact table action buttons */
+    .table-dark tbody td .flex.gap-1 button {
+      min-width: 24px !important;
+      min-height: 24px !important;
+      padding: 0.15rem !important;
+    }
+
+    .table-dark tbody td .flex.gap-1 button svg {
+      width: 10px !important;
+      height: 10px !important;
+    }
+
+    /* Compact filter section */
+    .filter-card {
+      padding: 0.75rem !important;
+    }
+
+    .grid.grid-cols-1.md\:grid-cols-4 {
+      gap: 0.5rem !important;
+    }
+
+    .grid.grid-cols-1.md\:grid-cols-4 > div {
+      margin-bottom: 0.25rem !important;
+    }
+
+    /* Smaller filter buttons */
+    .md\:hidden.grid.grid-cols-3 {
+      gap: 0.2rem !important;
+    }
+
+    .md\:hidden.grid.grid-cols-3 button {
+      padding: 0.25rem 0.3rem !important;
+      font-size: 0.6rem !important;
+      min-height: 24px !important;
+    }
+
+    .md\:hidden.grid.grid-cols-3 button svg {
+      width: 10px !important;
+      height: 10px !important;
+      margin-right: 0.15rem !important;
+    }
+
+    /* Compact stats cards */
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: 0.5rem !important;
+    }
+
+    .stat-card {
+      padding: 0.6rem !important;
+    }
+
+    .stat-value {
+      font-size: 0.9rem !important;
+      margin-bottom: 0.25rem !important;
+    }
+
+    .stat-label {
+      font-size: 0.7rem !important;
+    }
+
+    /* Smaller chart containers */
+    .chart-container {
+      height: 160px !important;
+      padding: 0.6rem !important;
+    }
+
+    /* Compact table */
+    .table-dark tbody tr {
+      padding: 0.5rem !important;
+      margin-bottom: 0.5rem !important;
+    }
+
+    .table-dark tbody td {
+      padding: 0.15rem 0 !important;
+      font-size: 0.75rem !important;
+    }
+
+    /* Reduce overall page padding */
+    .space-y-6 {
+      padding: 0 0.5rem !important;
+    }
+
+    /* Compact modal buttons */
+    .max-w-2xl .flex.justify-end.gap-2 button,
+    .max-w-4xl .flex.justify-end.gap-2 button,
+    .max-w-5xl .flex.justify-end.gap-2 button {
+      padding: 0.4rem 0.8rem !important;
+      font-size: 0.75rem !important;
+      min-height: 32px !important;
+    }
+
+    /* Mobile action bar enhancements */
+    .mobile-action-bar {
+      padding: 0.25rem 0.4rem !important;
+    }
+
+    .mobile-action-bar .action {
+      min-width: 32px !important;
+      min-height: 32px !important;
+      padding: 0.2rem !important;
+    }
+
+    .mobile-action-bar .action svg {
+      width: 12px !important;
+      height: 12px !important;
+    }
+
+    /* Hide low priority table columns */
+    .table-dark td[data-label="Entry"],
+    .table-dark td[data-label="Exit"],
+    .table-dark td[data-label="Quantity"],
+    .table-dark td[data-label="Strategy"] {
+      display: none !important;
+    }
+
+    /* Ensure spacing for sticky bar */
+    body {
+      padding-bottom: 35px !important;
+    }
+  }
+
+  /* Extra small mobile devices */
+  @media (max-width: 360px) {
+    .stats-grid {
+      grid-template-columns: 1fr !important;
+      gap: 0.3rem !important;
+    }
+
+    .stat-card {
+      padding: 0.4rem !important;
+    }
+
+    .stat-value {
+      font-size: 0.8rem !important;
+    }
+
+    .space-y-6 {
+      padding: 0 0.3rem !important;
+    }
+
+    /* Even more compact buttons */
+    .md\:hidden .grid.grid-cols-2 button,
+    .md\:hidden .grid.grid-cols-3 button {
+      min-height: 22px !important;
+      padding: 0.15rem 0.2rem !important;
+      font-size: 0.55rem !important;
+    }
+
+    .md\:hidden .grid.grid-cols-2 button svg,
+    .md\:hidden .grid.grid-cols-3 button svg {
+      width: 10px !important;
+      height: 10px !important;
+      margin-right: 0 !important;
+    }
+
+    /* Make mobile action bar even smaller */
+    .mobile-action-bar {
+      padding: 0.3rem 0.4rem !important;
+    }
+
+    .mobile-action-bar .action {
+      min-height: 28px !important;
+      padding: 0.3rem !important;
+    }
+
+    .mobile-action-bar .action svg {
+      width: 10px !important;
+      height: 10px !important;
+    }
+  }
+
+  /* Ultra-compact table for very small screens */
+  @media (max-width: 320px) {
+    .table-dark tbody td[data-label="Strategy"],
+    .table-dark tbody td[data-label="Quantity"] {
+      display: none !important;
+    }
+
+    .table-dark tbody tr {
+      padding: 0.3rem !important;
+    }
+
+    .table-dark tbody td {
+      font-size: 0.65rem !important;
+    }
+
+    /* Ultra-compact buttons for very small screens */
+    .md\:hidden .grid.grid-cols-2 button,
+    .md\:hidden .grid.grid-cols-3 button {
+      min-height: 20px !important;
+      padding: 0.1rem 0.15rem !important;
+      font-size: 0.5rem !important;
+    }
+
+    .md\:hidden .grid.grid-cols-2 button svg,
+    .md\:hidden .grid.grid-cols-3 button svg {
+      width: 8px !important;
+      height: 8px !important;
+    }
+
+    /* Ultra-compact mobile action bar */
+    .mobile-action-bar {
+      padding: 0.25rem 0.3rem !important;
+    }
+
+    .mobile-action-bar .action {
+      min-height: 24px !important;
+      padding: 0.2rem !important;
+    }
+
+    .mobile-action-bar .action svg {
+      width: 8px !important;
+      height: 8px !important;
+    }
+  }
+
+  /* Mobile Action Bar - Sticky bottom bar for quick actions */
+  .mobile-action-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    display: flex;
+    gap: 0.3rem;
+    padding: 0.4rem 0.6rem;
+    background: linear-gradient(90deg, rgba(15,23,42,0.98), rgba(17,24,39,0.98));
+    border-top: 1px solid #334155;
+    backdrop-filter: blur(10px);
+    justify-content: space-around;
+  }
+
+  .mobile-action-bar .action {
+    flex: 1;
+    min-height: 32px;
+    border-radius: 0.375rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem;
+    font-size: 0.65rem;
+    gap: 0.2rem;
+    transition: all 0.2s ease;
+  }
+
+  .mobile-action-bar .action:active {
+    transform: scale(0.95);
+  }
+
+  /* Hide mobile action bar on desktop */
+  @media (min-width: 769px) {
+    .mobile-action-bar {
+      display: none !important;
+    }
+    
+    body {
+      padding-bottom: 0 !important;
+    }
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="space-y-6">
   <!-- Header -->
-  <div class="flex items-center justify-between">
-    <div class="flex items-center gap-4">
-      <button onclick="history.back()" class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors">
+  <div class="space-y-4">
+    <!-- Top row with back button and title -->
+    <div class="flex items-center gap-3">
+      <button onclick="history.back()" class="flex-shrink-0 inline-flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path d="M15 19l-7-7 7-7"/>
         </svg>
-        Back
+        <span class="hidden sm:inline">Back</span>
       </button>
-      <div>
-        <h1 class="text-2xl font-bold">Trade History</h1>
-        <p class="muted">Track and analyze your trading performance</p>
+      <div class="min-w-0 flex-1">
+        <h1 class="text-xl md:text-2xl font-bold truncate">Trade History</h1>
+        <p class="text-sm text-slate-400 hidden sm:block">Track and analyze your trading performance</p>
       </div>
     </div>
-    <div class="flex gap-3">
+    
+    <!-- Action buttons -->
+    <!-- Desktop buttons -->
+    <div class="hidden md:flex gap-3 justify-end">
       <button id="show-advanced-analytics" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all">
         <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
@@ -304,6 +880,30 @@
         Add Trade Via Broker
       </button>
       <a href="{{ url_for('calculatentrade.trade_form') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-700 hover:to-teal-700 transition-all">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M12 4v16m8-8H4"/>
+        </svg>
+        Add Trade Manually
+      </a>
+    </div>
+    
+    <!-- Mobile buttons -->
+    <div class="md:hidden space-y-2">
+      <div class="grid grid-cols-2 gap-2">
+        <button id="show-advanced-analytics-mobile" class="px-3 py-2.5 bg-purple-600 text-white rounded-lg text-sm font-medium flex items-center justify-center hover:bg-purple-700 transition-colors">
+          <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+          </svg>
+          Analytics
+        </button>
+        <button data-action="add-trade-via-broker" class="px-3 py-2.5 bg-teal-600 text-white rounded-lg text-sm font-medium flex items-center justify-center hover:bg-teal-700 transition-colors">
+          <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
+          </svg>
+          Via Broker
+        </button>
+      </div>
+      <a href="{{ url_for('calculatentrade.trade_form') }}" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path d="M12 4v16m8-8H4"/>
         </svg>
@@ -425,22 +1025,22 @@
           <tbody>
             {% for trade in trades %}
             <tr class="hover:bg-slate-700/50 transition-colors">
-              <td class="px-4 py-3">{{ trade.date.strftime('%Y-%m-%d') }}</td>
-              <td class="px-4 py-3"><strong class="text-teal-400">{{ trade.symbol }}</strong></td>
-              <td class="px-4 py-3 text-center">
+              <td class="px-4 py-3" data-label="Date">{{ trade.date.strftime('%Y-%m-%d') }}</td>
+              <td class="px-4 py-3" data-label="Symbol"><strong class="text-teal-400">{{ trade.symbol }}</strong></td>
+              <td class="px-4 py-3 text-center" data-label="Type">
                 {% if trade.trade_type == 'long' %}
                 <span class="badge badge-success">Long</span>
                 {% else %}
                 <span class="badge badge-danger">Short</span>
                 {% endif %}
               </td>
-              <td class="px-4 py-3 text-right">{{ "%.2f"|format(trade.entry_price) }}</td>
-              <td class="px-4 py-3 text-right">{{ "%.2f"|format(trade.exit_price) }}</td>
-              <td class="px-4 py-3 text-right">{{ trade.quantity }}</td>
-              <td class="px-4 py-3 text-right font-semibold {{ 'profit' if trade.pnl > 0 else 'loss' if trade.pnl < 0 else '' }}">
+              <td class="px-4 py-3 text-right" data-label="Entry">{{ "%.2f"|format(trade.entry_price) }}</td>
+              <td class="px-4 py-3 text-right" data-label="Exit">{{ "%.2f"|format(trade.exit_price) }}</td>
+              <td class="px-4 py-3 text-right" data-label="Quantity">{{ trade.quantity }}</td>
+              <td class="px-4 py-3 text-right font-semibold {{ 'profit' if trade.pnl > 0 else 'loss' if trade.pnl < 0 else '' }}" data-label="P&L">
                 {{ "%.2f"|format(trade.pnl) }}
               </td>
-              <td class="px-4 py-3 text-center">
+              <td class="px-4 py-3 text-center" data-label="Result">
                 {% if trade.result == 'win' %}
                 <span class="badge badge-success">Win</span>
                 {% elif trade.result == 'loss' %}
@@ -449,14 +1049,14 @@
                 <span class="badge badge-warning">Breakeven</span>
                 {% endif %}
               </td>
-              <td class="px-4 py-3 text-center">
+              <td class="px-4 py-3 text-center" data-label="Strategy">
                 {% if trade.strategy %}
                 <span class="badge badge-info">{{ trade.strategy.name }}</span>
                 {% else %}
                 <span class="text-slate-400">-</span>
                 {% endif %}
               </td>
-              <td class="px-4 py-3">
+              <td class="px-4 py-3" data-label="Actions">
                 <div class="flex gap-1 justify-center">
                   <button class="edit-trade px-2 py-1 text-xs bg-sky-600 text-white rounded hover:bg-sky-700 transition-colors" 
                           data-id="{{ trade.id }}" title="Edit">
@@ -530,7 +1130,8 @@
       </div>
     </div>
     
-    <div class="flex items-center justify-between">
+    <!-- Desktop filter buttons -->
+    <div class="hidden md:flex items-center justify-between">
       <div class="flex gap-2">
         <button id="apply-filters" class="px-4 py-2 bg-teal-600 text-white rounded hover:bg-teal-700 transition-colors">
           <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -550,6 +1151,28 @@
           <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
         </svg>
         Export CSV
+      </button>
+    </div>
+    
+    <!-- Mobile filter buttons -->
+    <div class="md:hidden grid grid-cols-3 gap-2">
+      <button id="apply-filters-mobile" class="px-2 py-2 bg-teal-600 text-white rounded text-sm flex items-center justify-center">
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+        </svg>
+        Apply
+      </button>
+      <button id="reset-filters-mobile" class="px-2 py-2 bg-slate-600 text-white rounded text-sm flex items-center justify-center">
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        Reset
+      </button>
+      <button id="export-csv-mobile" class="px-2 py-2 bg-emerald-600 text-white rounded text-sm flex items-center justify-center">
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        Export
       </button>
     </div>
   </div>
@@ -835,6 +1458,7 @@
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/mobile-trades-journal.js') }}"></script>
 
 <script>
 const CURRENT_USER_ID = "{{ session.get('user_id', '') }}";
@@ -859,8 +1483,10 @@ $(document).ready(function() {
         ]
     });
 
-    // Broker data fetching
-    $('#fetch-broker-data').on('click', function() {
+    // Broker data fetching - ensure mobile compatibility
+    $(document).on('click touchend', '#fetch-broker-data', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
         const broker = $('#broker-select').val();
         const userId = $('#broker-user-id').val().trim() || CURRENT_USER_ID;
         const dataType = $('#data-type-select').val();
@@ -884,12 +1510,16 @@ $(document).ready(function() {
         importDisplayedDataToTrades();
     });
 
-    // Filter functionality
-    $('#apply-filters').on('click', function() {
+    // Filter functionality - mobile compatible
+    $(document).on('click touchend', '#apply-filters, #apply-filters-mobile', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
         applyFilters();
     });
 
-    $('#reset-filters').on('click', function() {
+    $(document).on('click touchend', '#reset-filters, #reset-filters-mobile', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
         $('#filter-result').val('all');
         $('#filter-strategy').val('all');
         $('#filter-date').val('');
@@ -903,8 +1533,10 @@ $(document).ready(function() {
         table.search($(this).val()).draw();
     });
 
-    // Export CSV
-    $('#export-csv').on('click', function() {
+    // Export CSV - mobile compatible
+    $(document).on('click touchend', '#export-csv, #export-csv-mobile', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
         exportToCSV();
     });
 
@@ -968,6 +1600,21 @@ $(document).ready(function() {
             'info': '#00ff00',
             'error': '#ff0000',
             'warning': '#ffff00',
+            'success': '#00ff00'
+        };
+        
+        const $output = $('#output-log');
+        const logEntry = `<div style="color: ${color[type] || '#00ff00'}">[${timestamp}] ${message}</div>`;
+        $output.append(logEntry);
+        $output.scrollTop($output[0].scrollHeight);
+    }
+    
+    function modalLogOutput(message, type = 'info') {
+        const timestamp = new Date().toLocaleTimeString();
+        const color = {
+            'info': '#00ff00',
+            'error': '#ff0000',
+            'warning': '#ffff00',
             'success': '#00ffff'
         }[type] || '#00ff00';
         
@@ -1009,13 +1656,13 @@ $(document).ready(function() {
         const $display = $('#modal-broker-data-display');
         const $content = $('#modal-broker-data-content');
 
-        logOutput(`Starting ${dataType} fetch for ${broker} user ${userId}`, 'info');
+        modalLogOutput(`Starting ${dataType} fetch for ${broker} user ${userId}`, 'info');
         $btn.prop('disabled', true).html('<svg class="w-4 h-4 animate-spin inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Fetching...');
         $content.html('<div class="text-center"><svg class="w-6 h-6 animate-spin inline" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Loading data...</div>');
         $display.removeClass('hidden');
 
         if (!userId) {
-            logOutput('ERROR: No userId provided', 'error');
+            modalLogOutput('ERROR: No userId provided', 'error');
             showNotification('Missing user id. Re-login or provide user id.', 'warning');
             $btn.prop('disabled', false).html('<svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/></svg>Fetch Data');
             return;
@@ -1036,7 +1683,7 @@ $(document).ready(function() {
             $btn.prop('disabled', false).html('<svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/></svg>Fetch Data');
             
             if (data.ok && data.data) {
-                logOutput(`Successfully fetched ${data.data.length || 0} ${dataType} records`, 'success');
+                modalLogOutput(`Successfully fetched ${data.data.length || 0} ${dataType} records`, 'success');
                 
                 // Display the data
                 const formattedData = JSON.stringify(data.data, null, 2);
@@ -1049,7 +1696,7 @@ $(document).ready(function() {
                 
                 showNotification(`Fetched ${data.data.length || 0} ${dataType} successfully`, 'success');
             } else {
-                logOutput(`Failed to fetch ${dataType}: ${data.message || 'Unknown error'}`, 'error');
+                modalLogOutput(`Failed to fetch ${dataType}: ${data.message || 'Unknown error'}`, 'error');
                 $content.html(`<div class="text-red-400">Error: ${data.message || 'Failed to fetch data'}</div>`);
                 
                 if (data.auth_error) {
@@ -1059,7 +1706,7 @@ $(document).ready(function() {
         })
         .catch(error => {
             console.error('Fetch error:', error);
-            logOutput(`Network error: ${error.message}`, 'error');
+            modalLogOutput(`Network error: ${error.message}`, 'error');
             $btn.prop('disabled', false).html('<svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/></svg>Fetch Data');
             $content.html(`<div class="text-red-400">Network Error: ${error.message}</div>`);
             showNotification('Network error occurred. Please try again.', 'error');
@@ -1277,8 +1924,10 @@ $(document).ready(function() {
         });
     }
     
-    // Advanced Analytics Modal
-    $('#show-advanced-analytics').on('click', function() {
+    // Advanced Analytics Modal - mobile compatible
+    $(document).on('click touchend', '#show-advanced-analytics, #show-advanced-analytics-mobile', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
         showAdvancedAnalytics();
     });
     
@@ -1287,8 +1936,10 @@ $(document).ready(function() {
         checkBrokerConnectionAndShow();
     });
     
-    // Add Trade Via Broker button handler
-    $(document).on('click', '[data-action="add-trade-via-broker"]', function() {
+    // Add Trade Via Broker button handler - mobile compatible
+    $(document).on('click touchend', '[data-action="add-trade-via-broker"]', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
         const userId = CURRENT_USER_ID || 'NES881';
         window.location.href = `/calculatentrade_journal/real_broker_connect?user_id=${userId}`;
     });
@@ -1376,7 +2027,7 @@ $(document).ready(function() {
         showBrokerData();
         
         // Update log
-        logOutput(`Found ${connectedBrokers.length} connected broker(s): ${connectedBrokers.map(b => b.broker.toUpperCase()).join(', ')}`, 'success');
+        modalLogOutput(`Found ${connectedBrokers.length} connected broker(s): ${connectedBrokers.map(b => b.broker.toUpperCase()).join(', ')}`, 'success');
     }
     
     window.proceedWithSelectedBroker = function() {
@@ -1390,7 +2041,7 @@ $(document).ready(function() {
         $('#modal-broker-data-content').html('');
         $('#modal-broker-data-display').addClass('hidden');
         
-        logOutput(`Selected ${selectedBroker.toUpperCase()} broker. Ready to fetch data.`, 'info');
+        modalLogOutput(`Selected ${selectedBroker.toUpperCase()} broker. Ready to fetch data.`, 'info');
         showNotification(`Selected ${selectedBroker.toUpperCase()} broker. You can now fetch trade data.`, 'success');
     };
     
@@ -1697,23 +2348,345 @@ $(document).ready(function() {
         $(this).attr('data-toggle', 'tooltip');
     });
     
+    // Enhanced mobile compact layout handler
+    function initMobileCompactLayout() {
+      if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
+        // Ultra-compact table actions
+        $('.table-dark tbody td .flex.gap-1').each(function() {
+          const $container = $(this);
+          $container.find('button').each(function() {
+            const $btn = $(this);
+            // Ensure buttons are compact
+            $btn.css({
+              'min-width': '24px',
+              'min-height': '24px',
+              'padding': '0.15rem'
+            });
+          });
+        });
+
+        // Compact header actions
+        $('.md\\:hidden .space-y-2').css({
+          'gap': '0.25rem'
+        });
+
+        // Add touch-friendly padding to interactive elements
+        $('button, a, .stat-card, .filter-card').css({
+          '-webkit-tap-highlight-color': 'rgba(255,255,255,0.1)'
+        });
+
+        // Optimize DataTables for mobile
+        if ($.fn.DataTable) {
+          const table = $('#trades-table').DataTable();
+          table.responsive.recalc();
+        }
+      }
+    }
+
+    // Call this on document ready and window resize
+    $(document).ready(function() {
+      initMobileCompactLayout();
+      
+      $(window).on('resize', function() {
+        initMobileCompactLayout();
+      });
+    });
+
+    // Enhanced mobile action bar with better touch targets
+    (function() {
+      if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
+        const existingBar = document.querySelector('.mobile-action-bar');
+        if (!existingBar) {
+          const bar = document.createElement('div');
+          bar.className = 'mobile-action-bar';
+          bar.innerHTML = `
+            <button class="action bg-emerald-600 text-white" id="mobile-add" title="Add Trade" style="min-width: 44px; min-height: 44px;">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4"/></svg>
+            </button>
+            <button class="action bg-purple-600 text-white" id="mobile-analytics" title="Analytics" style="min-width: 44px; min-height: 44px;">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 17v-6a2 2 0 00-2-2H5"/></svg>
+            </button>
+            <button class="action bg-teal-600 text-white" id="mobile-broker" title="Broker" style="min-width: 44px; min-height: 44px;">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7v10c0 2.21 3.58 4 8 4s8-1.79 8-4V7"/></svg>
+            </button>
+            <button class="action bg-slate-700 text-white" id="mobile-more" title="More" style="min-width: 44px; min-height: 44px;">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6v.01M12 12v.01M12 18v.01"/></svg>
+            </button>
+          `;
+          document.body.appendChild(bar);
+
+          // Add touch event handlers
+          const buttons = bar.querySelectorAll('.action');
+          buttons.forEach(btn => {
+            btn.addEventListener('touchstart', function() {
+              this.style.opacity = '0.7';
+            });
+            btn.addEventListener('touchend', function() {
+              this.style.opacity = '1';
+            });
+          });
+
+          // Attach actions
+          document.getElementById('mobile-add').addEventListener('click', () => {
+            const el = document.querySelector('a[href*="trade_form"]');
+            if (el) el.click();
+          });
+          
+          document.getElementById('mobile-analytics').addEventListener('click', () => {
+            const el = document.getElementById('show-advanced-analytics-mobile') || document.getElementById('show-advanced-analytics');
+            if (el) el.click();
+          });
+          
+          document.getElementById('mobile-broker').addEventListener('click', () => {
+            const el = document.querySelector('[data-action="add-trade-via-broker"]');
+            if (el) el.click();
+            else window.location.href = '/multi_broker_connect';
+          });
+
+          document.getElementById('mobile-more').addEventListener('click', showMobileMenu);
+        }
+      }
+
+      function showMobileMenu() {
+        const menu = document.createElement('div');
+        menu.style.cssText = `
+          position: fixed;
+          bottom: 72px;
+          right: 12px;
+          background: var(--card);
+          border: 1px solid #334155;
+          padding: 8px;
+          border-radius: 8px;
+          z-index: 9999;
+          min-width: 120px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        `;
+        
+        menu.innerHTML = `
+          <button class="menu-item" data-action="apply">✅ Apply Filters</button>
+          <button class="menu-item" data-action="reset">🔄 Reset Filters</button>
+          <button class="menu-item" data-action="export">📥 Export CSV</button>
+          <button class="menu-item" data-action="refresh">🔄 Refresh</button>
+        `;
+
+        // Style menu items
+        menu.querySelectorAll('.menu-item').forEach(item => {
+          item.style.cssText = `
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 8px 12px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            margin-bottom: 2px;
+          `;
+          item.addEventListener('mouseover', () => {
+            item.style.background = '#334155';
+          });
+          item.addEventListener('mouseout', () => {
+            item.style.background = 'none';
+          });
+        });
+
+        document.body.appendChild(menu);
+
+        // Close menu on outside click
+        const closeMenu = (e) => {
+          if (!menu.contains(e.target) && !document.getElementById('mobile-more').contains(e.target)) {
+            document.body.removeChild(menu);
+            document.removeEventListener('click', closeMenu);
+            document.removeEventListener('touchstart', closeMenu);
+          }
+        };
+
+        setTimeout(() => {
+          document.addEventListener('click', closeMenu);
+          document.addEventListener('touchstart', closeMenu);
+        }, 100);
+
+        // Handle menu actions
+        menu.addEventListener('click', (e) => {
+          const action = e.target.dataset.action;
+          if (action) {
+            handleMenuAction(action);
+            document.body.removeChild(menu);
+          }
+        });
+      }
+
+      function handleMenuAction(action) {
+        const actions = {
+          apply: () => document.getElementById('apply-filters-mobile')?.click() || document.getElementById('apply-filters')?.click(),
+          reset: () => document.getElementById('reset-filters-mobile')?.click() || document.getElementById('reset-filters')?.click(),
+          export: () => document.getElementById('export-csv-mobile')?.click() || document.getElementById('export-csv')?.click(),
+          refresh: () => window.location.reload()
+        };
+        
+        if (actions[action]) {
+          actions[action]();
+        }
+      }
+    })();
+    
     // Add loading states to all action buttons
     $('.strategy-actions button, .btn').on('click', function() {
         const $btn = $(this);
         if (!$btn.hasClass('no-loading')) {
             const originalText = $btn.html();
-            $btn.data('original-text', originalText);
-            $btn.prop('disabled', true);
+            $btn.html('<svg class="w-4 h-4 animate-spin inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Loading...');
             
-            // Re-enable after 3 seconds if not manually re-enabled
             setTimeout(() => {
-                if ($btn.prop('disabled')) {
-                    $btn.prop('disabled', false);
-                    $btn.html($btn.data('original-text') || originalText);
-                }
-            }, 3000);
+                $btn.html(originalText);
+            }, 2000);
+        }
+    });
+    
+    // Mobile-specific optimizations
+    if (window.matchMedia('(max-width: 768px)').matches) {
+        // Prevent zoom on form inputs (iOS)
+        $('input, select, textarea').attr('style', 'font-size: 16px !important;');
+        
+        // Add touch feedback to all interactive elements
+        $('button, a, .clickable').on('touchstart', function() {
+            $(this).addClass('opacity-70');
+        }).on('touchend touchcancel', function() {
+            $(this).removeClass('opacity-70');
+        });
+        
+        // Optimize table scrolling
+        $('.table-container').css({
+            '-webkit-overflow-scrolling': 'touch',
+            'overflow-x': 'auto'
+        });
+        
+        // Fix mobile button event handlers
+        $('#show-advanced-analytics-mobile').off('click').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            showAdvancedAnalytics();
+        });
+        
+        $('#apply-filters-mobile').off('click').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            applyFilters();
+        });
+        
+        $('#reset-filters-mobile').off('click').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $('#filter-result').val('all');
+            $('#filter-strategy').val('all');
+            $('#filter-date').val('');
+            $('#search-trades').val('');
+            applyFilters();
+        });
+        
+        $('#export-csv-mobile').off('click').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            exportToCSV();
+        });
+    }
+    
+    // Initialize mobile features on page load
+    $(document).ready(function() {
+        initMobileCompactLayout();
+    });
+    
+    // Handle window resize for responsive adjustments
+    $(window).on('resize', function() {
+        if (window.matchMedia('(max-width: 768px)').matches) {
+            initMobileCompactLayout();
         }
     });
 });
+
+// Compact mobile UX JS
+(function() {
+  if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
+    // Inject mobile action bar only on small screens
+    const existingBar = document.querySelector('.mobile-action-bar');
+    if (!existingBar) {
+      const bar = document.createElement('div');
+      bar.className = 'mobile-action-bar';
+      bar.innerHTML = `
+        <button class="action bg-emerald-600 text-white" id="mobile-add" title="Add Trade">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4"/></svg>
+        </button>
+        <button class="action bg-purple-600 text-white" id="mobile-analytics" title="Analytics">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 17v-6a2 2 0 00-2-2H5"/></svg>
+        </button>
+        <button class="action bg-teal-600 text-white" id="mobile-broker" title="Broker">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7v10c0 2.21 3.58 4 8 4s8-1.79 8-4V7"/></svg>
+        </button>
+        <button class="action bg-slate-700 text-white" id="mobile-more" title="More">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6v.01M12 12v.01M12 18v.01"/></svg>
+        </button>
+      `;
+      document.body.appendChild(bar);
+
+      // Attach actions to existing buttons
+      document.getElementById('mobile-add').addEventListener('click', () => {
+        const el = document.querySelector('a[href*="trade_form"]');
+        if (el) el.click();
+      });
+      document.getElementById('mobile-analytics').addEventListener('click', () => {
+        const el = document.getElementById('show-advanced-analytics-mobile') || document.getElementById('show-advanced-analytics');
+        if (el) el.click();
+      });
+      document.getElementById('mobile-broker').addEventListener('click', () => {
+        const el = document.querySelector('[data-action="add-trade-via-broker"]');
+        if (el) el.click();
+        else window.location.href = '/multi_broker_connect';
+      });
+
+      document.getElementById('mobile-more').addEventListener('click', () => {
+        // Simple dropdown: show hidden mobile filter buttons in a small popup
+        const menu = document.createElement('div');
+        menu.style.position = 'fixed';
+        menu.style.bottom = '68px';
+        menu.style.right = '12px';
+        menu.style.background = 'var(--card)';
+        menu.style.border = '1px solid #334155';
+        menu.style.padding = '8px';
+        menu.style.borderRadius = '8px';
+        menu.style.zIndex = 9999;
+        menu.innerHTML = `
+          <button id="menu-apply" class="px-3 py-2 block w-full text-left text-white hover:bg-slate-700 rounded">Apply Filters</button>
+          <button id="menu-reset" class="px-3 py-2 block w-full text-left text-white hover:bg-slate-700 rounded">Reset Filters</button>
+          <button id="menu-export" class="px-3 py-2 block w-full text-left text-white hover:bg-slate-700 rounded">Export CSV</button>
+        `;
+        document.body.appendChild(menu);
+
+        // close on outside click
+        const closeMenu = (e) => {
+          if (!menu.contains(e.target) && !document.getElementById('mobile-more').contains(e.target)) {
+            document.body.removeChild(menu);
+            document.removeEventListener('click', closeMenu);
+          }
+        };
+        setTimeout(() => document.addEventListener('click', closeMenu), 100);
+
+        // hook actions
+        menu.querySelector('#menu-apply').addEventListener('click', () => { 
+          document.getElementById('apply-filters-mobile')?.click() || document.getElementById('apply-filters')?.click();
+          document.body.removeChild(menu);
+        });
+        menu.querySelector('#menu-reset').addEventListener('click', () => { 
+          document.getElementById('reset-filters-mobile')?.click() || document.getElementById('reset-filters')?.click();
+          document.body.removeChild(menu);
+        });
+        menu.querySelector('#menu-export').addEventListener('click', () => { 
+          document.getElementById('export-csv-mobile')?.click() || document.getElementById('export-csv')?.click();
+          document.body.removeChild(menu);
+        });
+      });
+    }
+  }
+})();
 </script>
 {% endblock %}

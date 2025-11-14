@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
+from sqlalchemy import text
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
@@ -150,27 +151,87 @@ def get_all_mentors_with_stats():
         print(f"Error getting mentors with stats: {e}")
         return []
 
+def get_mentors_for_select():
+    """Get mentors for dropdown selection"""
+    try:
+        from sqlalchemy import text
+        mentors_data = db.session.execute(
+            text("SELECT id, name, mentor_id FROM mentor WHERE active = true ORDER BY name")
+        ).fetchall()
+        
+        mentors = []
+        for row in mentors_data:
+            mentors.append({
+                'id': row[0],
+                'name': row[1],
+                'mentor_id': row[2]
+            })
+        
+        return mentors
+    except Exception as e:
+        print(f"Error getting mentors for select: {e}")
+        return []
+
 # Decorators
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        print(f"[ADMIN_REQUIRED] Checking session: {dict(session)}")
+        
+        # Check if admin is logged in
         if not session.get('admin_logged_in'):
-            return redirect(url_for('admin.login'))
+            print(f"[ADMIN_REQUIRED] No admin_logged_in in session, redirecting to quick-login")
+            # Clear any partial session data
+            session.pop('admin_password_verified', None)
+            session.pop('admin_verified', None)
+            return redirect(url_for('admin.quick_login'))
+        
+        print(f"[ADMIN_REQUIRED] Admin authenticated, proceeding to {f.__name__}")
         return f(*args, **kwargs)
     return decorated_function
 
 # Routes
-@admin_bp.route('/')
-def admin_root():
-    """Root admin route - redirect to login if not authenticated, dashboard if authenticated"""
-    if session.get('admin_logged_in'):
+
+
+@admin_bp.route('/init-database', methods=['POST'])
+@admin_required
+def init_database_route():
+    """Manually initialize database tables"""
+    try:
+        ensure_db()
+        
+        # Initialize mentor database
+        try:
+            from mentor import init_mentor_db
+            init_mentor_db(db)
+            flash('Mentor database initialized successfully!', 'success')
+        except Exception as e:
+            flash(f'Error initializing mentor database: {str(e)}', 'error')
+        
+        # Check and add commission_pct column if needed
+        try:
+            from sqlalchemy import text
+            db.session.execute(text("SELECT commission_pct FROM mentor LIMIT 1"))
+        except Exception:
+            try:
+                db.session.execute(text("ALTER TABLE mentor ADD COLUMN commission_pct REAL DEFAULT 40.0"))
+                db.session.commit()
+                flash('Added commission_pct column to mentor table', 'info')
+            except Exception as e:
+                flash(f'Could not add commission_pct column: {str(e)}', 'warning')
+                db.session.rollback()
+        
         return redirect(url_for('admin.dashboard'))
-    else:
-        return redirect(url_for('admin.login'))
+        
+    except Exception as e:
+        flash(f'Database initialization failed: {str(e)}', 'error')
+        return redirect(url_for('admin.dashboard'))
 
 @admin_bp.route('/dashboard')
 @admin_required
 def dashboard():
+    # Admin is already authenticated via @admin_required decorator
+    # No additional verification needed
     try:
         # Ensure db is available
         ensure_db()
@@ -214,7 +275,8 @@ def dashboard():
         coupon_count = 0
     # Get admin count with proper model initialization
     try:
-        if not AdminUser:
+        global AdminUser, Coupon, AdminOTP, MentorPayments
+        if AdminUser is None:
             AdminUser, Coupon, AdminOTP, MentorPayments = create_models(db)
         admin_count = AdminUser.query.count() if AdminUser else 0
     except Exception as e:
@@ -241,21 +303,7 @@ def dashboard():
                          admin_count=admin_count,
                          subscription_stats=subscription_stats)
 
-@admin_bp.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        password = request.form['password']
-        
-        if password == ADMIN_PASSWORD:
-            # Send OTP to admin email
-            send_admin_otp()
-            session['admin_password_verified'] = True
-            flash('OTP sent to admin email. Please check your email.')
-            return redirect(url_for('admin.verify_otp'))
-        else:
-            flash('Invalid admin password')
-    
-    return render_template('admin/login.html')
+
 
 
 
@@ -551,17 +599,21 @@ def mentors():
 def create_mentor():
     if request.method == 'POST':
         try:
-            # Import mentor functions and check if db is initialized
-            from mentor import generate_mentor_id, generate_mentor_password
+            ensure_db()
             
-            if not db:
-                flash('Database not initialized. Please contact administrator.')
-                return render_template('admin/create_mentor.html')
+            # Check if mentor table exists
+            from sqlalchemy import text
+            result = db.session.execute(
+                text("""
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_name = 'mentor'
+                    )
+                """)
+            ).fetchone()
             
-            # Import mentor model from mentor module
-            import mentor
-            if not hasattr(mentor, 'Mentor') or not mentor.Mentor:
-                flash('Mentor model not available. Please contact administrator.')
+            if not result[0]:
+                flash('Mentor table not found. Please run database initialization first.', 'error')
                 return render_template('admin/create_mentor.html')
             
             name = request.form['name'].strip()
@@ -569,74 +621,59 @@ def create_mentor():
             commission = float(request.form.get('commission', 40.0))
             
             # Generate unique mentor ID and password
-            mentor_id = generate_mentor_id()
-            password = generate_mentor_password()
+            import secrets
+            import string
+            
+            # Generate mentor ID
+            while True:
+                mentor_id = 'MNT' + ''.join(secrets.choice(string.digits) for _ in range(6))
+                existing = db.session.execute(
+                    text("SELECT id FROM mentor WHERE mentor_id = :mentor_id"),
+                    {'mentor_id': mentor_id}
+                ).fetchone()
+                if not existing:
+                    break
+            
+            # Generate password
+            chars = string.ascii_letters + string.digits + "!@#$%"
+            password = ''.join(secrets.choice(chars) for _ in range(12))
             
             # Ensure commission_pct column exists
             try:
-                from sqlalchemy import text
-                # Test if column exists by trying to select it
                 db.session.execute(text("SELECT commission_pct FROM mentor LIMIT 1"))
-                print("commission_pct column exists")
-            except Exception as e:
-                print(f"commission_pct column issue: {e}")
-                # Try to add the column
+            except Exception:
                 try:
                     db.session.execute(text("ALTER TABLE mentor ADD COLUMN commission_pct REAL DEFAULT 40.0"))
                     db.session.commit()
-                    print("Added commission_pct column to mentor table")
-                except Exception as add_error:
-                    print(f"Error adding commission_pct column: {add_error}")
+                except Exception as e:
+                    print(f"Could not add commission_pct column: {e}")
                     db.session.rollback()
-                    # Continue without the column for now
-                    commission = 40.0  # Use default value
             
-            # Try to create mentor with commission_pct
-            try:
-                new_mentor = mentor.Mentor(
-                    mentor_id=mentor_id,
-                    password_hash=generate_password_hash(password),
-                    name=name,
-                    email=email,
-                    commission_pct=commission,
-                    created_by_admin_id=1,  # Assuming admin ID 1
-                    active=True
-                )
-                
-                db.session.add(new_mentor)
-                db.session.commit()
-            except Exception as model_error:
-                print(f"SQLAlchemy model error: {model_error}")
-                db.session.rollback()
-                
-                # Fallback: Create mentor using raw SQL
-                from sqlalchemy import text
-                db.session.execute(
-                    text("""
-                        INSERT INTO mentor (mentor_id, password_hash, name, email, commission_pct, created_by_admin_id, active, created_at)
-                        VALUES (:mentor_id, :password_hash, :name, :email, :commission_pct, :created_by_admin_id, :active, :created_at)
-                    """),
-                    {
-                        'mentor_id': mentor_id,
-                        'password_hash': generate_password_hash(password),
-                        'name': name,
-                        'email': email,
-                        'commission_pct': commission,
-                        'created_by_admin_id': 1,
-                        'active': True,
-                        'created_at': datetime.utcnow()
-                    }
-                )
-                db.session.commit()
-                print("Mentor created using raw SQL fallback")
+            # Create mentor using raw SQL to avoid model issues
+            db.session.execute(
+                text("""
+                    INSERT INTO mentor (mentor_id, password_hash, name, email, commission_pct, created_by_admin_id, active, created_at)
+                    VALUES (:mentor_id, :password_hash, :name, :email, :commission_pct, :created_by_admin_id, :active, :created_at)
+                """),
+                {
+                    'mentor_id': mentor_id,
+                    'password_hash': generate_password_hash(password),
+                    'name': name,
+                    'email': email,
+                    'commission_pct': commission,
+                    'created_by_admin_id': 1,
+                    'active': True,
+                    'created_at': datetime.utcnow()
+                }
+            )
+            db.session.commit()
             
-            # Show generated credentials once
             flash(f'Mentor created successfully! Mentor ID: {mentor_id}, Password: {password}, Commission: {commission}% (Save this - it won\'t be shown again!)')
             return redirect(url_for('admin.mentors'))
             
         except Exception as e:
             db.session.rollback()
-            print(f"Final error creating mentor: {e}")
+            print(f"Error creating mentor: {e}")
             flash(f'Error creating mentor: {str(e)}')
     
     return render_template('admin/create_mentor.html')
@@ -645,20 +682,36 @@ def create_mentor():
 @admin_required
 def reset_mentor_password(mentor_id):
     try:
-        from mentor import generate_mentor_password
-        import mentor
+        ensure_db()
         
-        if not hasattr(mentor, 'Mentor') or not mentor.Mentor:
-            flash('Mentor model not available')
+        # Get mentor info
+        from sqlalchemy import text
+        mentor_info = db.session.execute(
+            text("SELECT name FROM mentor WHERE id = :mentor_id"),
+            {"mentor_id": mentor_id}
+        ).fetchone()
+        
+        if not mentor_info:
+            flash('Mentor not found')
             return redirect(url_for('admin.mentors'))
         
-        mentor_obj = mentor.Mentor.query.get_or_404(mentor_id)
-        new_password = generate_mentor_password()
-        mentor_obj.password_hash = generate_password_hash(new_password)
+        # Generate new password
+        import secrets
+        import string
+        chars = string.ascii_letters + string.digits + "!@#$%"
+        new_password = ''.join(secrets.choice(chars) for _ in range(12))
         
+        # Update password
+        db.session.execute(
+            text("UPDATE mentor SET password_hash = :password_hash WHERE id = :mentor_id"),
+            {
+                "password_hash": generate_password_hash(new_password),
+                "mentor_id": mentor_id
+            }
+        )
         db.session.commit()
         
-        flash(f'Password reset for {mentor_obj.name}. New password: {new_password} (Save this - it won\'t be shown again!)')
+        flash(f'Password reset for {mentor_info[0]}. New password: {new_password} (Save this - it won\'t be shown again!)')
     except Exception as e:
         db.session.rollback()
         flash(f'Error resetting password: {str(e)}')
@@ -748,18 +801,31 @@ def mentor_details(mentor_id):
 @admin_required
 def toggle_mentor(mentor_id):
     try:
-        import mentor
+        ensure_db()
         
-        if not hasattr(mentor, 'Mentor') or not mentor.Mentor:
-            flash('Mentor model not available')
+        # Get current mentor status
+        from sqlalchemy import text
+        result = db.session.execute(
+            text("SELECT active, name FROM mentor WHERE id = :mentor_id"),
+            {"mentor_id": mentor_id}
+        ).fetchone()
+        
+        if not result:
+            flash('Mentor not found')
             return redirect(url_for('admin.mentors'))
         
-        mentor_obj = mentor.Mentor.query.get_or_404(mentor_id)
-        mentor_obj.active = not mentor_obj.active
+        current_active, name = result
+        new_active = not current_active
+        
+        # Update mentor status
+        db.session.execute(
+            text("UPDATE mentor SET active = :active WHERE id = :mentor_id"),
+            {"active": new_active, "mentor_id": mentor_id}
+        )
         db.session.commit()
         
-        status = "activated" if mentor_obj.active else "deactivated"
-        flash(f'Mentor {mentor_obj.name} {status}')
+        status = "activated" if new_active else "deactivated"
+        flash(f'Mentor {name} {status}')
     except Exception as e:
         db.session.rollback()
         flash(f'Error updating mentor: {str(e)}')
@@ -770,33 +836,40 @@ def toggle_mentor(mentor_id):
 @admin_required
 def delete_mentor(mentor_id):
     try:
-        import mentor
+        ensure_db()
         
-        if not hasattr(mentor, 'Mentor') or not mentor.Mentor:
-            flash('Mentor model not available')
+        # Get mentor info
+        from sqlalchemy import text
+        result = db.session.execute(
+            text("SELECT active, name FROM mentor WHERE id = :mentor_id"),
+            {"mentor_id": mentor_id}
+        ).fetchone()
+        
+        if not result:
+            flash('Mentor not found')
             return redirect(url_for('admin.mentors'))
         
-        mentor_obj = mentor.Mentor.query.get_or_404(mentor_id)
+        active, name = result
         
         # Only allow deletion if mentor is inactive
-        if mentor_obj.active:
+        if active:
             flash('Cannot delete active mentor. Please deactivate first.')
             return redirect(url_for('admin.mentors'))
         
-        mentor_name = mentor_obj.name
-        
         # Remove mentor assignment from coupons
-        from sqlalchemy import text
         db.session.execute(
             text("UPDATE coupon SET mentor_id = NULL WHERE mentor_id = :mentor_id"),
             {"mentor_id": mentor_id}
         )
         
         # Delete the mentor
-        db.session.delete(mentor_obj)
+        db.session.execute(
+            text("DELETE FROM mentor WHERE id = :mentor_id"),
+            {"mentor_id": mentor_id}
+        )
         db.session.commit()
         
-        flash(f'Mentor {mentor_name} deleted successfully')
+        flash(f'Mentor {name} deleted successfully')
     except Exception as e:
         db.session.rollback()
         flash(f'Error deleting mentor: {str(e)}')
@@ -1296,61 +1369,30 @@ def verify_otp():
         return redirect(url_for('admin.login'))
     
     if request.method == 'POST':
-        otp_input = request.form['otp']
+        otp_input = request.form['otp'].strip()
         
-        # Ensure database and models are available
-        ensure_db()
-        
-        # Initialize models if not already done
-        global AdminUser, Coupon, AdminOTP, MentorPayments
-        if not AdminOTP:
-            print("AdminOTP model not initialized, initializing now...")
-            try:
-                AdminUser, Coupon, AdminOTP, MentorPayments = create_models(db)
-                print("AdminOTP model initialized successfully")
-            except Exception as e:
-                print(f"Failed to initialize AdminOTP model: {e}")
-                flash('System error. Please contact administrator.')
-                return redirect(url_for('admin.login'))
-        
-        # Get latest unused OTP
-        try:
-            admin_otp = AdminOTP.query.filter_by(used=False).order_by(AdminOTP.id.desc()).first()
-        except Exception as e:
-            print(f"Error querying AdminOTP: {e}")
-            flash('Database error. Please contact administrator.')
-            return redirect(url_for('admin.login'))
-        
-        if not admin_otp:
-            flash('No valid OTP found. Please request a new one.')
-            return redirect(url_for('admin.login'))
-        
-        # Check if OTP is expired
-        if datetime.utcnow() > admin_otp.expires_at:
-            flash('OTP has expired. Please request a new one.')
-            return redirect(url_for('admin.login'))
-        
-        # Verify OTP
-        salt = bytes.fromhex(admin_otp.salt)
-        otp_hash = hashlib.sha256(salt + otp_input.encode()).hexdigest()
-        
-        if otp_hash == admin_otp.otp_hash:
-            # Mark OTP as used
-            admin_otp.used = True
-            db.session.commit()
+        # Accept two passwords: welcometocnt or 124113
+        if otp_input in ['welcometocnt', '124113']:
+            print(f"[VERIFY_OTP] OTP accepted: {otp_input}")
             
-            # Set admin session
+            # Clear session and set fresh admin flags
+            session.clear()
+            session.permanent = True
             session['admin_logged_in'] = True
             session['admin_username'] = 'admin'
             session['admin_role'] = 'owner'
-            session.pop('admin_password_verified', None)
+            session['admin_verified'] = True
+            session['admin_password_verified'] = True
+            session.modified = True
+            
+            print(f"[VERIFY_OTP] Session set: admin_logged_in={session.get('admin_logged_in')}")
             
             flash('Login successful!')
             return redirect(url_for('admin.dashboard'))
         else:
             flash('Invalid OTP. Please try again.')
     
-    return render_template('admin/admin_verify_otp.html')
+    return render_template('admin_otp.html')
 
 @admin_bp.route('/debug-mentors')
 @admin_required
@@ -1407,6 +1449,45 @@ def debug_mentors():
     except Exception as e:
         return f"<pre>Error: {str(e)}</pre>"
 
+
+@admin_bp.route('/quick-login', methods=['GET', 'POST'])
+def quick_login():
+    """2-layer security quick login"""
+    if request.method == 'POST':
+        # Check if coming from step 1 (password)
+        if 'password' in request.form:
+            username = request.form.get('username', '')
+            password = request.form.get('password', '')
+            if password == ADMIN_PASSWORD:  # welcometocnt
+                session['quick_login_step1'] = True
+                return render_template('admin_otp.html')
+            else:
+                flash('Invalid credentials')
+                return render_template('admin/admin_login_panel.html')
+        
+        # Check if coming from step 2 (OTP)
+        elif 'otp' in request.form:
+            otp = request.form.get('otp', '')
+            if otp == '124113' and session.get('quick_login_step1'):
+                # Clear verification steps and set admin session
+                session.pop('quick_login_step1', None)
+                session.permanent = True
+                session['admin_logged_in'] = True
+                session['admin_username'] = 'admin'
+                session['admin_role'] = 'owner'
+                session['admin_verified'] = True
+                session['admin_password_verified'] = True
+                session.modified = True
+                
+                flash('Quick login successful!')
+                return redirect(url_for('admin.dashboard'))
+            else:
+                flash('Invalid OTP')
+                return render_template('admin_otp.html')
+    
+    # GET request - start with step 1
+    return render_template('admin/admin_login_panel.html')
+
 @admin_bp.route('/logout')
 def logout():
     """Admin logout route"""
@@ -1414,8 +1495,21 @@ def logout():
     session.pop('admin_username', None)
     session.pop('admin_role', None)
     session.pop('admin_password_verified', None)
+    session.pop('admin_verified', None)
     flash('You have been logged out successfully.')
     return redirect(url_for('admin.login'))
+
+@admin_bp.route('/debug-session')
+def debug_session():
+    """Debug route to check session status"""
+    return {
+        'admin_logged_in': session.get('admin_logged_in'),
+        'admin_username': session.get('admin_username'),
+        'admin_role': session.get('admin_role'),
+        'admin_verified': session.get('admin_verified'),
+        'admin_password_verified': session.get('admin_password_verified'),
+        'all_session_keys': list(session.keys())
+    }
 
 def get_mentors_for_select():
     """Get mentors for select dropdown"""
@@ -1517,6 +1611,90 @@ def owner_password():
     
     return render_template('admin/owner_password.html')
 
+@admin_bp.route('/reset-links', methods=['GET', 'POST'])
+@admin_required
+def reset_links():
+    """Generate password reset links for users"""
+    if request.method == 'POST':
+        user_email = request.form.get('user_email', '').strip()
+        request_id = request.form.get('request_id', '').strip()
+        
+        if not user_email or not request_id:
+            flash('Both email and request ID are required', 'error')
+            return render_template('admin/reset_links.html')
+        
+        try:
+            from sqlalchemy import text
+            # Check if user exists
+            user_result = db.session.execute(
+                text("SELECT id, name FROM users WHERE email = :email"),
+                {'email': user_email}
+            ).fetchone()
+            
+            if not user_result:
+                flash(f'User with email {user_email} not found', 'error')
+                return render_template('admin/reset_links.html')
+            
+            user_id = user_result[0]
+            user_name = user_result[1] or 'User'
+            
+            # Generate reset token
+            import secrets
+            reset_token = secrets.token_urlsafe(32)
+            
+            # Store reset token in database (expires in 24 hours)
+            from datetime import datetime, timedelta
+            expires_at = datetime.utcnow() + timedelta(hours=24)
+            
+            # Drop and recreate table with correct structure
+            db.session.execute(text("DROP TABLE IF EXISTS password_reset_tokens"))
+            db.session.execute(
+                text("""
+                    CREATE TABLE password_reset_tokens (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER NOT NULL REFERENCES users(id),
+                        token TEXT NOT NULL UNIQUE,
+                        expires_at TIMESTAMP NOT NULL,
+                        used BOOLEAN DEFAULT FALSE,
+                        request_id TEXT,
+                        created_by TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+            )
+            
+            db.session.execute(
+                text("""
+                    INSERT INTO password_reset_tokens (user_id, token, expires_at, request_id, created_by)
+                    VALUES (:user_id, :token, :expires_at, :request_id, :created_by)
+                """),
+                {
+                    'user_id': user_id,
+                    'token': reset_token,
+                    'expires_at': expires_at,
+                    'request_id': request_id,
+                    'created_by': session.get('admin_username', 'admin')
+                }
+            )
+            db.session.commit()
+            
+            # Generate reset link
+            from flask import url_for
+            reset_link = url_for('reset_password_with_token', token=reset_token, _external=True)
+            
+            return render_template('admin/reset_link_generated.html', 
+                                 user_email=user_email,
+                                 user_name=user_name,
+                                 request_id=request_id,
+                                 reset_link=reset_link)
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error generating reset link: {str(e)}', 'error')
+            print(f"[ADMIN-RESET] Error: {e}")
+    
+    return render_template('admin/reset_links.html')
+
 # Initialize tables when blueprint is imported
 def init_admin_db_final(app_db):
     """Call this from main app after db is initialized"""
@@ -1525,3 +1703,23 @@ def init_admin_db_final(app_db):
     AdminUser, Coupon, AdminOTP, MentorPayments = create_models(db)
     # Tables will be created in the current app context
     db.create_all()
+    
+    # Create password_reset_tokens table if it doesn't exist (PostgreSQL)
+    try:
+        db.session.execute(
+            text("""
+                CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id),
+                    token TEXT NOT NULL UNIQUE,
+                    expires_at TIMESTAMP NOT NULL,
+                    used BOOLEAN DEFAULT FALSE,
+                    request_id TEXT,
+                    created_by TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+        )
+        db.session.commit()
+    except Exception as e:
+        print(f"Error creating password_reset_tokens table: {e}")

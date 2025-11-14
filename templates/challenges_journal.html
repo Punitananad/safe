@@ -2,6 +2,103 @@
 
 {% block title %}Trading Challenges | Calculate N Trade{% endblock %}
 
+{% block extra_css %}
+<style>
+  /* Mobile Responsive Styles */
+  @media (max-width: 768px) {
+    .max-w-7xl {
+      max-width: 100%;
+      padding: 0 1rem;
+    }
+    
+    .grid.grid-cols-1.md\:grid-cols-2.lg\:grid-cols-3 {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    
+    .grid.grid-cols-1.lg\:grid-cols-3 {
+      grid-template-columns: 1fr;
+    }
+    
+    .grid.grid-cols-2.md\:grid-cols-4 {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+    
+    .flex.justify-between.items-center {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1rem;
+    }
+    
+    .text-2xl {
+      font-size: 1.5rem;
+    }
+    
+    .max-w-2xl, .max-w-6xl, .max-w-md {
+      max-width: 95vw;
+      margin: 1rem;
+    }
+    
+    .max-h-\[90vh\] {
+      max-height: 85vh;
+    }
+    
+    .grid.grid-cols-2 {
+      grid-template-columns: 1fr;
+    }
+    
+    .grid.grid-cols-5 {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+    
+    .p-6 {
+      padding: 1rem;
+    }
+    
+    .step-indicator {
+      flex-direction: column;
+      text-align: center;
+    }
+    
+    .flex.justify-between {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .trading-calendar {
+      font-size: 0.75rem;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .grid.grid-cols-2.md\:grid-cols-4 {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+    
+    .grid.grid-cols-5 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .text-2xl {
+      font-size: 1.25rem;
+    }
+    
+    .px-4 {
+      padding-left: 0.75rem;
+      padding-right: 0.75rem;
+    }
+    
+    .py-2 {
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
   <!-- Header -->

@@ -1593,7 +1593,20 @@ def get_trades():
     losing_trades = len([t for t in trades if t.pnl < 0])
     win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
     
-    return render_template('trades_journal.html', 
+    # Detect mobile device from user agent
+    user_agent = request.headers.get('User-Agent', '').lower()
+    is_mobile = any(mobile in user_agent for mobile in [
+        'mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 
+        'windows phone', 'opera mini', 'iemobile', 'wpdesktop'
+    ])
+    
+    # Force mobile template for testing (remove this line in production)
+    is_mobile = True
+    
+    # Choose template based on device type
+    template = 'trades_journal.html' if is_mobile else 'trades_journal.html'
+    
+    return render_template(template, 
                          trades=trades, 
                          strategies=strategies,
                          total_trades=total_trades,

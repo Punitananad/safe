@@ -3,152 +3,193 @@
 {% block title %}Dashboard | Calculate N Trade{% endblock %}
 
 {% block content %}
-<div class="px-6 py-6 space-y-8">
-  <div class="flex items-center justify-between">
-    <h1 class="text-3xl font-bold tracking-tight">📊 Trading Dashboard</h1>
-    <div class="flex items-center gap-4">
-      <select id="timeRange" class="bg-[color:var(--card)] border border-slate-700 rounded-lg px-3 py-2 text-sm">
+<div class="px-3 sm:px-6 py-4 sm:py-6 space-y-6 sm:space-y-8">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">📊 Trading Dashboard</h1>
+    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+      <select id="timeRange" class="bg-[color:var(--card)] border border-slate-700 rounded-lg px-3 py-2 text-sm w-full sm:w-auto">
         <option value="30">Last 30 Days</option>
         <option value="90">Last 3 Months</option>
         <option value="365">Last Year</option>
       </select>
-      <span class="text-sm text-[color:var(--muted)]">
+      <span class="text-xs sm:text-sm text-[color:var(--muted)] hidden sm:block">
         Updated {{ now.strftime('%b %d, %Y at %H:%M') if now else '' }}
       </span>
     </div>
   </div>
 
   <!-- KPI Cards -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-    <div class="p-5 rounded-2xl bg-gradient-to-br from-teal-700/30 to-sky-800/20 border border-slate-700 shadow hover:shadow-lg transition-shadow">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+    <div class="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-gradient-to-br from-teal-700/30 to-sky-800/20 border border-slate-700 shadow hover:shadow-lg transition-shadow">
       <div class="flex items-center justify-between">
-        <div>
+        <div class="min-w-0 flex-1">
           <p class="text-sm text-slate-400">Total P&L</p>
-          <h3 class="text-2xl font-semibold mt-1 text-white" id="totalPnl">₹{{ "{:,.2f}".format(total_pnl) }}</h3>
+          <h3 class="text-xl sm:text-2xl font-semibold mt-1 text-white truncate" id="totalPnl">₹{{ "{:,.2f}".format(total_pnl) }}</h3>
           <p class="text-xs text-slate-500 mt-1">{{ 'Profitable' if total_pnl > 0 else 'Loss' }}</p>
         </div>
-        <div class="p-3 rounded-full bg-teal-500/20">
-          <i class="fa-solid fa-coins text-teal-400 text-xl"></i>
+        <div class="p-2 sm:p-3 rounded-full bg-teal-500/20 flex-shrink-0">
+          <i class="fa-solid fa-coins text-teal-400 text-lg sm:text-xl"></i>
         </div>
       </div>
     </div>
 
-    <div class="p-5 rounded-2xl bg-gradient-to-br from-emerald-700/30 to-sky-800/20 border border-slate-700 shadow hover:shadow-lg transition-shadow">
+    <div class="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-700/30 to-sky-800/20 border border-slate-700 shadow hover:shadow-lg transition-shadow">
       <div class="flex items-center justify-between">
-        <div>
+        <div class="min-w-0 flex-1">
           <p class="text-sm text-slate-400">Win Rate</p>
-          <h3 class="text-2xl font-semibold mt-1 text-white" id="winRate">{{ win_rate }}%</h3>
+          <h3 class="text-xl sm:text-2xl font-semibold mt-1 text-white" id="winRate">{{ win_rate }}%</h3>
           <p class="text-xs text-slate-500 mt-1">{{ winning_trades }}/{{ total_trades }} wins</p>
         </div>
-        <div class="p-3 rounded-full bg-emerald-500/20">
-          <i class="fa-solid fa-trophy text-emerald-400 text-xl"></i>
+        <div class="p-2 sm:p-3 rounded-full bg-emerald-500/20 flex-shrink-0">
+          <i class="fa-solid fa-trophy text-emerald-400 text-lg sm:text-xl"></i>
         </div>
       </div>
     </div>
 
-    <div class="p-5 rounded-2xl bg-gradient-to-br from-sky-700/30 to-indigo-800/20 border border-slate-700 shadow hover:shadow-lg transition-shadow">
+    <div class="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-gradient-to-br from-sky-700/30 to-indigo-800/20 border border-slate-700 shadow hover:shadow-lg transition-shadow">
       <div class="flex items-center justify-between">
-        <div>
+        <div class="min-w-0 flex-1">
           <p class="text-sm text-slate-400">Total Trades</p>
-          <h3 class="text-2xl font-semibold mt-1 text-white" id="totalTrades">{{ total_trades }}</h3>
+          <h3 class="text-xl sm:text-2xl font-semibold mt-1 text-white" id="totalTrades">{{ total_trades }}</h3>
           <p class="text-xs text-slate-500 mt-1">{{ trades_this_month }} this month</p>
         </div>
-        <div class="p-3 rounded-full bg-sky-500/20">
-          <i class="fa-solid fa-chart-line text-sky-400 text-xl"></i>
+        <div class="p-2 sm:p-3 rounded-full bg-sky-500/20 flex-shrink-0">
+          <i class="fa-solid fa-chart-line text-sky-400 text-lg sm:text-xl"></i>
         </div>
       </div>
     </div>
 
-    <div class="p-5 rounded-2xl bg-gradient-to-br from-purple-700/30 to-sky-800/20 border border-slate-700 shadow hover:shadow-lg transition-shadow">
+    <div class="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-gradient-to-br from-purple-700/30 to-sky-800/20 border border-slate-700 shadow hover:shadow-lg transition-shadow">
       <div class="flex items-center justify-between">
-        <div>
+        <div class="min-w-0 flex-1">
           <p class="text-sm text-slate-400">This Month</p>
-          <h3 class="text-2xl font-semibold mt-1 text-white" id="monthlyPnl">₹{{ "{:,.2f}".format(monthly_pnl) }}</h3>
+          <h3 class="text-xl sm:text-2xl font-semibold mt-1 text-white truncate" id="monthlyPnl">₹{{ "{:,.2f}".format(monthly_pnl) }}</h3>
           <p class="text-xs text-slate-500 mt-1">{{ '↗️' if monthly_pnl > 0 else '↘️' }} vs last month</p>
         </div>
-        <div class="p-3 rounded-full bg-purple-500/20">
-          <i class="fa-solid fa-calendar-days text-purple-400 text-xl"></i>
+        <div class="p-2 sm:p-3 rounded-full bg-purple-500/20 flex-shrink-0">
+          <i class="fa-solid fa-calendar-days text-purple-400 text-lg sm:text-xl"></i>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Charts Section -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
     <!-- Equity Curve Chart -->
-    <div class="lg:col-span-2 bg-[color:var(--card)] rounded-xl border border-slate-800 p-6 shadow">
-      <div class="flex items-center justify-between mb-4">
+    <div class="lg:col-span-2 bg-[color:var(--card)] rounded-xl border border-slate-800 p-4 sm:p-6 shadow">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
         <h2 class="text-lg font-semibold">Equity Curve</h2>
         <div class="flex items-center gap-2">
           <div class="w-3 h-3 rounded-full bg-teal-400"></div>
           <span class="text-xs text-slate-400">Cumulative P&L</span>
         </div>
       </div>
-      <div class="h-64 relative">
+      <div class="h-48 sm:h-64 relative">
         <canvas id="equityChart" class="w-full h-full"></canvas>
       </div>
     </div>
 
     <!-- Win/Loss Distribution -->
-    <div class="bg-[color:var(--card)] rounded-xl border border-slate-800 p-6 shadow">
+    <div class="bg-[color:var(--card)] rounded-xl border border-slate-800 p-4 sm:p-6 shadow">
       <h2 class="text-lg font-semibold mb-4">Win/Loss Distribution</h2>
-      <div class="h-64 relative">
+      <div class="h-48 sm:h-64 relative">
         <canvas id="winLossChart" class="w-full h-full"></canvas>
       </div>
     </div>
   </div>
 
   <!-- Performance Metrics & Monthly Heatmap -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
     <!-- Performance Metrics -->
-    <div class="bg-[color:var(--card)] rounded-xl border border-slate-800 p-6 shadow">
+    <div class="bg-[color:var(--card)] rounded-xl border border-slate-800 p-4 sm:p-6 shadow">
       <h2 class="text-lg font-semibold mb-4">Performance Metrics</h2>
-      <div class="space-y-4">
-        <div class="flex justify-between items-center">
+      <div class="space-y-3 sm:space-y-4">
+        <div class="flex justify-between items-center py-1">
           <span class="text-sm text-slate-400">Profit Factor</span>
-          <span class="text-white font-medium" id="profitFactor">{{ "%.2f"|format(profit_factor) if profit_factor else 'N/A' }}</span>
+          <span class="text-white font-medium text-sm" id="profitFactor">{{ "%.2f"|format(profit_factor) if profit_factor else 'N/A' }}</span>
         </div>
-        <div class="flex justify-between items-center">
+        <div class="flex justify-between items-center py-1">
           <span class="text-sm text-slate-400">Avg Win</span>
-          <span class="text-green-400 font-medium">₹{{ "{:,.2f}".format(avg_win) if avg_win else 0 }}</span>
+          <span class="text-green-400 font-medium text-sm">₹{{ "{:,.0f}".format(avg_win) if avg_win else 0 }}</span>
         </div>
-        <div class="flex justify-between items-center">
+        <div class="flex justify-between items-center py-1">
           <span class="text-sm text-slate-400">Avg Loss</span>
-          <span class="text-red-400 font-medium">₹{{ "{:,.2f}".format(avg_loss) if avg_loss else 0 }}</span>
+          <span class="text-red-400 font-medium text-sm">₹{{ "{:,.0f}".format(avg_loss) if avg_loss else 0 }}</span>
         </div>
-        <div class="flex justify-between items-center">
+        <div class="flex justify-between items-center py-1">
           <span class="text-sm text-slate-400">R:R Ratio</span>
-          <span class="text-white font-medium">{{ "1:%.2f"|format(risk_reward) if risk_reward else 'N/A' }}</span>
+          <span class="text-white font-medium text-sm">{{ "1:%.2f"|format(risk_reward) if risk_reward else 'N/A' }}</span>
         </div>
-        <div class="flex justify-between items-center">
+        <div class="flex justify-between items-center py-1">
           <span class="text-sm text-slate-400">Max Drawdown</span>
-          <span class="text-red-400 font-medium">₹{{ "{:,.2f}".format(max_drawdown) if max_drawdown else 0 }}</span>
+          <span class="text-red-400 font-medium text-sm">₹{{ "{:,.0f}".format(max_drawdown) if max_drawdown else 0 }}</span>
         </div>
-        <div class="flex justify-between items-center">
+        <div class="flex justify-between items-center py-1">
           <span class="text-sm text-slate-400">Expectancy</span>
-          <span class="text-white font-medium">₹{{ "{:,.2f}".format(expectancy) if expectancy else 0 }}</span>
+          <span class="text-white font-medium text-sm">₹{{ "{:,.0f}".format(expectancy) if expectancy else 0 }}</span>
         </div>
       </div>
     </div>
 
     <!-- Monthly Heatmap -->
-    <div class="bg-[color:var(--card)] rounded-xl border border-slate-800 p-6 shadow">
+    <div class="bg-[color:var(--card)] rounded-xl border border-slate-800 p-4 sm:p-6 shadow">
       <h2 class="text-lg font-semibold mb-4">Monthly Performance</h2>
-      <div class="h-64 relative">
+      <div class="h-48 sm:h-64 relative">
         <canvas id="monthlyChart" class="w-full h-full"></canvas>
       </div>
     </div>
   </div>
 
   <!-- Recent Trades Table -->
-  <div class="bg-[color:var(--card)] rounded-xl border border-slate-800 p-6 shadow">
-    <div class="flex items-center justify-between mb-4">
+  <div class="bg-[color:var(--card)] rounded-xl border border-slate-800 p-4 sm:p-6 shadow">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
       <h2 class="text-lg font-semibold">Recent Trades</h2>
-      <a href="{{ url_for('calculatentrade.get_trades') }}" class="text-sm text-[color:var(--accent)] hover:underline flex items-center gap-1">
+      <a href="{{ url_for('calculatentrade.get_trades') }}" class="text-sm text-[color:var(--accent)] hover:underline flex items-center gap-1 self-start sm:self-auto">
         View All <i class="fa-solid fa-arrow-right text-xs"></i>
       </a>
     </div>
-    <div class="overflow-x-auto">
+    
+    <!-- Mobile Card View -->
+    <div class="block sm:hidden space-y-3">
+      {% for trade in recent_trades[:10] %}
+      <div class="bg-slate-800/30 rounded-lg p-3 border border-slate-700">
+        <div class="flex items-center justify-between mb-2">
+          <div class="font-medium text-white">{{ trade.symbol }}</div>
+          <div class="text-xs text-slate-400">{{ trade.date.strftime('%m/%d') }}</div>
+        </div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="px-2 py-1 text-xs rounded-full {{ 
+            'bg-blue-900/40 text-blue-300' if trade.trade_type == 'long' else 
+            'bg-orange-900/40 text-orange-300' }}">
+            {{ trade.trade_type.title() }}
+          </span>
+          <span class="font-medium {{ 'text-green-400' if trade.pnl > 0 else 'text-red-400' }}">
+            {{ '₹{:,.0f}'.format(trade.pnl) }}
+          </span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="px-2 py-1 text-xs rounded-full font-medium {{ 
+            'bg-green-900/40 text-green-300' if trade.result == 'win' else 
+            'bg-red-900/40 text-red-300' if trade.result == 'loss' else
+            'bg-gray-900/40 text-gray-300' }}">
+            {{ trade.result.title() }}
+          </span>
+          <span class="text-slate-400 text-xs">
+            {{ trade.strategy.name[:12] + '...' if trade.strategy and trade.strategy.name|length > 12 else (trade.strategy.name if trade.strategy else '-') }}
+          </span>
+        </div>
+      </div>
+      {% else %}
+      <div class="py-8 text-center text-slate-500">
+        <i class="fa-solid fa-chart-line text-2xl mb-2 block"></i>
+        <p class="text-sm">No trades recorded yet.</p>
+        <p class="text-xs mt-1">Start trading to see your performance!</p>
+      </div>
+      {% endfor %}
+    </div>
+    
+    <!-- Desktop Table View -->
+    <div class="hidden sm:block overflow-x-auto">
       <table class="min-w-full text-sm">
         <thead>
           <tr class="border-b border-slate-700 text-slate-400 uppercase text-xs">
@@ -256,6 +297,8 @@ class TradingDashboard {
               bodyColor: '#e2e8f0',
               borderColor: '#334155',
               borderWidth: 1,
+              titleFont: { size: 12 },
+              bodyFont: { size: 11 },
               callbacks: {
                 label: function(context) {
                   return 'P&L: ₹' + context.parsed.y.toLocaleString();
@@ -266,14 +309,19 @@ class TradingDashboard {
           scales: {
             x: {
               grid: { color: '#334155', display: false },
-              ticks: { color: '#94a3b8', maxTicksLimit: 8 }
+              ticks: { 
+                color: '#94a3b8', 
+                maxTicksLimit: window.innerWidth < 640 ? 4 : 8,
+                font: { size: window.innerWidth < 640 ? 10 : 11 }
+              }
             },
             y: {
               grid: { color: '#334155' },
               ticks: { 
                 color: '#94a3b8',
+                font: { size: window.innerWidth < 640 ? 10 : 11 },
                 callback: function(value) {
-                  return '₹' + value.toLocaleString();
+                  return window.innerWidth < 640 ? '₹' + (value/1000).toFixed(0) + 'K' : '₹' + value.toLocaleString();
                 }
               }
             }
@@ -304,15 +352,18 @@ class TradingDashboard {
               position: 'bottom',
               labels: { 
                 color: '#e2e8f0', 
-                padding: 15,
+                padding: window.innerWidth < 640 ? 10 : 15,
                 usePointStyle: true,
-                pointStyle: 'circle'
+                pointStyle: 'circle',
+                font: { size: window.innerWidth < 640 ? 10 : 12 }
               }
             },
             tooltip: {
               backgroundColor: 'rgba(15, 23, 42, 0.9)',
               titleColor: '#e2e8f0',
               bodyColor: '#e2e8f0',
+              titleFont: { size: 12 },
+              bodyFont: { size: 11 },
               callbacks: {
                 label: function(context) {
                   const total = context.dataset.data.reduce((a, b) => a + b, 0);
@@ -353,6 +404,8 @@ class TradingDashboard {
               backgroundColor: 'rgba(15, 23, 42, 0.9)',
               titleColor: '#e2e8f0',
               bodyColor: '#e2e8f0',
+              titleFont: { size: 12 },
+              bodyFont: { size: 11 },
               callbacks: {
                 label: function(context) {
                   return 'P&L: ₹' + context.parsed.y.toLocaleString();
@@ -363,14 +416,19 @@ class TradingDashboard {
           scales: {
             x: {
               grid: { color: '#334155', display: false },
-              ticks: { color: '#94a3b8', maxRotation: 45 }
+              ticks: { 
+                color: '#94a3b8', 
+                maxRotation: window.innerWidth < 640 ? 90 : 45,
+                font: { size: window.innerWidth < 640 ? 9 : 11 }
+              }
             },
             y: {
               grid: { color: '#334155' },
               ticks: { 
                 color: '#94a3b8',
+                font: { size: window.innerWidth < 640 ? 9 : 11 },
                 callback: function(value) {
-                  return '₹' + value.toLocaleString();
+                  return window.innerWidth < 640 ? '₹' + (value/1000).toFixed(0) + 'K' : '₹' + value.toLocaleString();
                 }
               }
             }

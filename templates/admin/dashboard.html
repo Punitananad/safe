@@ -256,6 +256,32 @@
             </a>
           </div>
         </div>
+        <hr>
+        <div class="row">
+          <div class="col-lg-4 col-md-6 mb-3">
+            <a href="{{ url_for('admin.reset_links') }}" class="btn btn-outline-danger w-100 py-3">
+              <i class="fas fa-key fa-2x mb-2 d-block"></i>
+              <strong>Password Reset Links</strong>
+              <small class="d-block text-muted">Generate reset links for users</small>
+            </a>
+          </div>
+          <div class="col-lg-4 col-md-6 mb-3">
+            <a href="{{ url_for('admin.users') }}" class="btn btn-outline-info w-100 py-3">
+              <i class="fas fa-users fa-2x mb-2 d-block"></i>
+              <strong>User Management</strong>
+              <small class="d-block text-muted">View and manage all users</small>
+            </a>
+          </div>
+          <div class="col-lg-4 col-md-6 mb-3">
+            <form method="POST" action="{{ url_for('admin.init_database_route') }}" class="w-100" onsubmit="return confirm('Initialize database tables? This is safe but may take a moment.')">
+              <button type="submit" class="btn btn-outline-warning w-100 py-3">
+                <i class="fas fa-database fa-2x mb-2 d-block"></i>
+                <strong>Initialize Database</strong>
+                <small class="d-block text-muted">Setup mentor tables</small>
+              </button>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
   </div>

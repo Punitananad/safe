@@ -1131,7 +1131,7 @@ async function savePositionUpdate() {
   };
   
   try {
-    const response = await fetch('/save_swing_update', {
+    const response = await fetch('/save_fno_update', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updateData)
@@ -1153,7 +1153,7 @@ async function savePositionUpdate() {
 
 async function closePosition() {
   try {
-    const response = await fetch('/close_swing_position', {
+    const response = await fetch('/close_fno_position', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ trade_id: tradeData.id })
@@ -1183,7 +1183,7 @@ async function closePosition() {
 
 async function reopenPosition() {
   try {
-    const response = await fetch('/reopen_swing_position', {
+    const response = await fetch('/reopen_fno_position', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ trade_id: tradeData.id })
